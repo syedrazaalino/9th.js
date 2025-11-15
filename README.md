@@ -368,6 +368,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 <div align="center">
 
-Made with ❤️ by digitalcloud
+Made with ❤️ by [digitalcloud](https://digitalcloud.no)
 
 </div>
