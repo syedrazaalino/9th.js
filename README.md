@@ -333,19 +333,6 @@ npm run docs:build-all
 - **Model complexity**: 1M+ vertices with proper LOD
 - **Bundle size**: <100KB minified + gzipped (core)
 
-## 🌟 Ecosystem
-
-### Related Tools
-- **9th.js Studio** - Visual editor for 3D scenes
-- **Shader Playground** - Interactive shader development
-- **Model Optimizer** - Tool for optimizing 3D assets
-- **Performance Profiler** - Visual performance analysis
-
-### Community
-- [GitHub Repository](https://github.com/syedrazaalino/9th.js)
-- [Documentation Website](https://digitalcloud.no/docs)
-- [Examples Gallery](https://digitalcloud.no/examples)
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
@@ -377,19 +364,10 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - Community feedback and contributions
 - Open source dependencies and tools
 
-## 📞 Support
-
-- 🐛 **Issues**: [GitHub Issues](https://github.com/syedrazaalino/9th.js/issues)
-- 📖 **Documentation**: [Full Documentation](https://digitalcloud.no/docs)
-
 ---
 
 <div align="center">
 
-**[Website](https://digitalcloud.no)** • 
-**[Documentation](https://digitalcloud.no/docs)** • 
-**[Examples](https://digitalcloud.no/examples)**
-
-Made with ❤️ by the 9th.js team
+Made with ❤️ by digitalcloud
 
 </div>
