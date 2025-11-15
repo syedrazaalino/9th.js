@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBJ/MTL Loader Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .canvas-container {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 5px;
+            display: block;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+
+        .control-panel {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .control-section h3 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 5px;
+        }
+
+        .model-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .model-button {
+            background: #2d2d2d;
+            border: 2px solid #444;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .model-button:hover {
+            background: #3d3d3d;
+            border-color: #4CAF50;
+            transform: translateY(-2px);
+        }
+
+        .model-button.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .model-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .stats-line {
+            margin-bottom: 5px;
+        }
+
+        .stats-label {
+            color: #4CAF50;
+        }
+
+        .stats-value {
+            color: #fff;
+        }
+
+        .feature-list {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .feature-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .feature-list li {
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready { background: #4CAF50; }
+        .status-loading { background: #FF9800; }
+        .status-loaded { background: #2196F3; }
+        .status-error { background: #F44336; }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                order: -1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 OBJ/MTL Loader Demo</h1>
+        <p class="subtitle">Advanced 3D model loading with materials and textures</p>
+
+        <div class="main-content">
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+                
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <div class="loading-text" id="loadingText">Loading...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="feature-list">
+                    <h3>✨ Features</h3>
+                    <ul>
+                        <li>Full OBJ format support</li>
+                        <li>Complete MTL material parsing</li>
+                        <li>Texture loading & caching</li>
+                        <li>Real-time progress tracking</li>
+                        <li>Error handling & recovery</li>
+                        <li>Automatic normal computation</li>
+                    </ul>
+                </div>
+
+                <div class="control-section">
+                    <h3>📦 Load Model</h3>
+                    <div class="model-selector">
+                        <button class="model-button" onclick="loadModel('examples/models/cube.obj', 'examples/models/cube.mtl')">
+                            🧊 Load Cube (with materials)
+                        </button>
+                        <button class="model-button" onclick="loadModel('examples/models/sphere.obj', 'examples/models/sphere.mtl')">
+                            🔮 Load Sphere (with materials)
+                        </button>
+                        <button class="model-button" onclick="loadModel('examples/models/cube.obj', null)">
+                            📦 Load Cube (no materials)
+                        </button>
+                        <button class="model-button" onclick="clearModel()">
+                            🗑️ Clear Model
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>📊 Status</h3>
+                    <div style="margin-bottom: 15px;">
+                        <span class="status-indicator status-ready" id="statusIndicator"></span>
+                        <span id="statusText">Ready</span>
+                    </div>
+                    <div class="stats" id="statsDisplay">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { OBJMTLExample } from '../examples/obj-mtl-example.js';
+
+        let example = null;
+        let updateInterval = null;
+
+        // Initialize the example
+        function init() {
+            const canvas = document.getElementById('canvas');
+            example = new OBJMTLExample(canvas);
+
+            // Listen for progress events
+            document.addEventListener('modelLoadingProgress', (event) => {
+                updateLoadingUI(event.detail);
+            });
+
+            // Start stats update interval
+            updateInterval = setInterval(updateStats, 500);
+
+            console.log('OBJ/MTL Loader Demo initialized');
+        }
+
+        // Update loading UI
+        function updateLoadingUI(detail) {
+            const overlay = document.getElementById('loadingOverlay');
+            const text = document.getElementById('loadingText');
+            const progressFill = document.getElementById('progressFill');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+
+            // Show/hide overlay based on loading state
+            if (detail.status === 'loading') {
+                overlay.classList.add('show');
+                statusIndicator.className = 'status-indicator status-loading';
+                statusText.textContent = 'Loading...';
+            } else if (detail.status === 'loaded') {
+                overlay.classList.remove('show');
+                statusIndicator.className = 'status-indicator status-loaded';
+                statusText.textContent = 'Loaded';
+            } else if (detail.status === 'error') {
+                overlay.classList.remove('show');
+                statusIndicator.className = 'status-indicator status-error';
+                statusText.textContent = 'Error';
+            } else {
+                overlay.classList.remove('show');
+                statusIndicator.className = 'status-indicator status-ready';
+                statusText.textContent = 'Ready';
+            }
+
+            // Update progress
+            text.textContent = detail.message;
+            progressFill.style.width = `${detail.percentage}%`;
+        }
+
+        // Update statistics display
+        function updateStats() {
+            if (!example) return;
+
+            const stats = example.getStats();
+            const statsDisplay = document.getElementById('statsDisplay');
+
+            statsDisplay.innerHTML = `
+                <div class="stats-line">
+                    <span class="stats-label">Status:</span> 
+                    <span class="stats-value">${stats.status}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Progress:</span> 
+                    <span class="stats-value">${stats.progress.toFixed(1)}%</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Has Model:</span> 
+                    <span class="stats-value">${stats.hasModel ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Vertices:</span> 
+                    <span class="stats-value">${stats.objStats?.vertices || 0}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Faces:</span> 
+                    <span class="stats-value">${stats.objStats?.faces || 0}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Groups:</span> 
+                    <span class="stats-value">${stats.objStats?.groups || 0}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Materials:</span> 
+                    <span class="stats-value">${stats.mtlStats?.materials || 0}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Cache Size:</span> 
+                    <span class="stats-value">${stats.textureStats?.size || 0}</span>
+                </div>
+                <div class="stats-line">
+                    <span class="stats-label">Parse Time:</span> 
+                    <span class="stats-value">${(stats.objStats?.parseTime || 0).toFixed(1)}ms</span>
+                </div>
+            `;
+        }
+
+        // Load model function
+        async function loadModel(objPath, mtlPath) {
+            if (!example || example.isLoading) return;
+
+            try {
+                console.log(`Loading model: ${objPath}${mtlPath ? ' + ' + mtlPath : ''}`);
+                await example.loadModel(objPath, mtlPath);
+            } catch (error) {
+                console.error('Failed to load model:', error);
+                alert(`Failed to load model: ${error.message}`);
+            }
+        }
+
+        // Clear model function
+        function clearModel() {
+            if (!example) return;
+            
+            example.clearModel();
+            console.log('Model cleared');
+        }
+
+        // Make functions global for HTML onclick handlers
+        window.loadModel = loadModel;
+        window.clearModel = clearModel;
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            if (example) {
+                example.dispose();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Climate Data Visualization</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 50%, #6c5ce7 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 13px;
+        }
+
+        .control-group select,
+        .control-group input[type="range"],
+        .control-group input[type="datetime-local"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+
+        .climate-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .weather-data {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .forecast-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 350px;
+            z-index: 100;
+        }
+
+        .data-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 12px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .weather-legend {
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+
+        .temperature-chart {
+            width: 100%;
+            height: 80px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            border-radius: 0 0 6px 6px;
+        }
+
+        .precipitation-bars {
+            display: flex;
+            align-items: end;
+            height: 40px;
+            gap: 2px;
+            margin: 10px 0;
+        }
+
+        .precip-bar {
+            flex: 1;
+            background: #74b9ff;
+            border-radius: 2px 2px 0 0;
+            min-height: 2px;
+        }
+
+        .time-slider {
+            margin: 15px 0;
+        }
+
+        .time-slider input {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .value-display {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+
+        .alert-badge {
+            position: absolute;
+            top: 50%;
+            right: 30px;
+            background: #ff4757;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 110;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Loading climate data visualization...</div>
+        
+        <div class="controls">
+            <h3>Climate Data Controls</h3>
+            
+            <div class="control-group">
+                <label for="dataSource">Data Source:</label>
+                <select id="dataSource">
+                    <option value="reanalysis">Weather Reanalysis</option>
+                    <option value="satellite">Satellite Observations</option>
+                    <option value="forecast">Weather Forecast</option>
+                    <option value="historical">Historical Climate</option>
+                    <option value="climate_model">Climate Model Output</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="variable">Climate Variable:</label>
+                <select id="variable">
+                    <option value="temperature">Temperature (°C)</option>
+                    <option value="precipitation">Precipitation (mm)</option>
+                    <option value="pressure">Sea Level Pressure (hPa)</option>
+                    <option value="humidity">Relative Humidity (%)</option>
+                    <option value="wind">Wind Speed (m/s)</option>
+                    <option value="cloud">Cloud Cover (%)</option>
+                    <option value="uv_index">UV Index</option>
+                    <option value="air_quality">Air Quality Index</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="timeRange">Time Range:</label>
+                <select id="timeRange">
+                    <option value="now">Current Conditions</option>
+                    <option value="hour">Next Hour</option>
+                    <option value="day">Next 24 Hours</option>
+                    <option value="week">Next 7 Days</option>
+                    <option value="month">Next 30 Days</option>
+                    <option value="season">Next Season</option>
+                    <option value="year">Next Year</option>
+                </select>
+            </div>
+            
+            <div class="time-slider">
+                <label for="animationSpeed">Animation Speed:</label>
+                <div class="slider-group">
+                    <input type="range" id="animationSpeed" min="0.1" max="5" step="0.1" value="1.0">
+                    <div class="value-display">1.0x</div>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showContours" checked>
+                <label for="showContours">Show Contour Lines</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showIsobars">
+                <label for="showIsobars">Show Isobars</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showFronts">
+                <label for="showFronts">Show Weather Fronts</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showStations">
+                <label for="showStations">Show Weather Stations</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showAlerts">
+                <label for="showAlerts">Show Weather Alerts</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="playAnimation">Play</button>
+                <button id="pauseAnimation">Pause</button>
+                <button id="exportData">Export</button>
+            </div>
+        </div>
+        
+        <div class="climate-info">
+            <h3>Current Conditions</h3>
+            <div class="data-metrics">
+                <div class="metric-item">
+                    <div class="metric-value" id="temperature">22°C</div>
+                    <div class="metric-label">Temperature</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="humidity">65%</div>
+                    <div class="metric-label">Humidity</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="pressure">1013.2</div>
+                    <div class="metric-label">Pressure (hPa)</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="windSpeed">8.5</div>
+                    <div class="metric-label">Wind (m/s)</div>
+                </div>
+            </div>
+            
+            <div id="locationInfo">
+                <h4>Location</h4>
+                <p><strong>Coordinates:</strong> <span id="coordinates">40.7128° N, 74.0060° W</span></p>
+                <p><strong>Elevation:</strong> <span id="elevation">10 m</span></p>
+                <p><strong>Time Zone:</strong> <span id="timezone">UTC-5</span></p>
+            </div>
+            
+            <div class="weather-legend">
+                <h4>Variable Scale</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #0000ff, #ffffff, #ff0000);"></div>
+                    <span>Temperature (-20°C to +40°C)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #87ceeb, #0066cc);"></div>
+                    <span>Precipitation (0-50mm)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, #ffffff, #0000ff);"></div>
+                    <span>Pressure (980-1030 hPa)</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="weather-data">
+            <h3>Weather Station Data</h3>
+            <div id="stationList" style="max-height: 200px; overflow-y: auto; font-size: 12px;">
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Station NYC</strong><br>
+                    Temp: 22°C | Humidity: 65%<br>
+                    Wind: 8.5 m/s SE | Pressure: 1013.2 hPa
+                </div>
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Station BOS</strong><br>
+                    Temp: 19°C | Humidity: 70%<br>
+                    Wind: 12.3 m/s W | Pressure: 1015.8 hPa
+                </div>
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Station PHI</strong><br>
+                    Temp: 24°C | Humidity: 60%<br>
+                    Wind: 6.2 m/s SW | Pressure: 1012.1 hPa
+                </div>
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Station BAL</strong><br>
+                    Temp: 21°C | Humidity: 68%<br>
+                    Wind: 9.8 m/s N | Pressure: 1014.3 hPa
+                </div>
+            </div>
+        </div>
+        
+        <div class="forecast-panel">
+            <h3>7-Day Forecast</h3>
+            
+            <div class="temperature-chart">
+                <div id="tempChart" style="height: 60px; position: relative;"></div>
+            </div>
+            
+            <div class="precipitation-bars" id="precipChart">
+                <!-- Precipitation bars will be generated here -->
+            </div>
+            
+            <div id="forecastDetails" style="font-size: 12px; line-height: 1.4;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold;">Today</div>
+                        <div>22°C / 15°C</div>
+                        <div>☀️ Sunny</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold;">Thu</div>
+                        <div>19°C / 12°C</div>
+                        <div>⛅ Cloudy</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold;">Fri</div>
+                        <div>18°C / 11°C</div>
+                        <div>🌧️ Rain</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold;">Sat</div>
+                        <div>20°C / 13°C</div>
+                        <div>⛅ Partly Cloudy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert-badge" id="weatherAlert" style="display: none;">
+            Weather Alert: High Wind Warning
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class ClimateDataVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.climateData = null;
+                this.weatherSystems = [];
+                this.isobars = [];
+                this.fronts = [];
+                this.stations = [];
+                this.timeStep = 0;
+                this.animationSpeed = 1.0;
+                this.isAnimating = false;
+                this.currentTime = new Date();
+                
+                // Climate data grid
+                this.gridSize = { lat: 180, lon: 360, levels: 10 };
+                this.domain = {
+                    latMin: -90, latMax: 90,
+                    lonMin: -180, lonMax: 180
+                };
+                
+                // Weather variables
+                this.variables = {
+                    temperature: { unit: '°C', min: -40, max: 50, colorMap: 'thermal' },
+                    precipitation: { unit: 'mm', min: 0, max: 100, colorMap: 'precip' },
+                    pressure: { unit: 'hPa', min: 980, max: 1040, colorMap: 'pressure' },
+                    humidity: { unit: '%', min: 0, max: 100, colorMap: 'humidity' },
+                    wind: { unit: 'm/s', min: 0, max: 50, colorMap: 'wind' },
+                    cloud: { unit: '%', min: 0, max: 100, colorMap: 'clouds' },
+                    uv_index: { unit: '', min: 0, max: 15, colorMap: 'uv' },
+                    air_quality: { unit: 'AQI', min: 0, max: 500, colorMap: 'air_quality' }
+                };
+                
+                this.currentVariable = 'temperature';
+                this.colorMaps = {
+                    thermal: ['#0000ff', '#00ffff', '#00ff00', '#ffff00', '#ff0000'],
+                    precip: ['#ffffff', '#87ceeb', '#4169e1', '#0000ff', '#8b0000'],
+                    pressure: ['#ffffff', '#add8e6', '#87ceeb', '#4682b4', '#000080'],
+                    humidity: ['#ffffe0', '#fffacd', '#f0e68c', '#daa520', '#b8860b'],
+                    wind: ['#f0f8ff', '#e6f3ff', '#cce7ff', '#99ccff', '#6699ff'],
+                    clouds: ['#f5f5f5', '#d3d3d3', '#a9a9a9', '#696969', '#2f4f4f'],
+                    uv: ['#98fb98', '#90ee90', '#7cfc00', '#ffff00', '#ff8c00'],
+                    air_quality: ['#90ee90', '#ffff00', '#ff8c00', '#ff4500', '#8b0000']
+                };
+                
+                this.init();
+                this.setupEventListeners();
+                this.generateClimateData();
+                this.createVisualizationElements();
+                this.updateForecast();
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                this.scene.background = new Color(0x87ceeb);
+                
+                // Camera
+                this.camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(0, 0, 500);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                this.scene.add(directionalLight);
+                
+                // Controls
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    this.camera.position.x = Math.cos(rotationY) * 500 * Math.cos(rotationX);
+                    this.camera.position.y = Math.sin(rotationX) * 200;
+                    this.camera.position.z = Math.sin(rotationY) * 500 * Math.cos(rotationX);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    const distance = this.camera.position.length();
+                    this.camera.position.normalize().multiplyScalar(Math.max(100, Math.min(1000, distance + delta * 50)));
+                });
+                
+                canvas.addEventListener('click', (e) => {
+                    this.handleLocationSelection(e);
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('dataSource').addEventListener('change', (e) => {
+                    this.changeDataSource(e.target.value);
+                });
+                
+                document.getElementById('variable').addEventListener('change', (e) => {
+                    this.changeClimateVariable(e.target.value);
+                });
+                
+                document.getElementById('timeRange').addEventListener('change', (e) => {
+                    this.changeTimeRange(e.target.value);
+                });
+                
+                document.getElementById('animationSpeed').addEventListener('input', (e) => {
+                    this.animationSpeed = parseFloat(e.target.value);
+                    e.target.nextElementSibling.textContent = `${this.animationSpeed.toFixed(1)}x`;
+                });
+                
+                document.getElementById('showContours').addEventListener('change', (e) => {
+                    this.toggleContours(e.target.checked);
+                });
+                
+                document.getElementById('showIsobars').addEventListener('change', (e) => {
+                    this.toggleIsobars(e.target.checked);
+                });
+                
+                document.getElementById('showFronts').addEventListener('change', (e) => {
+                    this.toggleFronts(e.target.checked);
+                });
+                
+                document.getElementById('showStations').addEventListener('change', (e) => {
+                    this.toggleWeatherStations(e.target.checked);
+                });
+                
+                document.getElementById('showAlerts').addEventListener('change', (e) => {
+                    this.toggleWeatherAlerts(e.target.checked);
+                });
+                
+                document.getElementById('playAnimation').addEventListener('click', () => {
+                    this.playAnimation();
+                });
+                
+                document.getElementById('pauseAnimation').addEventListener('click', () => {
+                    this.pauseAnimation();
+                });
+                
+                document.getElementById('exportData').addEventListener('click', () => {
+                    this.exportData();
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            generateClimateData() {
+                // Generate synthetic climate data
+                const { lat, lon } = this.gridSize;
+                const dataSize = lat * lon;
+                
+                this.climateData = {};
+                
+                // Initialize data fields
+                Object.keys(this.variables).forEach(variable => {
+                    this.climateData[variable] = new Float32Array(dataSize);
+                });
+                
+                // Generate realistic weather patterns
+                this.generateTemperatureField();
+                this.generatePressureField();
+                this.generateWindField();
+                this.generateHumidityField();
+                this.generatePrecipitationField();
+                this.generateCloudField();
+                this.generateUVIndex();
+                this.generateAirQuality();
+            }
+            
+            generateTemperatureField() {
+                const { lat, lon } = this.gridSize;
+                const tempData = this.climateData.temperature;
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        const latitude = this.domain.latMin + (i / lat) * (this.domain.latMax - this.domain.latMin);
+                        
+                        // Base temperature depends on latitude
+                        let baseTemp = 25 - Math.abs(latitude) * 0.6;
+                        
+                        // Add seasonal variation
+                        const dayOfYear = Math.floor(this.currentTime.getTime() / (1000 * 60 * 60 * 24)) % 365;
+                        const seasonalVariation = 15 * Math.sin((dayOfYear / 365) * 2 * Math.PI);
+                        baseTemp += seasonalVariation;
+                        
+                        // Add weather systems (highs and lows)
+                        const weatherVariation = this.getWeatherVariation(latitude, j / lon * 360);
+                        const temperature = baseTemp + weatherVariation + (Math.random() - 0.5) * 5;
+                        
+                        tempData[index] = temperature;
+                    }
+                }
+            }
+            
+            generatePressureField() {
+                const { lat, lon } = this.gridSize;
+                const pressureData = this.climateData.pressure;
+                
+                // Generate high and low pressure systems
+                const highs = [
+                    { lat: 40, lon: -75, strength: 15 },
+                    { lat: 50, lon: -120, strength: 12 },
+                    { lat: 30, lon: -90, strength: 8 }
+                ];
+                
+                const lows = [
+                    { lat: 45, lon: -85, strength: -12 },
+                    { lat: 35, lon: -100, strength: -15 }
+                ];
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        const latitude = this.domain.latMin + (i / lat) * (this.domain.latMax - this.domain.latMin);
+                        const longitude = this.domain.lonMin + (j / lon) * (this.domain.lonMax - this.domain.lonMin);
+                        
+                        let pressure = 1013; // Base pressure in hPa
+                        
+                        // Add high pressure systems
+                        highs.forEach(high => {
+                            const distance = this.calculateDistance(latitude, longitude, high.lat, high.lon);
+                            pressure += high.strength * Math.exp(-distance / 20);
+                        });
+                        
+                        // Add low pressure systems
+                        lows.forEach(low => {
+                            const distance = this.calculateDistance(latitude, longitude, low.lat, low.lon);
+                            pressure += low.strength * Math.exp(-distance / 20);
+                        });
+                        
+                        // Add some noise
+                        pressure += (Math.random() - 0.5) * 2;
+                        
+                        pressureData[index] = pressure;
+                    }
+                }
+            }
+            
+            generateWindField() {
+                const { lat, lon } = this.gridSize;
+                const windData = this.climateData.wind;
+                const uData = new Float32Array(lat * lon);
+                const vData = new Float32Array(lat * lon);
+                
+                // Generate wind from pressure gradients
+                for (let i = 1; i < lat - 1; i++) {
+                    for (let j = 1; j < lon - 1; j++) {
+                        const index = i * lon + j;
+                        
+                        // Calculate pressure gradient
+                        const dp_dx = (this.climateData.pressure[index + 1] - this.climateData.pressure[index - 1]) / 2;
+                        const dp_dy = (this.climateData.pressure[index + lon] - this.climateData.pressure[index - lon]) / 2;
+                        
+                        // Geostrophic wind approximation
+                        const f = 1e-4; // Coriolis parameter
+                        const u = -(dp_dy) / (f * 1000);
+                        const v = (dp_dx) / (f * 1000);
+                        
+                        uData[index] = u;
+                        vData[index] = v;
+                        windData[index] = Math.sqrt(u * u + v * v);
+                    }
+                }
+                
+                this.climateData.wind_u = uData;
+                this.climateData.wind_v = vData;
+            }
+            
+            generateHumidityField() {
+                const { lat, lon } = this.gridSize;
+                const humidityData = this.climateData.humidity;
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        const temp = this.climateData.temperature[index];
+                        const pressure = this.climateData.pressure[index];
+                        
+                        // Relative humidity depends on temperature and proximity to water bodies
+                        let baseHumidity = 50 + Math.random() * 30;
+                        
+                        // Higher humidity near coasts and over oceans
+                        const lonNorm = j / lon;
+                        if (lonNorm < 0.3 || lonNorm > 0.7) {
+                            baseHumidity += 20;
+                        }
+                        
+                        humidityData[index] = Math.min(100, Math.max(0, baseHumidity));
+                    }
+                }
+            }
+            
+            generatePrecipitationField() {
+                const { lat, lon } = this.gridSize;
+                const precipData = this.climateData.precipitation;
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        const humidity = this.climateData.humidity[index];
+                        const pressure = this.climateData.pressure[index];
+                        
+                        // Precipitation more likely in low pressure systems
+                        let precipProbability = 0;
+                        if (pressure < 1005) {
+                            precipProbability = (1005 - pressure) / 10;
+                        }
+                        
+                        // Add orographic effects (simplified)
+                        const latNorm = Math.abs((i / lat) * 180 - 90);
+                        if (latNorm > 30 && latNorm < 60) {
+                            precipProbability *= 1.5; // Mid-latitude storm track
+                        }
+                        
+                        const precipitation = humidity * precipProbability * 0.1 + Math.random() * 5;
+                        precipData[index] = Math.max(0, precipitation);
+                    }
+                }
+            }
+            
+            generateCloudField() {
+                const { lat, lon } = this.gridSize;
+                const cloudData = this.climateData.cloud;
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        const humidity = this.climateData.humidity[index];
+                        const temp = this.climateData.temperature[index];
+                        
+                        // Cloud cover correlates with humidity
+                        let cloudCover = humidity * 0.8 + Math.random() * 10;
+                        
+                        // Less clouds in high pressure systems
+                        const pressure = this.climateData.pressure[index];
+                        if (pressure > 1020) {
+                            cloudCover *= 0.5;
+                        }
+                        
+                        cloudData[index] = Math.min(100, Math.max(0, cloudCover));
+                    }
+                }
+            }
+            
+            generateUVIndex() {
+                const { lat, lon } = this.gridSize;
+                const uvData = this.climateData.uv_index;
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        const latitude = this.domain.latMin + (i / lat) * (this.domain.latMax - this.domain.latMin);
+                        const cloudCover = this.climateData.cloud[index];
+                        
+                        // UV index highest at equator and low cloud cover
+                        const latitudeFactor = Math.cos(latitude * Math.PI / 180);
+                        const cloudReduction = (100 - cloudCover) / 100;
+                        const seasonalFactor = this.getSeasonalUVFactor();
+                        
+                        const uvIndex = 10 * latitudeFactor * cloudReduction * seasonalFactor * Math.random();
+                        uvData[index] = Math.min(15, Math.max(0, uvIndex));
+                    }
+                }
+            }
+            
+            generateAirQuality() {
+                const { lat, lon } = this.gridSize;
+                const aqiData = this.climateData.air_quality;
+                
+                for (let i = 0; i < lat; i++) {
+                    for (let j = 0; j < lon; j++) {
+                        const index = i * lon + j;
+                        
+                        // Base AQI higher in urban areas (simplified)
+                        let baseAQI = 30 + Math.random() * 20;
+                        
+                        // Add pollution sources (simplified)
+                        const lonNorm = j / lon;
+                        if (lonNorm > 0.25 && lonNorm < 0.35) { // East coast megalopolis
+                            baseAQI += 50;
+                        }
+                        
+                        // Wind disperses pollution
+                        const windSpeed = this.climateData.wind[index];
+                        baseAQI -= windSpeed * 2;
+                        
+                        aqiData[index] = Math.min(500, Math.max(0, baseAQI));
+                    }
+                }
+            }
+            
+            createVisualizationElements() {
+                this.createWeatherStations();
+                this.createIsobars();
+                this.createWeatherFronts();
+                this.updateCurrentConditions();
+                this.createTemperatureChart();
+                this.createPrecipitationChart();
+            }
+            
+            createWeatherStations() {
+                const stationLocations = [
+                    { name: 'NYC', lat: 40.7128, lon: -74.0060, temp: 22, humidity: 65, pressure: 1013.2, wind: 8.5 },
+                    { name: 'BOS', lat: 42.3601, lon: -71.0589, temp: 19, humidity: 70, pressure: 1015.8, wind: 12.3 },
+                    { name: 'PHI', lat: 39.9526, lon: -75.1652, temp: 24, humidity: 60, pressure: 1012.1, wind: 6.2 },
+                    { name: 'BAL', lat: 39.2904, lon: -76.6122, temp: 21, humidity: 68, pressure: 1014.3, wind: 9.8 },
+                    { name: 'DC', lat: 38.9072, lon: -77.0369, temp: 23, humidity: 62, pressure: 1013.7, wind: 7.1 }
+                ];
+                
+                stationLocations.forEach(station => {
+                    const stationObj = this.createWeatherStation(station);
+                    this.stations.push(stationObj);
+                    this.scene.add(stationObj.mesh);
+                });
+            }
+            
+            createWeatherStation(data) {
+                // Create station mesh
+                const geometry = new SphereGeometry(2, 8, 8);
+                const material = new MeshLambertMaterial({ color: 0xff6600 });
+                const mesh = new Mesh(geometry, material);
+                
+                // Convert lat/lon to scene coordinates
+                const x = (data.lon / 180) * 400;
+                const z = (data.lat / 90) * 200;
+                mesh.position.set(x, 0, z);
+                
+                // Create label
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 128;
+                canvas.height = 64;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.fillStyle = '#ffffff';
+                context.font = '12px Arial';
+                context.textAlign = 'center';
+                context.fillText(`${data.name}`, canvas.width / 2, 20);
+                context.fillText(`${data.temp}°C`, canvas.width / 2, 35);
+                context.fillText(`${data.humidity}%`, canvas.width / 2, 50);
+                
+                const texture = new Texture(canvas);
+                texture.needsUpdate = true;
+                
+                const labelMaterial = new SpriteMaterial({ map: texture });
+                const label = new Sprite(labelMaterial);
+                label.scale.set(15, 8, 1);
+                label.position.set(0, 10, 0);
+                
+                mesh.add(label);
+                
+                return { ...data, mesh, label };
+            }
+            
+            createIsobars() {
+                const pressureLevels = [990, 1000, 1010, 1020, 1030, 1040];
+                
+                pressureLevels.forEach(level => {
+                    const isobar = this.createIsobarLine(level);
+                    if (isobar) {
+                        this.isobars.push(isobar);
+                        this.scene.add(isobar);
+                    }
+                });
+            }
+            
+            createIsobarLine(pressureLevel) {
+                const { lat, lon } = this.gridSize;
+                const points = [];
+                
+                // Find points with this pressure level
+                for (let i = 0; i < lat; i += 5) {
+                    for (let j = 0; j < lon; j += 5) {
+                        const index = i * lon + j;
+                        const pressure = this.climateData.pressure[index];
+                        
+                        if (Math.abs(pressure - pressureLevel) < 2) {
+                            const latitude = this.domain.latMin + (i / lat) * (this.domain.latMax - this.domain.latMin);
+                            const longitude = this.domain.lonMin + (j / lon) * (this.domain.lonMax - this.domain.lonMin);
+                            
+                            const x = (longitude / 180) * 400;
+                            const z = (latitude / 90) * 200;
+                            points.push(new Vector3(x, 0, z));
+                        }
+                    }
+                }
+                
+                if (points.length < 2) return null;
+                
+                const geometry = new BufferGeometry().setFromPoints(points);
+                const material = new LineBasicMaterial({ 
+                    color: 0xffffff, 
+                    transparent: true, 
+                    opacity: 0.7 
+                });
+                
+                const line = new Line(geometry, material);
+                return line;
+            }
+            
+            createWeatherFronts() {
+                // Cold front
+                const coldFrontPoints = [
+                    new Vector3(-100, 0, 50),
+                    new Vector3(0, 0, 30),
+                    new Vector3(100, 0, 10),
+                    new Vector3(200, 0, -10),
+                    new Vector3(300, 0, -30)
+                ];
+                
+                const coldFrontGeometry = new BufferGeometry().setFromPoints(coldFrontPoints);
+                const coldFrontMaterial = new LineBasicMaterial({ color: 0x0066cc });
+                const coldFront = new Line(coldFrontGeometry, coldFrontMaterial);
+                
+                // Warm front
+                const warmFrontPoints = [
+                    new Vector3(-50, 0, 80),
+                    new Vector3(50, 0, 60),
+                    new Vector3(150, 0, 40),
+                    new Vector3(250, 0, 20),
+                    new Vector3(350, 0, 0)
+                ];
+                
+                const warmFrontGeometry = new BufferGeometry().setFromPoints(warmFrontPoints);
+                const warmFrontMaterial = new LineBasicMaterial({ color: 0xff0000 });
+                const warmFront = new Line(warmFrontGeometry, warmFrontMaterial);
+                
+                this.fronts = [coldFront, warmFront];
+                this.fronts.forEach(front => this.scene.add(front));
+            }
+            
+            changeDataSource(source) {
+                console.log('Changing data source to:', source);
+                // In a real implementation, this would fetch data from different APIs
+                this.generateClimateData();
+                this.updateCurrentConditions();
+            }
+            
+            changeClimateVariable(variable) {
+                this.currentVariable = variable;
+                console.log('Changed climate variable to:', variable);
+                this.updateLegend();
+            }
+            
+            changeTimeRange(range) {
+                console.log('Changing time range to:', range);
+                // Update forecast based on time range
+                this.updateForecast();
+            }
+            
+            toggleContours(show) {
+                console.log('Toggle contours:', show);
+            }
+            
+            toggleIsobars(show) {
+                this.isobars.forEach(isobar => {
+                    isobar.visible = show;
+                });
+            }
+            
+            toggleFronts(show) {
+                this.fronts.forEach(front => {
+                    front.visible = show;
+                });
+            }
+            
+            toggleWeatherStations(show) {
+                this.stations.forEach(station => {
+                    station.mesh.visible = show;
+                });
+            }
+            
+            toggleWeatherAlerts(show) {
+                const alertElement = document.getElementById('weatherAlert');
+                alertElement.style.display = show && Math.random() > 0.7 ? 'block' : 'none';
+            }
+            
+            updateCurrentConditions() {
+                // Update current weather metrics
+                const nycIndex = Math.floor((40.7128 - this.domain.latMin) / (this.domain.latMax - this.domain.latMin) * this.gridSize.lat) * 
+                                this.gridSize.lon + 
+                                Math.floor(((-74.0060 - this.domain.lonMin) / (this.domain.lonMax - this.domain.lonMin) * this.gridSize.lon));
+                
+                if (this.climateData.temperature && nycIndex < this.climateData.temperature.length) {
+                    document.getElementById('temperature').textContent = `${this.climateData.temperature[nycIndex].toFixed(1)}°C`;
+                    document.getElementById('humidity').textContent = `${this.climateData.humidity[nycIndex].toFixed(0)}%`;
+                    document.getElementById('pressure').textContent = this.climateData.pressure[nycIndex].toFixed(1);
+                    document.getElementById('windSpeed').textContent = this.climateData.wind[nycIndex].toFixed(1);
+                }
+            }
+            
+            updateLegend() {
+                const variable = this.variables[this.currentVariable];
+                const legendElement = document.querySelector('.weather-legend');
+                
+                if (legendElement) {
+                    const gradientColors = this.colorMaps[this.currentVariable] || this.colorMaps.thermal;
+                    const legendHTML = `
+                        <h4>Variable Scale</h4>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(90deg, ${gradientColors.join(', ')});"></div>
+                            <span>${variable.unit ? variable.unit : ''}</span>
+                        </div>
+                    `;
+                    legendElement.innerHTML = legendHTML;
+                }
+            }
+            
+            updateForecast() {
+                this.createTemperatureChart();
+                this.createPrecipitationChart();
+            }
+            
+            createTemperatureChart() {
+                const chartContainer = document.getElementById('tempChart');
+                if (!chartContainer) return;
+                
+                chartContainer.innerHTML = '';
+                
+                const temps = [22, 19, 18, 20, 23, 21, 24]; // 7-day forecast
+                const minTemp = Math.min(...temps);
+                const maxTemp = Math.max(...temps);
+                const range = maxTemp - minTemp || 1;
+                
+                const width = 280;
+                const height = 60;
+                
+                temps.forEach((temp, i) => {
+                    const normalizedHeight = ((temp - minTemp) / range) * height;
+                    const bar = document.createElement('div');
+                    bar.className = 'chart-line';
+                    bar.style.left = `${(i / 7) * width}px`;
+                    bar.style.width = `${width / 7 - 2}px`;
+                    bar.style.height = `${normalizedHeight}px`;
+                    bar.style.background = this.getTemperatureColor(temp);
+                    chartContainer.appendChild(bar);
+                });
+            }
+            
+            createPrecipitationChart() {
+                const chartContainer = document.getElementById('precipChart');
+                if (!chartContainer) return;
+                
+                chartContainer.innerHTML = '';
+                
+                const precip = [0, 2, 15, 5, 0, 1, 0]; // mm precipitation
+                const maxPrecip = Math.max(...precip) || 1;
+                
+                precip.forEach((p, i) => {
+                    const bar = document.createElement('div');
+                    bar.className = 'precip-bar';
+                    bar.style.height = `${(p / maxPrecip) * 100}%`;
+                    chartContainer.appendChild(bar);
+                });
+            }
+            
+            getTemperatureColor(temp) {
+                if (temp < 10) return '#87ceeb';
+                if (temp < 15) return '#98fb98';
+                if (temp < 20) return '#ffff00';
+                if (temp < 25) return '#ffa500';
+                return '#ff4500';
+            }
+            
+            playAnimation() {
+                this.isAnimating = true;
+                document.getElementById('playAnimation').disabled = true;
+                document.getElementById('pauseAnimation').disabled = false;
+            }
+            
+            pauseAnimation() {
+                this.isAnimating = false;
+                document.getElementById('playAnimation').disabled = false;
+                document.getElementById('pauseAnimation').disabled = true;
+            }
+            
+            exportData() {
+                console.log('Exporting climate data...');
+                // Implement data export functionality
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    variables: this.climateData,
+                    metadata: {
+                        gridSize: this.gridSize,
+                        domain: this.domain,
+                        currentVariable: this.currentVariable
+                    }
+                };
+                
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'climate_data.json';
+                link.click();
+                
+                URL.revokeObjectURL(url);
+            }
+            
+            handleLocationSelection(event) {
+                // Handle click on map to get location data
+                const mouse = new Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Raycast to find clicked location
+                console.log('Selected location at:', mouse);
+            }
+            
+            getWeatherVariation(lat, lon) {
+                // Generate realistic weather variations
+                const variation = Math.sin(lat * 0.1) * Math.cos(lon * 0.1) * 10 +
+                                Math.sin(lat * 0.05) * Math.sin(lon * 0.15) * 5;
+                return variation;
+            }
+            
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Earth's radius in km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+            
+            getSeasonalUVFactor() {
+                const dayOfYear = Math.floor(this.currentTime.getTime() / (1000 * 60 * 60 * 24)) % 365;
+                // Simple seasonal variation
+                return 0.5 + 0.5 * Math.sin((dayOfYear / 365) * 2 * Math.PI);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (this.isAnimating) {
+                    this.timeStep += this.animationSpeed * 0.016;
+                    
+                    // Update weather systems
+                    this.updateWeatherSystems();
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            updateWeatherSystems() {
+                // Animate weather systems movement
+                this.fronts.forEach(front => {
+                    front.position.x += 0.5 * this.animationSpeed;
+                    if (front.position.x > 400) {
+                        front.position.x = -400;
+                    }
+                });
+            }
+        }
+        
+        // Initialize the visualizer when the page loads
+        window.addEventListener('load', () => {
+            new ClimateDataVisualizer();
+        });
+    </script>
+</body>
+</html>

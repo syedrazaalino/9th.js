@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Complete Game Example</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #gameUI {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        
+        #gameStatus {
+            background: linear-gradient(45deg, #4CAF50, #2196F3);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .hud-element {
+            display: inline-block;
+            margin: 5px 10px;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        #healthBar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        #healthFill {
+            height: 100%;
+            background: linear-gradient(90deg, #f44336, #ff9800, #4CAF50);
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .powerUp {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .powerUp.active {
+            background: rgba(76, 175, 80, 0.8);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button.secondary {
+            background: #2196F3;
+        }
+        
+        button.secondary:hover {
+            background: #1976D2;
+        }
+        
+        button.danger {
+            background: #f44336;
+        }
+        
+        button.danger:hover {
+            background: #d32f2f;
+        }
+        
+        button.warning {
+            background: #ff9800;
+        }
+        
+        button.warning:hover {
+            background: #f57c00;
+        }
+        
+        #powerUps {
+            margin: 10px 0;
+        }
+        
+        #leaderboard {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        #leaderboard h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            font-size: 12px;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+        
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+        }
+        
+        #crosshair::before {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+        
+        #crosshair::after {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            transform: translateX(-50%);
+        }
+        
+        #miniMap {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        
+        #instructions.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🎮 Complete Game Example</h3>
+        <p><strong>Game Type:</strong> 3D Action-Adventure</p>
+        <p><strong>Objective:</strong> Collect power-ups, defeat enemies, and survive as long as possible!</p>
+        
+        <h4>🎯 Controls:</h4>
+        <ul>
+            <li><strong>WASD:</strong> Move player</li>
+            <li><strong>Mouse:</strong> Look around</li>
+            <li><strong>Spacebar:</strong> Jump</li>
+            <li><strong>Click:</strong> Shoot</li>
+            <li><strong>Shift:</strong> Sprint</li>
+            <li><strong>E:</strong> Interact</li>
+        </ul>
+        
+        <h4>🎁 Power-ups:</h4>
+        <ul>
+            <li><strong>Health:</strong> Restore HP</li>
+            <li><strong>Speed:</strong> Move faster</li>
+            <li><strong>Shield:</strong> Temporary protection</li>
+            <li><strong>Double Jump:</strong> Enhanced mobility</li>
+        </ul>
+    </div>
+    
+    <div id="gameUI">
+        <div id="gameStatus">
+            🎮 Game Ready - Press Start to Play!
+        </div>
+        
+        <div class="hud-element">
+            ❤️ Health: <span id="health">100</span>%
+        </div>
+        
+        <div class="hud-element">
+            ⭐ Score: <span id="score">0</span>
+        </div>
+        
+        <div class="hud-element">
+            🎯 Level: <span id="level">1</span>
+        </div>
+        
+        <div class="hud-element">
+            ⏱️ Time: <span id="timer">00:00</span>
+        </div>
+        
+        <div id="healthBar">
+            <div id="healthFill"></div>
+        </div>
+        
+        <div id="powerUps">
+            <div class="powerUp" id="speedPower">🏃 Speed Boost</div>
+            <div class="powerUp" id="shieldPower">🛡️ Shield</div>
+            <div class="powerUp" id="doubleJumpPower">⬆️ Double Jump</div>
+        </div>
+        
+        <div style="margin: 15px 0;">
+            <button id="startGame" class="secondary">▶️ Start Game</button>
+            <button id="pauseGame">⏸️ Pause</button>
+            <button id="restartGame" class="warning">🔄 Restart</button>
+        </div>
+        
+        <div style="margin: 15px 0;">
+            <button id="gameMode1">🏃 Runner</button>
+            <button id="gameMode2">⚔️ Combat</button>
+            <button id="gameMode3">🧩 Puzzle</button>
+        </div>
+        
+        <div id="leaderboard">
+            <h4>🏆 Leaderboard</h4>
+            <div class="leaderboard-entry">
+                <span>1. Player</span>
+                <span>1500 pts</span>
+            </div>
+            <div class="leaderboard-entry">
+                <span>2. Demo</span>
+                <span>1200 pts</span>
+            </div>
+            <div class="leaderboard-entry">
+                <span>3. Test</span>
+                <span>800 pts</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <h4>🎛️ Game Settings</h4>
+        
+        <label for="difficulty">Difficulty:</label>
+        <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+            <option value="insane">Insane</option>
+        </select>
+        
+        <label for="graphics">Graphics Quality:</label>
+        <select id="graphics">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="ultra">Ultra</option>
+        </select>
+        
+        <label>
+            <input type="checkbox" id="sound" checked> Sound Effects
+        </label>
+        
+        <label>
+            <input type="checkbox" id="particles" checked> Particles
+        </label>
+        
+        <label>
+            <input type="checkbox" id="postProcessing" checked> Post Processing
+        </label>
+        
+        <div style="margin: 15px 0;">
+            <button id="settingsBtn" class="secondary">⚙️ Settings</button>
+            <button id="helpBtn">❓ Help</button>
+        </div>
+    </div>
+    
+    <div id="miniMap"></div>
+    <div id="crosshair"></div>
+    
+    <div id="instructions" class="hidden">
+        <h3>🎮 Welcome to the Game!</h3>
+        <p>This is a complete 3D game example built with Ninth.js</p>
+        <p>Use WASD to move, mouse to look around, and click to interact!</p>
+        <p>Collect power-ups and survive as long as possible!</p>
+        <button id="closeInstructions">Got it!</button>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html" class="current">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class CompleteGameExample {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gameState = 'menu'; // menu, playing, paused, gameOver
+                this.score = 0;
+                this.health = 100;
+                this.level = 1;
+                this.gameTime = 0;
+                this.player = null;
+                this.enemies = [];
+                this.powerUps = [];
+                this.bullets = [];
+                this.particles = [];
+                
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, deltaX: 0, deltaY: 0 };
+                this.camera = { x: 0, y: 0, z: 0, rotationX: 0, rotationY: 0 };
+                
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.init();
+                this.setupScene();
+                this.setupGameObjects();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#1a1a2e');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 2, 5);
+                
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                this.setupLighting();
+                this.setupPostProcessing();
+            }
+            
+            setupLighting() {
+                // Ambient light
+                this.ambientLight = new NinthJS.AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+                
+                // Main directional light
+                this.directionalLight = new NinthJS.DirectionalLight(1.0, '#ffffff');
+                this.directionalLight.setDirection(-1, -1, -1);
+                this.directionalLight.castShadow = true;
+                this.scene.add(this.directionalLight);
+                
+                // Dynamic point lights for atmosphere
+                for (let i = 0; i < 5; i++) {
+                    const light = new NinthJS.PointLight(
+                        0.5,
+                        new NinthJS.Color().setHSL(i / 5, 0.7, 0.5),
+                        20
+                    );
+                    light.setPosition(
+                        Math.cos(i * 2 * Math.PI / 5) * 10,
+                        3,
+                        Math.sin(i * 2 * Math.PI / 5) * 10
+                    );
+                    this.scene.add(light);
+                }
+            }
+            
+            setupPostProcessing() {
+                // Enable HDR and bloom for better visuals
+                this.renderer.toneMapping = NinthJS.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+            }
+            
+            setupScene() {
+                this.createEnvironment();
+                this.createPlayer();
+            }
+            
+            createEnvironment() {
+                // Create ground
+                const groundGeometry = new NinthJS.PlaneGeometry(100, 100);
+                const groundMaterial = new NinthJS.MeshStandardMaterial({
+                    color: '#2c3e50',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                
+                const ground = new NinthJS.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Create environment objects
+                this.createEnvironmentObjects();
+            }
+            
+            createEnvironmentObjects() {
+                // Create buildings/structures
+                const buildingColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'];
+                
+                for (let i = 0; i < 20; i++) {
+                    const height = 2 + Math.random() * 8;
+                    const width = 1 + Math.random() * 2;
+                    const depth = 1 + Math.random() * 2;
+                    
+                    const geometry = new NinthJS.BoxGeometry(width, height, depth);
+                    const material = new NinthJS.MeshStandardMaterial({
+                        color: buildingColors[i % buildingColors.length],
+                        roughness: 0.7,
+                        metalness: 0.1
+                    });
+                    
+                    const building = new NinthJS.Mesh(geometry, material);
+                    const angle = (i / 20) * Math.PI * 2;
+                    const radius = 15 + Math.random() * 10;
+                    
+                    building.setPosition(
+                        Math.cos(angle) * radius,
+                        height / 2,
+                        Math.sin(angle) * radius
+                    );
+                    
+                    building.castShadow = true;
+                    building.receiveShadow = true;
+                    
+                    this.scene.add(building);
+                }
+                
+                // Create obstacles
+                for (let i = 0; i < 15; i++) {
+                    const geometry = new NinthJS.BoxGeometry(1, 1, 1);
+                    const material = new NinthJS.MeshStandardMaterial({
+                        color: '#34495e',
+                        roughness: 0.9
+                    });
+                    
+                    const obstacle = new NinthJS.Mesh(geometry, material);
+                    obstacle.setPosition(
+                        (Math.random() - 0.5) * 30,
+                        0.5,
+                        (Math.random() - 0.5) * 30
+                    );
+                    
+                    obstacle.castShadow = true;
+                    obstacle.receiveShadow = true;
+                    
+                    this.scene.add(obstacle);
+                }
+            }
+            
+            createPlayer() {
+                // Create player character
+                const playerGeometry = new NinthJS.CapsuleGeometry(0.5, 1.5, 4, 8);
+                const playerMaterial = new NinthJS.MeshStandardMaterial({
+                    color: '#3498db',
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                
+                this.player = new NinthJS.Mesh(playerGeometry, playerMaterial);
+                this.player.setPosition(0, 2, 0);
+                this.player.castShadow = true;
+                
+                // Add player properties
+                this.player.velocity = { x: 0, y: 0, z: 0 };
+                this.player.isGrounded = false;
+                this.player.hasDoubleJump = false;
+                this.player.speedMultiplier = 1.0;
+                this.player.shield = false;
+                this.player.shieldTime = 0;
+                
+                this.scene.add(this.player);
+                
+                // Create player weapon
+                this.createPlayerWeapon();
+            }
+            
+            createPlayerWeapon() {
+                const weaponGeometry = new NinthJS.BoxGeometry(0.1, 0.1, 2);
+                const weaponMaterial = new NinthJS.MeshStandardMaterial({
+                    color: '#e67e22',
+                    emissive: '#e67e22',
+                    emissiveIntensity: 0.3
+                });
+                
+                this.weapon = new NinthJS.Mesh(weaponGeometry, weaponMaterial);
+                this.weapon.setPosition(0, 0, 1);
+                
+                // Attach weapon to player (simplified)
+                this.player.add(this.weapon);
+            }
+            
+            setupGameObjects() {
+                this.spawnInitialPowerUps();
+                this.spawnInitialEnemies();
+            }
+            
+            spawnInitialPowerUps() {
+                for (let i = 0; i < 5; i++) {
+                    this.spawnPowerUp();
+                }
+            }
+            
+            spawnPowerUp() {
+                const types = ['health', 'speed', 'shield', 'doubleJump'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                let geometry, color;
+                
+                switch (type) {
+                    case 'health':
+                        geometry = new NinthJS.SphereGeometry(0.3, 16, 16);
+                        color = '#e74c3c';
+                        break;
+                    case 'speed':
+                        geometry = new NinthJS.TorusGeometry(0.3, 0.1, 8, 16);
+                        color = '#f39c12';
+                        break;
+                    case 'shield':
+                        geometry = new NinthJS.OctahedronGeometry(0.3);
+                        color = '#3498db';
+                        break;
+                    case 'doubleJump':
+                        geometry = new NinthJS.TetrahedronGeometry(0.3);
+                        color = '#2ecc71';
+                        break;
+                }
+                
+                const material = new NinthJS.MeshStandardMaterial({
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.5
+                });
+                
+                const powerUp = new NinthJS.Mesh(geometry, material);
+                powerUp.userData.type = type;
+                powerUp.userData.originalY = powerUp.getPosition().y;
+                
+                powerUp.setPosition(
+                    (Math.random() - 0.5) * 20,
+                    2,
+                    (Math.random() - 0.5) * 20
+                );
+                
+                this.scene.add(powerUp);
+                this.powerUps.push(powerUp);
+            }
+            
+            spawnInitialEnemies() {
+                for (let i = 0; i < 3; i++) {
+                    this.spawnEnemy();
+                }
+            }
+            
+            spawnEnemy() {
+                const enemyGeometry = new NinthJS.BoxGeometry(0.8, 0.8, 0.8);
+                const enemyMaterial = new NinthJS.MeshStandardMaterial({
+                    color: '#e74c3c',
+                    roughness: 0.6,
+                    metalness: 0.2
+                });
+                
+                const enemy = new NinthJS.Mesh(enemyGeometry, enemyMaterial);
+                enemy.userData = {
+                    type: 'basic',
+                    health: 100,
+                    speed: 2 + Math.random(),
+                    attackCooldown: 0
+                };
+                
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 8 + Math.random() * 12;
+                
+                enemy.setPosition(
+                    Math.cos(angle) * radius,
+                    0.4,
+                    Math.sin(angle) * radius
+                );
+                
+                enemy.castShadow = true;
+                this.scene.add(enemy);
+                this.enemies.push(enemy);
+            }
+            
+            setupControls() {
+                // Keyboard controls
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    
+                    if (e.key === ' ' && this.gameState === 'playing') {
+                        this.handleJump();
+                    }
+                    
+                    if (e.key.toLowerCase() === 'e' && this.gameState === 'playing') {
+                        this.handleInteract();
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Mouse controls
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.gameState === 'playing') {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+                        
+                        this.mouse.deltaX = e.clientX - centerX;
+                        this.mouse.deltaY = e.clientY - centerY;
+                        
+                        this.handleCameraRotation();
+                    }
+                });
+                
+                this.canvas.addEventListener('click', (e) => {
+                    if (this.gameState === 'playing') {
+                        this.handleShoot();
+                    }
+                });
+                
+                // Game UI controls
+                document.getElementById('startGame').addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                document.getElementById('pauseGame').addEventListener('click', () => {
+                    this.togglePause();
+                });
+                
+                document.getElementById('restartGame').addEventListener('click', () => {
+                    this.restartGame();
+                });
+                
+                // Game mode controls
+                document.getElementById('gameMode1').addEventListener('click', () => {
+                    this.setGameMode('runner');
+                });
+                
+                document.getElementById('gameMode2').addEventListener('click', () => {
+                    this.setGameMode('combat');
+                });
+                
+                document.getElementById('gameMode3').addEventListener('click', () => {
+                    this.setGameMode('puzzle');
+                });
+                
+                // Settings controls
+                document.getElementById('settingsBtn').addEventListener('click', () => {
+                    this.showSettings();
+                });
+                
+                document.getElementById('helpBtn').addEventListener('click', () => {
+                    this.showInstructions();
+                });
+                
+                document.getElementById('closeInstructions').addEventListener('click', () => {
+                    document.getElementById('instructions').classList.add('hidden');
+                });
+            }
+            
+            startGame() {
+                this.gameState = 'playing';
+                this.gameTime = 0;
+                this.score = 0;
+                this.health = 100;
+                this.level = 1;
+                
+                // Reset player
+                this.player.setPosition(0, 2, 0);
+                this.player.velocity = { x: 0, y: 0, z: 0 };
+                this.player.isGrounded = false;
+                this.player.hasDoubleJump = false;
+                this.player.speedMultiplier = 1.0;
+                this.player.shield = false;
+                this.player.shieldTime = 0;
+                
+                // Clear objects
+                this.clearDynamicObjects();
+                
+                // Reset UI
+                this.updateUI();
+                document.getElementById('gameStatus').textContent = '🎮 Game Started!';
+                document.getElementById('gameStatus').style.background = 'linear-gradient(45deg, #4CAF50, #2196F3)';
+                
+                // Spawn initial objects
+                this.setupGameObjects();
+                
+                // Show instructions
+                setTimeout(() => {
+                    document.getElementById('instructions').classList.remove('hidden');
+                }, 500);
+            }
+            
+            togglePause() {
+                if (this.gameState === 'playing') {
+                    this.gameState = 'paused';
+                    document.getElementById('gameStatus').textContent = '⏸️ Game Paused';
+                    document.getElementById('pauseGame').textContent = '▶️ Resume';
+                } else if (this.gameState === 'paused') {
+                    this.gameState = 'playing';
+                    document.getElementById('gameStatus').textContent = '🎮 Playing';
+                    document.getElementById('pauseGame').textContent = '⏸️ Pause';
+                }
+            }
+            
+            restartGame() {
+                this.gameState = 'menu';
+                this.startGame();
+            }
+            
+            setGameMode(mode) {
+                console.log('Setting game mode:', mode);
+                // Implement different game modes
+                this.gameMode = mode;
+            }
+            
+            showSettings() {
+                // Implement settings dialog
+                alert('Settings dialog would open here');
+            }
+            
+            showInstructions() {
+                document.getElementById('instructions').classList.remove('hidden');
+            }
+            
+            handlePlayerMovement() {
+                if (this.gameState !== 'playing') return;
+                
+                const speed = 5 * this.player.speedMultiplier;
+                const sprintSpeed = this.keys['shift'] ? speed * 1.5 : speed;
+                
+                // Movement
+                if (this.keys['w']) {
+                    this.player.velocity.z = -sprintSpeed;
+                } else if (this.keys['s']) {
+                    this.player.velocity.z = sprintSpeed;
+                } else {
+                    this.player.velocity.z *= 0.8; // Friction
+                }
+                
+                if (this.keys['a']) {
+                    this.player.velocity.x = -sprintSpeed;
+                } else if (this.keys['d']) {
+                    this.player.velocity.x = sprintSpeed;
+                } else {
+                    this.player.velocity.x *= 0.8; // Friction
+                }
+                
+                // Apply gravity
+                this.player.velocity.y -= 9.8 * 0.016; // Simplified gravity
+                
+                // Update position
+                const position = this.player.getPosition();
+                position.x += this.player.velocity.x * 0.016;
+                position.y += this.player.velocity.y * 0.016;
+                position.z += this.player.velocity.z * 0.016;
+                
+                // Ground collision
+                if (position.y < 2) {
+                    position.y = 2;
+                    this.player.velocity.y = 0;
+                    this.player.isGrounded = true;
+                    this.player.hasDoubleJump = false;
+                } else {
+                    this.player.isGrounded = false;
+                }
+                
+                this.player.setPosition(position.x, position.y, position.z);
+            }
+            
+            handleJump() {
+                if (this.player.isGrounded || (!this.player.hasDoubleJump && this.player.velocity.y > -2)) {
+                    this.player.velocity.y = 8;
+                    if (!this.player.isGrounded) {
+                        this.player.hasDoubleJump = true;
+                    }
+                    this.player.isGrounded = false;
+                    
+                    // Jump particles
+                    this.createParticles(this.player.getPosition(), '#3498db', 10);
+                }
+            }
+            
+            handleInteract() {
+                // Check for nearby power-ups
+                this.powerUps = this.powerUps.filter(powerUp => {
+                    const distance = this.getDistance(this.player.getPosition(), powerUp.getPosition());
+                    if (distance < 2) {
+                        this.collectPowerUp(powerUp);
+                        this.scene.remove(powerUp);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                // Spawn new power-up
+                this.spawnPowerUp();
+            }
+            
+            handleShoot() {
+                if (this.gameState !== 'playing') return;
+                
+                // Create bullet
+                const bulletGeometry = new NinthJS.SphereGeometry(0.1, 8, 8);
+                const bulletMaterial = new NinthJS.MeshBasicMaterial({
+                    color: '#ffff00',
+                    emissive: '#ffff00',
+                    emissiveIntensity: 1
+                });
+                
+                const bullet = new NinthJS.Mesh(bulletGeometry, bulletMaterial);
+                const playerPos = this.player.getPosition();
+                bullet.setPosition(playerPos.x, playerPos.y, playerPos.z);
+                
+                // Get shoot direction from camera
+                const shootDirection = this.getCameraDirection();
+                bullet.userData.velocity = {
+                    x: shootDirection.x * 20,
+                    y: shootDirection.y * 20,
+                    z: shootDirection.z * 20
+                };
+                bullet.userData.life = 2.0;
+                
+                this.scene.add(bullet);
+                this.bullets.push(bullet);
+                
+                // Shooting particles
+                this.createParticles(playerPos, '#ffff00', 5);
+            }
+            
+            handleCameraRotation() {
+                const sensitivity = 0.002;
+                
+                this.camera.rotationY -= this.mouse.deltaX * sensitivity;
+                this.camera.rotationX -= this.mouse.deltaY * sensitivity;
+                
+                // Clamp vertical rotation
+                this.camera.rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotationX));
+                
+                // Apply camera rotation to player
+                this.player.setRotation(0, this.camera.rotationY, 0);
+                
+                // Reset mouse delta
+                this.mouse.deltaX = 0;
+                this.mouse.deltaY = 0;
+            }
+            
+            getCameraDirection() {
+                const direction = new NinthJS.Vector3();
+                direction.x = Math.sin(this.camera.rotationY) * Math.cos(this.camera.rotationX);
+                direction.y = Math.sin(this.camera.rotationX);
+                direction.z = Math.cos(this.camera.rotationY) * Math.cos(this.camera.rotationX);
+                return direction;
+            }
+            
+            collectPowerUp(powerUp) {
+                const type = powerUp.userData.type;
+                
+                switch (type) {
+                    case 'health':
+                        this.health = Math.min(100, this.health + 25);
+                        break;
+                    case 'speed':
+                        this.player.speedMultiplier = 1.5;
+                        this.activatePowerUp('speed', 5000);
+                        break;
+                    case 'shield':
+                        this.player.shield = true;
+                        this.player.shieldTime = 10000;
+                        this.activatePowerUp('shield', 10000);
+                        break;
+                    case 'doubleJump':
+                        this.player.hasDoubleJump = true;
+                        this.activatePowerUp('doubleJump', 10000);
+                        break;
+                }
+                
+                this.score += 10;
+                this.updateUI();
+                
+                // Collection particles
+                this.createParticles(powerUp.getPosition(), powerUp.material.color, 15);
+            }
+            
+            activatePowerUp(type, duration) {
+                const element = document.getElementById(type + 'Power');
+                element.classList.add('active');
+                
+                setTimeout(() => {
+                    element.classList.remove('active');
+                    if (type === 'speed') {
+                        this.player.speedMultiplier = 1.0;
+                    } else if (type === 'shield') {
+                        this.player.shield = false;
+                    } else if (type === 'doubleJump') {
+                        this.player.hasDoubleJump = false;
+                    }
+                }, duration);
+            }
+            
+            updateEnemies() {
+                if (this.gameState !== 'playing') return;
+                
+                this.enemies.forEach(enemy => {
+                    const enemyPos = enemy.getPosition();
+                    const playerPos = this.player.getPosition();
+                    
+                    // Simple AI - move towards player
+                    const direction = {
+                        x: playerPos.x - enemyPos.x,
+                        y: playerPos.y - enemyPos.y,
+                        z: playerPos.z - enemyPos.z
+                    };
+                    
+                    const distance = Math.sqrt(direction.x ** 2 + direction.y ** 2 + direction.z ** 2);
+                    
+                    if (distance > 0.1) {
+                        direction.x /= distance;
+                        direction.y /= distance;
+                        direction.z /= distance;
+                        
+                        enemyPos.x += direction.x * enemy.userData.speed * 0.016;
+                        enemyPos.y += direction.y * enemy.userData.speed * 0.016;
+                        enemyPos.z += direction.z * enemy.userData.speed * 0.016;
+                        
+                        enemy.setPosition(enemyPos.x, enemyPos.y, enemyPos.z);
+                    }
+                    
+                    // Attack player
+                    if (distance < 1.5 && enemy.userData.attackCooldown <= 0) {
+                        this.damagePlayer(10);
+                        enemy.userData.attackCooldown = 2000; // 2 second cooldown
+                    }
+                    
+                    enemy.userData.attackCooldown -= 16; // Assuming 60fps
+                });
+            }
+            
+            updateBullets() {
+                this.bullets = this.bullets.filter(bullet => {
+                    const bulletPos = bullet.getPosition();
+                    bulletPos.x += bullet.userData.velocity.x * 0.016;
+                    bulletPos.y += bullet.userData.velocity.y * 0.016;
+                    bulletPos.z += bullet.userData.velocity.z * 0.016;
+                    
+                    bullet.setPosition(bulletPos.x, bulletPos.y, bulletPos.z);
+                    
+                    bullet.userData.life -= 0.016;
+                    
+                    // Check collisions with enemies
+                    let hit = false;
+                    this.enemies.forEach((enemy, index) => {
+                        const enemyPos = enemy.getPosition();
+                        const distance = this.getDistance(bulletPos, enemyPos);
+                        
+                        if (distance < 1) {
+                            // Damage enemy
+                            enemy.userData.health -= 25;
+                            
+                            if (enemy.userData.health <= 0) {
+                                this.destroyEnemy(index);
+                            }
+                            
+                            hit = true;
+                        }
+                    });
+                    
+                    // Remove bullet if hit something or life expired
+                    if (hit || bullet.userData.life <= 0) {
+                        this.scene.remove(bullet);
+                        this.createParticles(bulletPos, '#ffff00', 8);
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            updatePowerUps() {
+                this.powerUps.forEach(powerUp => {
+                    // Rotate power-ups
+                    const rotation = powerUp.rotation;
+                    rotation.y += 0.02;
+                    rotation.x += 0.01;
+                    powerUp.setRotation(rotation.x, rotation.y, rotation.z);
+                    
+                    // Bobbing animation
+                    const originalY = powerUp.userData.originalY;
+                    const bobY = originalY + Math.sin(performance.now() * 0.003) * 0.2;
+                    const position = powerUp.getPosition();
+                    powerUp.setPosition(position.x, bobY, position.z);
+                });
+            }
+            
+            damagePlayer(damage) {
+                if (this.player.shield) return;
+                
+                this.health -= damage;
+                
+                if (this.health <= 0) {
+                    this.gameOver();
+                }
+                
+                this.updateUI();
+                
+                // Damage particles
+                this.createParticles(this.player.getPosition(), '#ff0000', 12);
+            }
+            
+            destroyEnemy(enemyIndex) {
+                const enemy = this.enemies[enemyIndex];
+                
+                // Death particles
+                this.createParticles(enemy.getPosition(), '#e74c3c', 20);
+                
+                // Remove enemy
+                this.scene.remove(enemy);
+                this.enemies.splice(enemyIndex, 1);
+                
+                // Score and spawn new enemy
+                this.score += 50;
+                this.updateUI();
+                
+                setTimeout(() => {
+                    this.spawnEnemy();
+                }, 3000);
+            }
+            
+            createParticles(position, color, count) {
+                if (!document.getElementById('particles').checked) return;
+                
+                for (let i = 0; i < count; i++) {
+                    const particleGeometry = new NinthJS.SphereGeometry(0.05, 4, 4);
+                    const particleMaterial = new NinthJS.MeshBasicMaterial({
+                        color: color
+                    });
+                    
+                    const particle = new NinthJS.Mesh(particleGeometry, particleMaterial);
+                    particle.setPosition(position.x, position.y, position.z);
+                    
+                    particle.userData = {
+                        velocity: {
+                            x: (Math.random() - 0.5) * 10,
+                            y: Math.random() * 5,
+                            z: (Math.random() - 0.5) * 10
+                        },
+                        life: 1.0
+                    };
+                    
+                    this.scene.add(particle);
+                    this.particles.push(particle);
+                }
+            }
+            
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    const pos = particle.getPosition();
+                    pos.x += particle.userData.velocity.x * 0.016;
+                    pos.y += particle.userData.velocity.y * 0.016;
+                    pos.z += particle.userData.velocity.z * 0.016;
+                    
+                    particle.userData.velocity.y -= 9.8 * 0.016; // Gravity
+                    particle.userData.life -= 0.016;
+                    
+                    particle.setPosition(pos.x, pos.y, pos.z);
+                    
+                    // Fade out
+                    const material = particle.material;
+                    material.opacity = particle.userData.life;
+                    material.transparent = true;
+                    
+                    if (particle.userData.life <= 0) {
+                        this.scene.remove(particle);
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            gameOver() {
+                this.gameState = 'gameOver';
+                document.getElementById('gameStatus').textContent = '💀 Game Over - Score: ' + this.score;
+                document.getElementById('gameStatus').style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+                
+                // Show final score and restart option
+                setTimeout(() => {
+                    if (confirm(`Game Over!\nFinal Score: ${this.score}\nTime: ${this.formatTime(this.gameTime)}\n\nPlay Again?`)) {
+                        this.restartGame();
+                    }
+                }, 1000);
+            }
+            
+            getDistance(pos1, pos2) {
+                const dx = pos1.x - pos2.x;
+                const dy = pos1.y - pos2.y;
+                const dz = pos1.z - pos2.z;
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+            
+            clearDynamicObjects() {
+                // Clear enemies
+                this.enemies.forEach(enemy => this.scene.remove(enemy));
+                this.enemies = [];
+                
+                // Clear power-ups
+                this.powerUps.forEach(powerUp => this.scene.remove(powerUp));
+                this.powerUps = [];
+                
+                // Clear bullets
+                this.bullets.forEach(bullet => this.scene.remove(bullet));
+                this.bullets = [];
+                
+                // Clear particles
+                this.particles.forEach(particle => this.scene.remove(particle));
+                this.particles = [];
+            }
+            
+            updateUI() {
+                document.getElementById('health').textContent = this.health;
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('timer').textContent = this.formatTime(this.gameTime);
+                
+                // Update health bar
+                document.getElementById('healthFill').style.width = this.health + '%';
+            }
+            
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateGameTime() {
+                if (this.gameState === 'playing') {
+                    this.gameTime += 0.016;
+                    
+                    // Level up every 30 seconds
+                    if (Math.floor(this.gameTime) % 30 === 0 && Math.floor(this.gameTime) > 0) {
+                        this.level++;
+                        this.updateUI();
+                        
+                        // Spawn more enemies
+                        this.spawnEnemy();
+                    }
+                }
+            }
+            
+            updateCamera() {
+                // Follow player with some offset
+                const playerPos = this.player.getPosition();
+                const followDistance = 5;
+                const heightOffset = 2;
+                
+                const cameraX = playerPos.x - Math.sin(this.camera.rotationY) * followDistance;
+                const cameraY = playerPos.y + heightOffset;
+                const cameraZ = playerPos.z - Math.cos(this.camera.rotationY) * followDistance;
+                
+                this.camera.setPosition(cameraX, cameraY, cameraZ);
+                this.camera.lookAt(playerPos.x, playerPos.y + 1, playerPos.z);
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    // Update FPS display if needed
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                
+                if (this.gameState === 'playing') {
+                    this.handlePlayerMovement();
+                    this.updateEnemies();
+                    this.updateBullets();
+                    this.updatePowerUps();
+                    this.updateParticles();
+                    this.updateGameTime();
+                    this.updateUI();
+                }
+                
+                this.updateCamera();
+                
+                if (document.getElementById('postProcessing').checked) {
+                    // Apply post-processing effects
+                    this.renderer.toneMappingExposure = 1.2 + Math.sin(performance.now() * 0.001) * 0.1;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        try {
+            new CompleteGameExample();
+            console.log('✅ Complete Game Example loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Complete Game Example:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

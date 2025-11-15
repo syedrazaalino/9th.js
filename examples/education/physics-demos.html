@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Demonstrations - Interactive Learning</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4fc3f7;
+        }
+        
+        .learning-objectives {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            background: #4fc3f7;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #29b6f6;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+        }
+        
+        .formula {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            text-align: center;
+            border-left: 4px solid #4fc3f7;
+        }
+        
+        .value-display {
+            background: rgba(76, 175, 80, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4fc3f7;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(76, 175, 80, 0.3) !important;
+            border: 1px solid #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Physics Demos</h1>
+            
+            <div class="demo-section" onclick="selectDemo('mechanics')">
+                <div class="demo-title">Mechanics</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand Newton's Laws<br>
+                    • Explore projectile motion<br>
+                    • Visualize forces and vectors
+                </div>
+                <div class="control-group">
+                    <label>Mass (kg):</label>
+                    <input type="range" id="mass" min="0.1" max="10" step="0.1" value="1" oninput="updateMechanics()">
+                    <span id="mass-value">1.0</span>
+                </div>
+                <div class="control-group">
+                    <label>Force (N):</label>
+                    <input type="range" id="force" min="0" max="50" step="1" value="10" oninput="updateMechanics()">
+                    <span id="force-value">10</span>
+                </div>
+                <div class="control-group">
+                    <button onclick="resetMechanics()">Reset Simulation</button>
+                    <button onclick="startMechanics()">Launch Projectile</button>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('waves')">
+                <div class="demo-title">Waves</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand wave propagation<br>
+                    • Observe frequency and wavelength<br>
+                    • Explore interference patterns
+                </div>
+                <div class="control-group">
+                    <label>Frequency (Hz):</label>
+                    <input type="range" id="frequency" min="0.5" max="5" step="0.1" value="1" oninput="updateWaves()">
+                    <span id="frequency-value">1.0</span>
+                </div>
+                <div class="control-group">
+                    <label>Amplitude:</label>
+                    <input type="range" id="amplitude" min="0.1" max="2" step="0.1" value="1" oninput="updateWaves()">
+                    <span id="amplitude-value">1.0</span>
+                </div>
+                <div class="control-group">
+                    <button onclick="toggleWaveType()">Toggle Wave Type</button>
+                    <button onclick="resetWaves()">Reset Waves</button>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('thermodynamics')">
+                <div class="demo-title">Thermodynamics</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Visualize gas molecules<br>
+                    • Understand temperature effects<br>
+                    • Explore pressure relationships
+                </div>
+                <div class="control-group">
+                    <label>Temperature (K):</label>
+                    <input type="range" id="temperature" min="100" max="500" step="10" value="300" oninput="updateThermodynamics()">
+                    <span id="temperature-value">300</span>
+                </div>
+                <div class="control-group">
+                    <label>Number of Particles:</label>
+                    <input type="range" id="particles" min="10" max="100" step="5" value="50" oninput="updateThermodynamics()">
+                    <span id="particles-value">50</span>
+                </div>
+                <div class="control-group">
+                    <button onclick="changePhase()">Change Phase</button>
+                    <button onclick="resetThermo()">Reset System</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a demo to begin</h3>
+                <div id="demo-description">
+                    Click on any demo section to start learning!
+                </div>
+                <div id="formula-display"></div>
+                <div id="value-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Physics simulation variables
+        let mechanicsObjects = {};
+        let wavesObjects = {};
+        let thermoObjects = {};
+        
+        init();
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 15);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 300, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+            
+            // Add grid
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+            
+            // Start render loop
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function selectDemo(demoName) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = demoName;
+            
+            switch(demoName) {
+                case 'mechanics':
+                    setupMechanicsDemo();
+                    break;
+                case 'waves':
+                    setupWavesDemo();
+                    break;
+                case 'thermodynamics':
+                    setupThermodynamicsDemo();
+                    break;
+            }
+        }
+        
+        function setupMechanicsDemo() {
+            updateInfoPanel('Mechanics - Projectile Motion', 
+                'Explore Newton\'s Laws through interactive projectile motion simulation.', 
+                'F = ma', 'Mass: 1.0 kg, Force: 10 N, Acceleration: 10.0 m/s²');
+            
+            // Clear previous objects
+            clearScene();
+            
+            // Create projectile
+            const projectileGeometry = new THREE.SphereGeometry(0.2);
+            const projectileMaterial = new THREE.MeshPhongMaterial({ color: 0xff6b6b });
+            mechanicsObjects.projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+            mechanicsObjects.projectile.position.set(0, 0, 0);
+            scene.add(mechanicsObjects.projectile);
+            
+            // Create ground
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x2e7d32 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+            
+            // Create force vector arrow
+            const arrowDirection = new THREE.Vector3(1, 0, 0);
+            const arrowHelper = new THREE.ArrowHelper(arrowDirection, new THREE.Vector3(0, 0, 0), 2, 0x4fc3f7);
+            mechanicsObjects.arrowHelper = arrowHelper;
+            scene.add(arrowHelper);
+        }
+        
+        function setupWavesDemo() {
+            updateInfoPanel('Waves - Wave Propagation', 
+                'Visualize different types of waves and their properties.', 
+                'v = fλ', 'Frequency: 1.0 Hz, Wavelength: 1.0 m, Speed: 1.0 m/s');
+            
+            // Clear previous objects
+            clearScene();
+            
+            // Create wave particles
+            wavesObjects.particles = [];
+            for (let i = 0; i < 50; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.05);
+                const particleMaterial = new THREE.MeshPhongMaterial({ color: 0x4fc3f7 });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                particle.position.set(-10 + i * 0.4, 0, 0);
+                wavesObjects.particles.push(particle);
+                scene.add(particle);
+            }
+            
+            // Create wave reference line
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-10, 0, 0),
+                new THREE.Vector3(10, 0, 0)
+            ]);
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+            wavesObjects.referenceLine = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(wavesObjects.referenceLine);
+        }
+        
+        function setupThermodynamicsDemo() {
+            updateInfoPanel('Thermodynamics - Gas Simulation', 
+                'Observe gas molecules and their behavior based on temperature.', 
+                'PV = nRT', 'Temperature: 300 K, Particles: 50, Pressure: 1.0 atm');
+            
+            // Clear previous objects
+            clearScene();
+            
+            // Create container
+            const containerGeometry = new THREE.BoxGeometry(8, 8, 8);
+            const containerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x333333, 
+                transparent: true, 
+                opacity: 0.3,
+                wireframe: true
+            });
+            thermoObjects.container = new THREE.Mesh(containerGeometry, containerMaterial);
+            scene.add(thermoObjects.container);
+            
+            // Create gas molecules
+            thermoObjects.molecules = [];
+            for (let i = 0; i < 50; i++) {
+                const moleculeGeometry = new THREE.SphereGeometry(0.1);
+                const moleculeMaterial = new THREE.MeshPhongMaterial({ color: 0xff9800 });
+                const molecule = new THREE.Mesh(moleculeGeometry, moleculeMaterial);
+                molecule.position.set(
+                    (Math.random() - 0.5) * 6,
+                    (Math.random() - 0.5) * 6,
+                    (Math.random() - 0.5) * 6
+                );
+                molecule.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1
+                );
+                thermoObjects.molecules.push(molecule);
+                scene.add(molecule);
+            }
+        }
+        
+        function updateMechanics() {
+            const mass = parseFloat(document.getElementById('mass').value);
+            const force = parseFloat(document.getElementById('force').value);
+            
+            document.getElementById('mass-value').textContent = mass.toFixed(1);
+            document.getElementById('force-value').textContent = force;
+            
+            const acceleration = force / mass;
+            updateInfoPanel('Mechanics - Projectile Motion', 
+                'F = ma describes the relationship between force, mass, and acceleration.', 
+                'F = ma', `Mass: ${mass.toFixed(1)} kg, Force: ${force} N, Acceleration: ${acceleration.toFixed(1)} m/s²`);
+            
+            // Update arrow length
+            if (mechanicsObjects.arrowHelper) {
+                mechanicsObjects.arrowHelper.setLength(force / 5, 0.3, 0.2);
+            }
+        }
+        
+        function updateWaves() {
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const amplitude = parseFloat(document.getElementById('amplitude').value);
+            
+            document.getElementById('frequency-value').textContent = frequency.toFixed(1);
+            document.getElementById('amplitude-value').textContent = amplitude.toFixed(1);
+            
+            const wavelength = 1.0; // Assuming wave speed = 1 m/s
+            const waveSpeed = frequency * wavelength;
+            
+            updateInfoPanel('Waves - Wave Propagation', 
+                'v = fλ relates wave speed, frequency, and wavelength.', 
+                'v = fλ', `Frequency: ${frequency.toFixed(1)} Hz, Amplitude: ${amplitude.toFixed(1)}, Speed: ${waveSpeed.toFixed(1)} m/s`);
+        }
+        
+        function updateThermodynamics() {
+            const temperature = parseInt(document.getElementById('temperature').value);
+            const particles = parseInt(document.getElementById('particles').value);
+            
+            document.getElementById('temperature-value').textContent = temperature;
+            document.getElementById('particles-value').textContent = particles;
+            
+            const pressure = temperature / 300; // Simplified relationship
+            
+            updateInfoPanel('Thermodynamics - Gas Simulation', 
+                'PV = nRT describes the ideal gas law relationship.', 
+                'PV = nRT', `Temperature: ${temperature} K, Particles: ${particles}, Pressure: ${pressure.toFixed(1)} atm`);
+            
+            // Update molecule velocities based on temperature
+            if (thermoObjects.molecules) {
+                const velocityScale = Math.sqrt(temperature / 300);
+                thermoObjects.molecules.forEach(molecule => {
+                    molecule.userData.velocity.multiplyScalar(velocityScale);
+                });
+            }
+        }
+        
+        function startMechanics() {
+            // Simulate projectile motion
+            if (mechanicsObjects.projectile) {
+                let time = 0;
+                const mass = parseFloat(document.getElementById('mass').value);
+                const force = parseFloat(document.getElementById('force').value);
+                
+                function animateProjectile() {
+                    time += 0.016;
+                    const g = 9.8;
+                    const vx = force / mass * 0.5; // Initial horizontal velocity
+                    const vy = force / mass * 0.3 - g * time; // Initial vertical velocity
+                    
+                    mechanicsObjects.projectile.position.x = vx * time;
+                    mechanicsObjects.projectile.position.y = Math.max(0, vy * time - 0.5 * g * time * time);
+                    mechanicsObjects.projectile.position.z = 0;
+                    
+                    if (mechanicsObjects.projectile.position.y > 0) {
+                        requestAnimationFrame(animateProjectile);
+                    }
+                }
+                animateProjectile();
+            }
+        }
+        
+        function updateWaveAnimation() {
+            if (wavesObjects.particles && currentDemo === 'waves') {
+                const frequency = parseFloat(document.getElementById('frequency').value);
+                const amplitude = parseFloat(document.getElementById('amplitude').value);
+                const time = Date.now() * 0.001;
+                
+                wavesObjects.particles.forEach((particle, index) => {
+                    const x = particle.position.x;
+                    const phase = x * 2 * Math.PI * frequency + time * frequency * 2 * Math.PI;
+                    particle.position.y = Math.sin(phase) * amplitude;
+                });
+            }
+        }
+        
+        function updateThermoAnimation() {
+            if (thermoObjects.molecules && currentDemo === 'thermodynamics') {
+                const containerSize = 4;
+                
+                thermoObjects.molecules.forEach(molecule => {
+                    molecule.position.add(molecule.userData.velocity);
+                    
+                    // Bounce off walls
+                    ['x', 'y', 'z'].forEach(axis => {
+                        if (Math.abs(molecule.position[axis]) > containerSize) {
+                            molecule.position[axis] = Math.sign(molecule.position[axis]) * containerSize;
+                            molecule.userData.velocity[axis] *= -1;
+                        }
+                    });
+                });
+            }
+        }
+        
+        function resetMechanics() {
+            if (mechanicsObjects.projectile) {
+                mechanicsObjects.projectile.position.set(0, 0, 0);
+            }
+        }
+        
+        function resetWaves() {
+            if (wavesObjects.particles) {
+                wavesObjects.particles.forEach((particle, index) => {
+                    particle.position.y = 0;
+                });
+            }
+        }
+        
+        function resetThermo() {
+            if (thermoObjects.molecules) {
+                thermoObjects.molecules.forEach(molecule => {
+                    molecule.position.set(
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6
+                    );
+                });
+            }
+        }
+        
+        function changePhase() {
+            // Toggle between solid, liquid, gas phases
+            if (thermoObjects.molecules) {
+                const phase = Math.random() > 0.5 ? 'solid' : 'liquid';
+                const containerSize = phase === 'solid' ? 1 : phase === 'liquid' ? 2.5 : 4;
+                
+                thermoObjects.molecules.forEach(molecule => {
+                    molecule.position.multiplyScalar(containerSize / 3);
+                });
+            }
+        }
+        
+        function toggleWaveType() {
+            // Toggle between sine wave and square wave
+            // Implementation would change the wave animation function
+        }
+        
+        function clearScene() {
+            // Remove all objects except lights and grid
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && object.type !== 'AmbientLight' && 
+                    object.type !== 'DirectionalLight' && object.type !== 'GridHelper') {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+        }
+        
+        function updateInfoPanel(title, description, formula, values) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('formula-display').innerHTML = `<div class="formula">${formula}</div>`;
+            document.getElementById('value-display').innerHTML = `<div class="value-display">${values}</div>`;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            if (currentDemo === 'waves') {
+                updateWaveAnimation();
+            } else if (currentDemo === 'thermodynamics') {
+                updateThermoAnimation();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 300) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 300, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

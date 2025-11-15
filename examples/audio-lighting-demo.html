@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVisualSync - Lighting Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .file-input {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 5px;
+            width: 200px;
+        }
+        
+        .play-button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .play-button:hover {
+            background: #45a049;
+        }
+        
+        .play-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .audio-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 250px;
+        }
+        
+        .metric {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .metric-label {
+            min-width: 80px;
+            font-size: 12px;
+        }
+        
+        .metric-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            flex: 1;
+            margin-left: 10px;
+        }
+        
+        .metric-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.1s ease;
+        }
+        
+        .bass-fill { background: linear-gradient(90deg, #FF6B6B, #FF8E8E); }
+        .mid-fill { background: linear-gradient(90deg, #4ECDC4, #6DD5CE); }
+        .treble-fill { background: linear-gradient(90deg, #45B7D1, #6DD5FA); }
+        .volume-fill { background: linear-gradient(90deg, #96CEB4, #A8E6CF); }
+        .beat-fill { background: linear-gradient(90deg, #FFEAA7, #FFF3C4); }
+        
+        .light-control {
+            margin: 10px 0;
+        }
+        
+        .light-control label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .light-control input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <h3>Audio-Reactive Lighting</h3>
+        <input type="file" id="audioFile" class="file-input" accept="audio/*">
+        <br>
+        <button id="playButton" class="play-button" disabled>Play Audio</button>
+        <button id="pauseButton" class="play-button" disabled>Pause Audio</button>
+        <br>
+        <div class="light-control">
+            <label>Master Volume: <span id="volumeValue">0.5</span></label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
+        </div>
+        <div class="light-control">
+            <label>Light Sensitivity: <span id="sensitivityValue">1.0</span></label>
+            <input type="range" id="sensitivitySlider" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+    </div>
+    
+    <div class="audio-info">
+        <h4>Audio Analysis & Lighting</h4>
+        <div class="metric">
+            <span class="metric-label">Bass (Red):</span>
+            <div class="metric-bar"><div class="metric-fill bass-fill" id="bassBar"></div></div>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Mid (Cyan):</span>
+            <div class="metric-bar"><div class="metric-fill mid-fill" id="midBar"></div></div>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Treble (Blue):</span>
+            <div class="metric-bar"><div class="metric-fill treble-fill" id="trebleBar"></div></div>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Volume:</span>
+            <div class="metric-bar"><div class="metric-fill volume-fill" id="volumeBar"></div></div>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Beat Flash:</span>
+            <div class="metric-bar"><div class="metric-fill beat-fill" id="beatBar"></div></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { AudioVisualSync, BeatReactive } from '../src/core/AudioVisualSync.js';
+        import { Scene } from '../src/core/Scene.js';
+        import { PerspectiveCamera } from '../src/cameras/PerspectiveCamera.js';
+        import { WebGLRenderer } from '../src/core/WebGLRenderer.js';
+        import { Mesh } from '../src/core/Mesh.js';
+        import { BoxGeometry } from '../src/geometry/BoxGeometry.js';
+        import { MeshPhongMaterial } from '../src/materials/MeshPhongMaterial.js';
+        import { PointLight } from '../src/lights/PointLight.js';
+        import { AmbientLight } from '../src/lights/AmbientLight.js';
+        import { DirectionalLight } from '../src/lights/DirectionalLight.js';
+
+        class AudioReactiveLightingSystem {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.audioSync = new AudioVisualSync();
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new WebGLRenderer(this.canvas);
+                
+                // Lighting system
+                this.ambientLight = null;
+                this.directionalLight = null;
+                this.bassLight = null;
+                this.midLight = null;
+                this.trebleLight = null;
+                this.beatLight = null;
+                
+                // Scene objects
+                this.boxes = [];
+                this.isPlaying = false;
+                this.lightSensitivity = 1.0;
+                
+                this.init();
+            }
+            
+            init() {
+                // Setup renderer with better lighting
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000510, 1.0);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = this.renderer.PCFSoftShadowMap;
+                
+                // Setup camera
+                this.camera.position.set(10, 10, 10);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Create lighting system
+                this.createLightingSystem();
+                
+                // Create scene objects
+                this.createSceneObjects();
+                
+                // Register with audio sync
+                this.audioSync.registerVisualObject(this);
+                
+                // Setup controls
+                this.setupControls();
+                
+                // Start render loop
+                this.animate();
+            }
+            
+            createLightingSystem() {
+                // Ambient light for base illumination
+                this.ambientLight = new AmbientLight(0x111122, 0.5);
+                this.scene.add(this.ambientLight);
+                
+                // Directional light for shadows
+                this.directionalLight = new DirectionalLight(0xffffff, 1);
+                this.directionalLight.position.set(5, 10, 7);
+                this.directionalLight.castShadow = true;
+                this.scene.add(this.directionalLight);
+                
+                // Bass-reactive red light
+                this.bassLight = new PointLight(0xFF6B6B, 2, 30);
+                this.bassLight.position.set(-5, 0, 5);
+                this.scene.add(this.bassLight);
+                
+                // Mid-reactive cyan light
+                this.midLight = new PointLight(0x4ECDC4, 2, 30);
+                this.midLight.position.set(5, 0, 5);
+                this.scene.add(this.midLight);
+                
+                // Treble-reactive blue light
+                this.trebleLight = new PointLight(0x45B7D1, 2, 30);
+                this.trebleLight.position.set(0, 5, 5);
+                this.scene.add(this.trebleLight);
+                
+                // Beat-reactive white light
+                this.beatLight = new PointLight(0xFFFFFF, 5, 50);
+                this.beatLight.position.set(0, 0, 0);
+                this.scene.add(this.beatLight);
+            }
+            
+            createSceneObjects() {
+                // Create multiple boxes at different positions
+                const boxGeometry = new BoxGeometry(2, 2, 2);
+                const colors = [0xFF6B6B, 0x4ECDC4, 0x45B7D1, 0xFFEAA7, 0xDDA0DD];
+                
+                for (let i = 0; i < 5; i++) {
+                    const material = new MeshPhongMaterial({
+                        color: colors[i],
+                        shininess: 100,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const box = new Mesh(boxGeometry, material);
+                    box.position.set(
+                        (i - 2) * 4,
+                        Math.sin(i) * 2,
+                        Math.cos(i) * 2
+                    );
+                    box.castShadow = true;
+                    box.receiveShadow = true;
+                    
+                    this.boxes.push(box);
+                    this.scene.add(box);
+                }
+                
+                // Ground plane for shadows
+                const groundGeometry = new BoxGeometry(20, 0.1, 20);
+                const groundMaterial = new MeshPhongMaterial({
+                    color: 0x222233,
+                    shininess: 10
+                });
+                
+                const ground = new Mesh(groundGeometry, groundMaterial);
+                ground.position.y = -3;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+            }
+            
+            setupControls() {
+                const audioFile = document.getElementById('audioFile');
+                const playButton = document.getElementById('playButton');
+                const pauseButton = document.getElementById('pauseButton');
+                const volumeSlider = document.getElementById('volumeSlider');
+                const sensitivitySlider = document.getElementById('sensitivitySlider');
+                
+                audioFile.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            await this.audioSync.loadAudio(file);
+                            playButton.disabled = false;
+                            pauseButton.disabled = false;
+                        } catch (error) {
+                            console.error('Failed to load audio:', error);
+                            alert('Failed to load audio file. Please try a different file.');
+                        }
+                    }
+                });
+                
+                playButton.addEventListener('click', async () => {
+                    await this.audioSync.playAudio();
+                    this.isPlaying = true;
+                });
+                
+                pauseButton.addEventListener('click', () => {
+                    this.audioSync.stopAudio();
+                    this.isPlaying = false;
+                });
+                
+                volumeSlider.addEventListener('input', (e) => {
+                    const volume = parseFloat(e.target.value);
+                    this.audioSync.setVolume(volume);
+                    document.getElementById('volumeValue').textContent = volume.toFixed(2);
+                });
+                
+                sensitivitySlider.addEventListener('input', (e) => {
+                    this.lightSensitivity = parseFloat(e.target.value);
+                    document.getElementById('sensitivityValue').textContent = this.lightSensitivity.toFixed(1);
+                });
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            update(audioData, isBeat) {
+                const bassIntensity = audioData.bass * this.lightSensitivity;
+                const midIntensity = audioData.mid * this.lightSensitivity;
+                const trebleIntensity = audioData.treble * this.lightSensitivity;
+                const volumeIntensity = audioData.volume * this.lightSensitivity;
+                
+                // Update bass-reactive red light
+                if (this.bassLight) {
+                    this.bassLight.intensity = bassIntensity * 5;
+                    this.bassLight.position.x = -5 + (bassIntensity * 2);
+                    this.bassLight.position.y = bassIntensity * 3;
+                }
+                
+                // Update mid-reactive cyan light
+                if (this.midLight) {
+                    this.midLight.intensity = midIntensity * 5;
+                    this.midLight.position.x = 5 + (midIntensity * 2);
+                    this.midLight.position.y = midIntensity * 3;
+                }
+                
+                // Update treble-reactive blue light
+                if (this.trebleLight) {
+                    this.trebleLight.intensity = trebleIntensity * 5;
+                    this.trebleLight.position.z = 5 + (trebleIntensity * 2);
+                    this.trebleLight.position.x = Math.sin(Date.now() * 0.001) * trebleIntensity * 3;
+                }
+                
+                // Update beat-reactive white light
+                if (this.beatLight) {
+                    if (isBeat) {
+                        this.beatLight.intensity = 15 + (volumeIntensity * 20);
+                        this.beatLight.color.setHSL(Math.random(), 1, 0.8);
+                    } else {
+                        this.beatLight.intensity = Math.max(0, this.beatLight.intensity - 1);
+                    }
+                }
+                
+                // Update ambient light
+                if (this.ambientLight) {
+                    this.ambientLight.intensity = 0.2 + (volumeIntensity * 0.3);
+                }
+                
+                // Animate boxes based on frequency bands
+                this.boxes.forEach((box, index) => {
+                    const time = Date.now() * 0.001;
+                    
+                    // Rotate boxes at different rates
+                    box.rotation.x += 0.01 + (midIntensity * 0.05);
+                    box.rotation.y += 0.02 + (bassIntensity * 0.03);
+                    
+                    // Scale boxes with volume
+                    const scale = 1 + (volumeIntensity * 0.5);
+                    box.scale.set(scale, scale, scale);
+                    
+                    // Move boxes vertically with different frequency bands
+                    const baseY = Math.sin(index) * 2;
+                    box.position.y = baseY + (index * bassIntensity) + (Math.sin(time + index) * midIntensity);
+                    
+                    // Color shifting with spectral centroid
+                    const hue = (audioData.spectralCentroid * 360) % 360;
+                    if (box.material.color) {
+                        box.material.color.setHSL(hue / 360, 0.7, 0.5);
+                    }
+                    
+                    // Opacity pulsing with volume
+                    box.material.opacity = 0.5 + (volumeIntensity * 0.5);
+                });
+                
+                // Update audio info display
+                this.updateAudioDisplay(audioData, isBeat);
+            }
+            
+            updateAudioDisplay(audioData, isBeat) {
+                document.getElementById('bassBar').style.width = (audioData.bass * 100) + '%';
+                document.getElementById('midBar').style.width = (audioData.mid * 100) + '%';
+                document.getElementById('trebleBar').style.width = (audioData.treble * 100) + '%';
+                document.getElementById('volumeBar').style.width = (audioData.volume * 100) + '%';
+                document.getElementById('beatBar').style.width = isBeat ? '100%' : '0%';
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update audio analysis
+                this.audioSync.update();
+                
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Add BeatReactive mixin
+        Object.assign(AudioReactiveLightingSystem.prototype, BeatReactive.prototype);
+        
+        // Start the application
+        window.addEventListener('load', () => {
+            new AudioReactiveLightingSystem();
+        });
+    </script>
+</body>
+</html>

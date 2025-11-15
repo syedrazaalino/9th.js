@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 0;
+        }
+        
+        .header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin: 50px 0;
+        }
+        
+        .example-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .example-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3, #9C27B0, #FF9800);
+        }
+        
+        .example-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .example-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .example-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+        
+        .example-description {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        .example-features {
+            list-style: none;
+            margin-bottom: 25px;
+        }
+        
+        .example-features li {
+            padding: 5px 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .example-features li::before {
+            content: '✓';
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .example-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        
+        .example-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+        }
+        
+        .difficulty {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .difficulty.beginner {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .difficulty.intermediate {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .difficulty.advanced {
+            background: #f44336;
+            color: white;
+        }
+        
+        .navigation {
+            text-align: center;
+            margin: 50px 0;
+        }
+        
+        .nav-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            margin: 0 10px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 80px;
+            padding: 40px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.8;
+        }
+        
+        .code-example {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #2196F3);
+            width: 0%;
+            animation: fillProgress 2s ease-out forwards;
+        }
+        
+        @keyframes fillProgress {
+            to { width: 100%; }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .examples-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Ninth.js Progressive Examples</h1>
+            <p>Interactive 3D graphics and game development examples showcasing the power of Ninth.js - a modern JavaScript library for creating immersive 3D experiences</p>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">8</div>
+                    <div class="stat-label">Interactive Examples</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">Features Demonstrated</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Interactive & Fun</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+        <div class="examples-grid">
+            <div class="example-card">
+                <div class="difficulty beginner">Beginner</div>
+                <div class="example-icon">🌟</div>
+                <h3 class="example-title">Hello World</h3>
+                <p class="example-description">Your first step into 3D graphics! Learn the basics of scene setup, camera controls, and simple animations.</p>
+                <ul class="example-features">
+                    <li>Basic scene creation</li>
+                    <li>Simple geometry and materials</li>
+                    <li>Rotation animations</li>
+                    <li>Interactive color controls</li>
+                    <li>Real-time FPS monitoring</li>
+                </ul>
+                <a href="hello-world.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty beginner">Beginner</div>
+                <div class="example-icon">🎨</div>
+                <h3 class="example-title">Materials Demo</h3>
+                <p class="example-description">Explore different material types and their properties. Understand how lighting interacts with various surfaces.</p>
+                <ul class="example-features">
+                    <li>Basic, Lambert, Phong, PBR materials</li>
+                    <li>Interactive material parameters</li>
+                    <li>Lighting property controls</li>
+                    <li>Multiple geometry types</li>
+                    <li>Real-time material switching</li>
+                </ul>
+                <a href="materials-demo.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty beginner">Beginner</div>
+                <div class="example-icon">💡</div>
+                <h3 class="example-title">Lighting Demo</h3>
+                <p class="example-description">Master the art of lighting! Learn about different light types, shadows, and how to create mood with light.</p>
+                <ul class="example-features">
+                    <li>Ambient, Directional, Point, Spot lights</li>
+                    <li>Shadow casting and quality</li>
+                    <li>Light animation systems</li>
+                    <li>Scene presets (Warm, Cool, Dramatic)</li>
+                    <li>Real-time light positioning</li>
+                </ul>
+                <a href="lighting-demo.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty intermediate">Intermediate</div>
+                <div class="example-icon">🎬</div>
+                <h3 class="example-title">Animation Demo</h3>
+                <p class="example-description">Bring objects to life with sophisticated animation systems. Learn keyframes, easing, and complex motion.</p>
+                <ul class="example-features">
+                    <li>Keyframe animation system</li>
+                    <li>Multiple easing functions</li>
+                    <li>Animation blending and timing</li>
+                    <li>Timeline controls</li>
+                    <li>Preset animation sequences</li>
+                </ul>
+                <a href="animation-demo.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty intermediate">Intermediate</div>
+                <div class="example-icon">⚡</div>
+                <h3 class="example-title">Physics Demo</h3>
+                <p class="example-description">Simulate realistic physics interactions including gravity, collisions, forces, and constraints.</p>
+                <ul class="example-features">
+                    <li>Rigid body dynamics</li>
+                    <li>Collision detection</li>
+                    <li>Force application systems</li>
+                    <li>Constraint physics</li>
+                    <li>Explosion and destruction effects</li>
+                </ul>
+                <a href="physics-demo.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty intermediate">Intermediate</div>
+                <div class="example-icon">📁</div>
+                <h3 class="example-title">File Loaders Demo</h3>
+                <p class="example-description">Load 3D models from various file formats. Learn about model loading, processing, and optimization.</p>
+                <ul class="example-features">
+                    <li>OBJ, GLTF, FBX, DAE support</li>
+                    <li>Loading progress tracking</li>
+                    <li>Model manipulation controls</li>
+                    <li>Texture loading and quality</li>
+                    <li>Error handling and debugging</li>
+                </ul>
+                <a href="file-loaders-demo.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty advanced">Advanced</div>
+                <div class="example-icon">🚀</div>
+                <h3 class="example-title">Advanced Rendering</h3>
+                <p class="example-description">Experience cutting-edge rendering techniques including HDR, bloom, SSAO, and post-processing effects.</p>
+                <ul class="example-features">
+                    <li>HDR and tone mapping</li>
+                    <li>Bloom and post-processing</li>
+                    <li>SSAO (Screen Space Ambient Occlusion)</li>
+                    <li>Depth of Field effects</li>
+                    <li>Performance optimization</li>
+                </ul>
+                <a href="advanced-rendering-demo.html" class="example-button">Launch Example →</a>
+            </div>
+            
+            <div class="example-card">
+                <div class="difficulty advanced">Advanced</div>
+                <div class="example-icon">🎮</div>
+                <h3 class="example-title">Complete Game Example</h3>
+                <p class="example-description">A fully playable 3D game demonstrating all features working together. Shoot, collect, and survive!</p>
+                <ul class="example-features">
+                    <li>Complete 3D game mechanics</li>
+                    <li>Player movement and shooting</li>
+                    <li>Enemy AI and combat system</li>
+                    <li>Power-ups and upgrades</li>
+                    <li>Score system and leaderboards</li>
+                </ul>
+                <a href="complete-game-example.html" class="example-button">Launch Example →</a>
+            </div>
+        </div>
+        
+        <div class="navigation">
+            <a href="../basic.html" class="nav-button">← Basic Examples</a>
+            <a href="../" class="nav-button">🏠 All Examples</a>
+        </div>
+        
+        <div class="code-example">
+            <strong>Quick Start:</strong><br>
+            // Basic scene setup with Ninth.js<br>
+            const scene = new NinthJS.Scene();<br>
+            const camera = new NinthJS.PerspectiveCamera(75, width/height, 0.1, 1000);<br>
+            const renderer = new NinthJS.Renderer(canvas);<br>
+            <br>
+            // Create a rotating cube<br>
+            const geometry = new NinthJS.BoxGeometry(1, 1, 1);<br>
+            const material = new NinthJS.MeshStandardMaterial({ color: 0x4488ff });<br>
+            const cube = new NinthJS.Mesh(geometry, material);<br>
+            scene.add(cube);<br>
+            <br>
+            // Animate and render<br>
+            function animate() {<br>
+            &nbsp;&nbsp;requestAnimationFrame(animate);<br>
+            &nbsp;&nbsp;cube.rotation.x += 0.01;<br>
+            &nbsp;&nbsp;cube.rotation.y += 0.01;<br>
+            &nbsp;&nbsp;renderer.render(scene, camera);<br>
+            }<br>
+            animate();
+        </div>
+        
+        <div class="footer">
+            <p>Built with ❤️ using Ninth.js - Modern 3D Graphics Library</p>
+            <p>Explore, learn, and create amazing 3D experiences!</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add some interactive animations
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate stat numbers
+            const statNumbers = document.querySelectorAll('.stat-number');
+            statNumbers.forEach(stat => {
+                const target = parseInt(stat.textContent);
+                let current = 0;
+                const increment = target / 50;
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    stat.textContent = Math.floor(current);
+                }, 30);
+            });
+            
+            // Add hover effects to cards
+            const cards = document.querySelectorAll('.example-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-10px) scale(1.02)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+            
+            // Parallax effect on scroll
+            window.addEventListener('scroll', function() {
+                const scrolled = window.pageYOffset;
+                const parallax = document.querySelector('body');
+                const speed = scrolled * 0.5;
+                parallax.style.backgroundPosition = `center ${speed}px`;
+            });
+            
+            // Add click tracking
+            const buttons = document.querySelectorAll('.example-button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // Create ripple effect
+                    const ripple = document.createElement('span');
+                    ripple.style.position = 'absolute';
+                    ripple.style.background = 'rgba(255,255,255,0.6)';
+                    ripple.style.borderRadius = '50%';
+                    ripple.style.transform = 'scale(0)';
+                    ripple.style.animation = 'ripple 0.6s linear';
+                    ripple.style.left = (e.clientX - e.target.offsetLeft) + 'px';
+                    ripple.style.top = (e.clientY - e.target.offsetTop) + 'px';
+                    ripple.style.width = ripple.style.height = '20px';
+                    
+                    e.target.style.position = 'relative';
+                    e.target.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
+        
+        // Add CSS animation for ripple effect
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

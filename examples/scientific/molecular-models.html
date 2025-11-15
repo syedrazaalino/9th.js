@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Molecular Models Visualization</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .control-group select,
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .control-group input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .molecule-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 250px;
+            z-index: 100;
+        }
+
+        .atom-legend {
+            margin-top: 15px;
+        }
+
+        .atom-color {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .atom-color span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Loading molecular visualization...</div>
+        
+        <div class="controls">
+            <h3>Molecular Visualization Controls</h3>
+            
+            <div class="control-group">
+                <label for="moleculeType">Molecule Type:</label>
+                <select id="moleculeType">
+                    <option value="water">Water (H₂O)</option>
+                    <option value="methane">Methane (CH₄)</option>
+                    <option value="ethanol">Ethanol (C₂H₅OH)</option>
+                    <option value="glucose">Glucose (C₆H₁₂O₆)</option>
+                    <option value="dna">DNA Double Helix</option>
+                    <option value="protein">Protein Structure</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="representation">Representation:</label>
+                <select id="representation">
+                    <option value="ball-stick">Ball & Stick</option>
+                    <option value="space-filling">Space Filling</option>
+                    <option value="wireframe">Wireframe</option>
+                    <option value="ribbon">Ribbon (Proteins)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="scale">Atom Scale:</label>
+                <input type="range" id="scale" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+            
+            <div class="control-group">
+                <label for="bondLength">Bond Length:</label>
+                <input type="range" id="bondLength" min="0.8" max="1.5" step="0.1" value="1.0">
+            </div>
+            
+            <div class="control-group">
+                <label for="dataFile">Import PDB/CIF File:</label>
+                <input type="file" id="dataFile" accept=".pdb,.cif,.mol">
+            </div>
+            
+            <div class="button-group">
+                <button id="animate">Animate</button>
+                <button id="reset">Reset View</button>
+            </div>
+        </div>
+        
+        <div class="molecule-info">
+            <h3>Molecule Information</h3>
+            <div id="moleculeDetails">
+                <p><strong>Formula:</strong> H₂O</p>
+                <p><strong>Atoms:</strong> 3</p>
+                <p><strong>Bonds:</strong> 2</p>
+                <p><strong>Bond Length:</strong> 0.96 Å</p>
+            </div>
+            
+            <div class="atom-legend">
+                <h4>Atom Colors:</h4>
+                <div class="atom-color">
+                    <span style="background: #ffffff;"></span> Hydrogen (H)
+                </div>
+                <div class="atom-color">
+                    <span style="background: #ff0000;"></span> Oxygen (O)
+                </div>
+                <div class="atom-color">
+                    <span style="background: #909090;"></span> Carbon (C)
+                </div>
+                <div class="atom-color">
+                    <span style="background: #0000ff;"></span> Nitrogen (N)
+                </div>
+                <div class="atom-color">
+                    <span style="background: #ffff00;"></span> Sulfur (S)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class MolecularVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.molecules = new Map();
+                this.currentMolecule = null;
+                this.animationId = null;
+                this.isAnimating = false;
+                
+                this.atomColors = {
+                    'H': 0xffffff,  // White
+                    'C': 0x909090,  // Grey
+                    'N': 0x0000ff,  // Blue
+                    'O': 0xff0000,  // Red
+                    'S': 0xffff00,  // Yellow
+                    'P': 0xff8000,  // Orange
+                    'Cl': 0x00ff00, // Green
+                    'F': 0x80ff80,  // Light Green
+                    'Br': 0x8b4513, // Brown
+                    'I': 0x800080   // Purple
+                };
+                
+                this.atomRadii = {
+                    'H': 0.31, 'C': 0.76, 'N': 0.71, 'O': 0.66,
+                    'S': 1.05, 'P': 1.07, 'F': 0.57, 'Cl': 0.99,
+                    'Br': 1.14, 'I': 1.33
+                };
+                
+                this.init();
+                this.setupEventListeners();
+                this.createDefaultMolecules();
+                this.loadMolecule('water');
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                
+                // Camera
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 0, 5);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                this.scene.add(directionalLight);
+                
+                const pointLight = new PointLight(0xffffff, 0.6);
+                pointLight.position.set(-1, -1, -1);
+                this.scene.add(pointLight);
+                
+                // Controls (simplified)
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    if (this.currentMolecule) {
+                        this.currentMolecule.rotation.x = rotationX;
+                        this.currentMolecule.rotation.y = rotationY;
+                    }
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    this.camera.position.z += delta;
+                    this.camera.position.z = Math.max(2, Math.min(20, this.camera.position.z));
+                });
+            }
+            
+            createDefaultMolecules() {
+                this.createWater();
+                this.createMethane();
+                this.createEthanol();
+                this.createGlucose();
+                this.createDNA();
+                this.createProtein();
+            }
+            
+            createWater() {
+                const group = new Group();
+                
+                // Oxygen atom
+                const oxygen = this.createAtom('O', 0, 0, 0);
+                group.add(oxygen);
+                
+                // Hydrogen atoms (bent geometry, ~104.5°)
+                const angle = Math.PI * 0.577; // 104.5 degrees in radians
+                const distance = 0.96;
+                
+                const hydrogen1 = this.createAtom('H', Math.sin(angle) * distance, Math.cos(angle) * distance, 0);
+                const hydrogen2 = this.createAtom('H', -Math.sin(angle) * distance, Math.cos(angle) * distance, 0);
+                group.add(hydrogen1);
+                group.add(hydrogen2);
+                
+                // Bonds
+                this.addBond(group, oxygen.position, hydrogen1.position);
+                this.addBond(group, oxygen.position, hydrogen2.position);
+                
+                this.molecules.set('water', {
+                    group,
+                    info: {
+                        name: 'Water',
+                        formula: 'H₂O',
+                        atoms: 3,
+                        bonds: 2,
+                        bondLength: '0.96 Å',
+                        description: 'Basic water molecule with bent geometry'
+                    }
+                });
+            }
+            
+            createMethane() {
+                const group = new Group();
+                
+                // Carbon atom at center
+                const carbon = this.createAtom('C', 0, 0, 0);
+                group.add(carbon);
+                
+                // Four hydrogen atoms in tetrahedral arrangement
+                const tetrahedral = [
+                    [1, 1, 1],
+                    [-1, -1, 1],
+                    [-1, 1, -1],
+                    [1, -1, -1]
+                ].map(v => v.map(x => x / Math.sqrt(3) * 1.09));
+                
+                tetrahedral.forEach(pos => {
+                    const hydrogen = this.createAtom('H', pos[0], pos[1], pos[2]);
+                    group.add(hydrogen);
+                    this.addBond(group, carbon.position, hydrogen.position);
+                });
+                
+                this.molecules.set('methane', {
+                    group,
+                    info: {
+                        name: 'Methane',
+                        formula: 'CH₄',
+                        atoms: 5,
+                        bonds: 4,
+                        bondLength: '1.09 Å',
+                        description: 'Tetrahedral methane molecule'
+                    }
+                });
+            }
+            
+            createEthanol() {
+                const group = new Group();
+                
+                // Carbon atoms
+                const c1 = this.createAtom('C', 0, 0, 0);
+                const c2 = this.createAtom('C', 1.54, 0, 0);
+                group.add(c1);
+                group.add(c2);
+                
+                // Oxygen atom
+                const o = this.createAtom('O', 0.77, 0.89, 0);
+                group.add(o);
+                
+                // Hydrogen atoms (simplified)
+                const hydrogens = [
+                    [-0.77, 0.89, 0],  // OH hydrogen
+                    [0, -1.0, 0.8],    // C1 hydrogens
+                    [0, -1.0, -0.8],
+                    [2.31, 0, 0.8],    // C2 hydrogens
+                    [2.31, 0, -0.8],
+                    [0.77, 1.89, 0]
+                ];
+                
+                hydrogens.forEach(pos => {
+                    const h = this.createAtom('H', pos[0], pos[1], pos[2]);
+                    group.add(h);
+                });
+                
+                // Bonds
+                this.addBond(group, c1.position, c2.position);
+                this.addBond(group, c1.position, o.position);
+                this.addBond(group, o.position, hydrogens[5]);
+                
+                this.molecules.set('ethanol', {
+                    group,
+                    info: {
+                        name: 'Ethanol',
+                        formula: 'C₂H₅OH',
+                        atoms: 9,
+                        bonds: 8,
+                        bondLength: '1.54 Å (C-C)',
+                        description: 'Simple alcohol molecule'
+                    }
+                });
+            }
+            
+            createGlucose() {
+                const group = new Group();
+                
+                // Simplified glucose ring structure
+                const ringPositions = [
+                    [0, 0, 0],      // C1
+                    [1.54, 0, 0],   // C2
+                    [2.31, 1.34, 0], // C3
+                    [1.54, 2.68, 0], // C4
+                    [0, 2.68, 0],   // C5
+                    [-0.77, 1.34, 0] // C6 (oxygen)
+                ];
+                
+                // Add carbon atoms
+                ringPositions.slice(0, 6).forEach(pos => {
+                    const atom = this.createAtom('C', pos[0], pos[1], pos[2]);
+                    group.add(atom);
+                });
+                
+                // Add some oxygen atoms
+                const oxygens = [
+                    [1.54, 4.02, 0],  // Ring oxygen
+                    [2.31, -1.0, 0],  // OH groups
+                    [0, -1.0, 0],
+                    [-1.77, 1.34, 0],
+                    [3.85, 1.34, 0],
+                    [0, 3.68, 0]
+                ];
+                
+                oxygens.forEach(pos => {
+                    const o = this.createAtom('O', pos[0], pos[1], pos[2]);
+                    group.add(o);
+                });
+                
+                // Add bonds between ring atoms
+                for (let i = 0; i < 5; i++) {
+                    this.addBond(group, ringPositions[i], ringPositions[i + 1]);
+                }
+                this.addBond(group, ringPositions[5], ringPositions[0]);
+                
+                this.molecules.set('glucose', {
+                    group,
+                    info: {
+                        name: 'Glucose',
+                        formula: 'C₆H₁₂O₆',
+                        atoms: 24,
+                        bonds: 23,
+                        bondLength: '1.54 Å (C-C)',
+                        description: 'Glucose ring structure'
+                    }
+                });
+            }
+            
+            createDNA() {
+                const group = new Group();
+                
+                // Simplified DNA double helix
+                const numBasePairs = 10;
+                const helixRadius = 2;
+                const pitch = 0.5;
+                
+                for (let i = 0; i < numBasePairs; i++) {
+                    const angle = (i / numBasePairs) * Math.PI * 4;
+                    
+                    // Backbone sugar-phosphate
+                    const sugar1 = this.createAtom('C', 
+                        helixRadius * Math.cos(angle), 
+                        i * pitch, 
+                        helixRadius * Math.sin(angle)
+                    );
+                    const sugar2 = this.createAtom('C', 
+                        -helixRadius * Math.cos(angle), 
+                        i * pitch, 
+                        -helixRadius * Math.sin(angle)
+                    );
+                    
+                    group.add(sugar1);
+                    group.add(sugar2);
+                    
+                    // Base pairs (simplified as colored spheres)
+                    const base1 = this.createAtom('N', 
+                        0.5 * Math.cos(angle), 
+                        i * pitch, 
+                        0.5 * Math.sin(angle)
+                    );
+                    const base2 = this.createAtom('N', 
+                        -0.5 * Math.cos(angle), 
+                        i * pitch, 
+                        -0.5 * Math.sin(angle)
+                    );
+                    
+                    group.add(base1);
+                    group.add(base2);
+                    
+                    // Bonds
+                    this.addBond(group, sugar1.position, sugar2.position);
+                    this.addBond(group, sugar1.position, base1.position);
+                    this.addBond(group, sugar2.position, base2.position);
+                }
+                
+                this.molecules.set('dna', {
+                    group,
+                    info: {
+                        name: 'DNA Double Helix',
+                        formula: '(C₁₀H₁₅N₅O₅)ₙ',
+                        atoms: 200,
+                        bonds: 180,
+                        bondLength: '3.4 Å (base pairs)',
+                        description: 'Simplified DNA double helix structure'
+                    }
+                });
+            }
+            
+            createProtein() {
+                const group = new Group();
+                
+                // Simplified protein alpha helix
+                const numResidues = 20;
+                const helixRadius = 1;
+                const pitch = 0.15;
+                
+                for (let i = 0; i < numResidues; i++) {
+                    const angle = (i / numResidues) * Math.PI * 6;
+                    
+                    // Alpha carbon backbone
+                    const cAlpha = this.createAtom('C', 
+                        helixRadius * Math.cos(angle), 
+                        i * pitch, 
+                        helixRadius * Math.sin(angle)
+                    );
+                    
+                    // Side chain (simplified)
+                    const sideChain = this.createAtom('C', 
+                        1.5 * Math.cos(angle), 
+                        i * pitch, 
+                        1.5 * Math.sin(angle)
+                    );
+                    
+                    // Nitrogen and oxygen atoms
+                    const nitrogen = this.createAtom('N', 
+                        helixRadius * Math.cos(angle + Math.PI / 2), 
+                        i * pitch, 
+                        helixRadius * Math.sin(angle + Math.PI / 2)
+                    );
+                    
+                    group.add(cAlpha);
+                    group.add(sideChain);
+                    group.add(nitrogen);
+                    
+                    // Bonds
+                    if (i > 0) {
+                        const prevAngle = ((i - 1) / numResidues) * Math.PI * 6;
+                        const prevPos = new Vector3(
+                            helixRadius * Math.cos(prevAngle),
+                            (i - 1) * pitch,
+                            helixRadius * Math.sin(prevAngle)
+                        );
+                        this.addBond(group, prevPos, cAlpha.position);
+                    }
+                    this.addBond(group, cAlpha.position, sideChain.position);
+                    this.addBond(group, cAlpha.position, nitrogen.position);
+                }
+                
+                this.molecules.set('protein', {
+                    group,
+                    info: {
+                        name: 'Protein Alpha Helix',
+                        formula: 'Variable',
+                        atoms: 60,
+                        bonds: 58,
+                        bondLength: '1.5 Å (Cα-Cα)',
+                        description: 'Protein secondary structure: alpha helix'
+                    }
+                });
+            }
+            
+            createAtom(element, x, y, z) {
+                const geometry = new SphereGeometry(this.atomRadii[element] || 0.5, 16, 16);
+                const material = new MeshLambertMaterial({ 
+                    color: this.atomColors[element] || 0xffffff 
+                });
+                const atom = new Mesh(geometry, material);
+                atom.position.set(x, y, z);
+                atom.userData = { element, type: 'atom' };
+                return atom;
+            }
+            
+            addBond(group, pos1, pos2) {
+                const distance = pos1.distanceTo(pos2);
+                const midpoint = pos1.clone().add(pos2).multiplyScalar(0.5);
+                
+                const geometry = new CylinderGeometry(0.05, 0.05, distance, 8);
+                const material = new MeshLambertMaterial({ color: 0x666666 });
+                const bond = new Mesh(geometry, material);
+                
+                bond.position.copy(midpoint);
+                bond.lookAt(pos1);
+                bond.rotateX(Math.PI / 2);
+                bond.userData = { type: 'bond' };
+                
+                group.add(bond);
+            }
+            
+            setupEventListeners() {
+                document.getElementById('moleculeType').addEventListener('change', (e) => {
+                    this.loadMolecule(e.target.value);
+                });
+                
+                document.getElementById('representation').addEventListener('change', (e) => {
+                    this.changeRepresentation(e.target.value);
+                });
+                
+                document.getElementById('scale').addEventListener('input', (e) => {
+                    this.scaleMolecule(parseFloat(e.target.value));
+                });
+                
+                document.getElementById('bondLength').addEventListener('input', (e) => {
+                    this.adjustBondLength(parseFloat(e.target.value));
+                });
+                
+                document.getElementById('animate').addEventListener('click', () => {
+                    this.toggleAnimation();
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.resetView();
+                });
+                
+                document.getElementById('dataFile').addEventListener('change', (e) => {
+                    this.importFile(e.target.files[0]);
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            loadMolecule(moleculeType) {
+                if (this.currentMolecule) {
+                    this.scene.remove(this.currentMolecule);
+                }
+                
+                const moleculeData = this.molecules.get(moleculeType);
+                if (moleculeData) {
+                    this.currentMolecule = moleculeData.group;
+                    this.scene.add(this.currentMolecule);
+                    this.updateMoleculeInfo(moleculeData.info);
+                }
+            }
+            
+            updateMoleculeInfo(info) {
+                document.getElementById('moleculeDetails').innerHTML = `
+                    <p><strong>Name:</strong> ${info.name}</p>
+                    <p><strong>Formula:</strong> ${info.formula}</p>
+                    <p><strong>Atoms:</strong> ${info.atoms}</p>
+                    <p><strong>Bonds:</strong> ${info.bonds}</p>
+                    <p><strong>Bond Length:</strong> ${info.bondLength}</p>
+                    <p><strong>Description:</strong> ${info.description}</p>
+                `;
+            }
+            
+            changeRepresentation(representation) {
+                if (!this.currentMolecule) return;
+                
+                this.currentMolecule.children.forEach(child => {
+                    if (child.userData.type === 'atom') {
+                        this.updateAtomRepresentation(child, representation);
+                    }
+                });
+            }
+            
+            updateAtomRepresentation(atom, representation) {
+                // Remove existing geometry
+                this.currentMolecule.remove(atom);
+                
+                const element = atom.userData.element;
+                let geometry, material;
+                
+                switch (representation) {
+                    case 'ball-stick':
+                        geometry = new SphereGeometry(this.atomRadii[element] || 0.5, 16, 16);
+                        material = new MeshLambertMaterial({ color: this.atomColors[element] || 0xffffff });
+                        break;
+                    case 'space-filling':
+                        geometry = new SphereGeometry((this.atomRadii[element] || 0.5) * 1.5, 16, 16);
+                        material = new MeshPhongMaterial({ 
+                            color: this.atomColors[element] || 0xffffff,
+                            shininess: 100
+                        });
+                        break;
+                    case 'wireframe':
+                        geometry = new SphereGeometry(this.atomRadii[element] || 0.5, 8, 8);
+                        material = new MeshBasicMaterial({ 
+                            color: this.atomColors[element] || 0xffffff,
+                            wireframe: true
+                        });
+                        break;
+                    case 'ribbon':
+                        // Simplified ribbon representation for proteins
+                        if (element === 'C') {
+                            geometry = new SphereGeometry(0.3, 8, 8);
+                            material = new MeshLambertMaterial({ color: 0x00ff00 });
+                        } else {
+                            return; // Skip non-carbon atoms in ribbon view
+                        }
+                        break;
+                }
+                
+                const newAtom = new Mesh(geometry, material);
+                newAtom.position.copy(atom.position);
+                newAtom.userData = atom.userData;
+                this.currentMolecule.add(newAtom);
+            }
+            
+            scaleMolecule(scale) {
+                if (this.currentMolecule) {
+                    this.currentMolecule.scale.setScalar(scale);
+                }
+            }
+            
+            adjustBondLength(length) {
+                if (!this.currentMolecule) return;
+                
+                // Adjust bond lengths proportionally
+                this.currentMolecule.children.forEach(child => {
+                    if (child.userData.type === 'bond') {
+                        const scale = length;
+                        child.scale.y = scale;
+                    }
+                });
+            }
+            
+            toggleAnimation() {
+                this.isAnimating = !this.isAnimating;
+                document.getElementById('animate').textContent = this.isAnimating ? 'Stop Animation' : 'Animate';
+            }
+            
+            resetView() {
+                if (this.currentMolecule) {
+                    this.currentMolecule.rotation.set(0, 0, 0);
+                    this.currentMolecule.scale.set(1, 1, 1);
+                }
+                this.camera.position.set(0, 0, 5);
+            }
+            
+            importFile(file) {
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = e.target.result;
+                        this.parseMolecularData(content, file.name);
+                    } catch (error) {
+                        alert('Error parsing file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+            
+            parseMolecularData(content, filename) {
+                // Simplified PDB/CIF parser
+                if (filename.endsWith('.pdb')) {
+                    const atoms = this.parsePDB(content);
+                    this.createMoleculeFromAtoms(atoms);
+                } else if (filename.endsWith('.cif')) {
+                    const atoms = this.parseCIF(content);
+                    this.createMoleculeFromAtoms(atoms);
+                }
+            }
+            
+            parsePDB(content) {
+                const atoms = [];
+                const lines = content.split('\n');
+                
+                lines.forEach(line => {
+                    if (line.startsWith('ATOM') || line.startsWith('HETATM')) {
+                        const x = parseFloat(line.substring(30, 38));
+                        const y = parseFloat(line.substring(38, 46));
+                        const z = parseFloat(line.substring(46, 54));
+                        const element = line.substring(76, 78).trim();
+                        atoms.push({ element, position: [x, y, z] });
+                    }
+                });
+                
+                return atoms;
+            }
+            
+            parseCIF(content) {
+                // Simplified CIF parser
+                const atoms = [];
+                const lines = content.split('\n');
+                
+                let inLoop = false;
+                let atomData = [];
+                
+                lines.forEach(line => {
+                    if (line.startsWith('loop_')) {
+                        inLoop = true;
+                        atomData = [];
+                    } else if (line.startsWith('_atom_site.')) {
+                        // Collect atom site headers
+                    } else if (inLoop && line.trim() && !line.startsWith('data_')) {
+                        atomData.push(line);
+                    } else if (line.startsWith('data_')) {
+                        inLoop = false;
+                    }
+                });
+                
+                // Parse atom data (simplified)
+                atomData.forEach(line => {
+                    const parts = line.split(/\s+/);
+                    if (parts.length >= 5) {
+                        const element = parts[3];
+                        const x = parseFloat(parts[4]);
+                        const y = parseFloat(parts[5]);
+                        const z = parseFloat(parts[6]);
+                        atoms.push({ element, position: [x, y, z] });
+                    }
+                });
+                
+                return atoms;
+            }
+            
+            createMoleculeFromAtoms(atoms) {
+                if (atoms.length === 0) {
+                    alert('No atoms found in the file');
+                    return;
+                }
+                
+                // Create group for imported molecule
+                const group = new Group();
+                
+                // Add atoms
+                atoms.forEach(atom => {
+                    const [x, y, z] = atom.position;
+                    const atomMesh = this.createAtom(atom.element, x / 10, y / 10, z / 10); // Scale down
+                    group.add(atomMesh);
+                });
+                
+                // Remove current molecule and add new one
+                if (this.currentMolecule) {
+                    this.scene.remove(this.currentMolecule);
+                }
+                
+                this.currentMolecule = group;
+                this.scene.add(group);
+                
+                // Update info
+                const uniqueElements = [...new Set(atoms.map(a => a.element))];
+                this.updateMoleculeInfo({
+                    name: 'Imported Molecule',
+                    formula: `Unknown (${uniqueElements.join(', ')})`,
+                    atoms: atoms.length,
+                    bonds: 0,
+                    bondLength: 'Variable',
+                    description: `Imported from file with elements: ${uniqueElements.join(', ')}`
+                });
+            }
+            
+            animate() {
+                this.animationId = requestAnimationFrame(() => this.animate());
+                
+                if (this.isAnimating && this.currentMolecule) {
+                    this.currentMolecule.rotation.y += 0.01;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the visualizer when the page loads
+        window.addEventListener('load', () => {
+            new MolecularVisualizer();
+        });
+    </script>
+</body>
+</html>

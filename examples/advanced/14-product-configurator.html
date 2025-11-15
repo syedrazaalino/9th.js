@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Configurator - E-Commerce 3D Experience</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .configurator-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .configurator-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .config-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .config-section:last-child {
+            border-bottom: none;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        
+        .color-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.selected {
+            border-color: #007bff;
+            transform: scale(1.1);
+        }
+        
+        .color-option::after {
+            content: attr(data-color);
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #666;
+            white-space: nowrap;
+        }
+        
+        .material-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .material-option {
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .material-option:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .material-option.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .material-name {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .material-price {
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .size-options {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
+        
+        .size-option {
+            flex: 1;
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .size-option:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .size-option.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .size-label {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .size-dimensions {
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .accessories-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .accessory-item {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .accessory-item:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .accessory-item.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .accessory-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            position: relative;
+        }
+        
+        .accessory-item.selected .accessory-checkbox {
+            border-color: #007bff;
+            background: #007bff;
+        }
+        
+        .accessory-item.selected .accessory-checkbox::after {
+            content: '✓';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+        }
+        
+        .accessory-info {
+            flex: 1;
+        }
+        
+        .accessory-name {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .accessory-description {
+            font-size: 10px;
+            color: #666;
+            margin: 2px 0;
+        }
+        
+        .accessory-price {
+            font-size: 11px;
+            color: #007bff;
+            font-weight: bold;
+        }
+        
+        .price-summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .price-row.total {
+            border-top: 2px solid #ddd;
+            padding-top: 10px;
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            color: #007bff;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .product-viewer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .rotation-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 25px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .rotation-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .rotation-btn:hover, .rotation-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">Loading Product Configurator...</div>
+    <canvas id="canvas"></canvas>
+    
+    <div class="product-viewer">
+        <h3>Product Viewer</h3>
+        <p><strong>Controls:</strong></p>
+        <p>• Mouse drag - Rotate product<br>
+        • Scroll - Zoom in/out<br>
+        • Click to select parts</p>
+    </div>
+    
+    <div class="rotation-controls">
+        <button class="rotation-btn active" data-view="front">Front</button>
+        <button class="rotation-btn" data-view="back">Back</button>
+        <button class="rotation-btn" data-view="left">Left</button>
+        <button class="rotation-btn" data-view="right">Right</button>
+        <button class="rotation-btn" data-view="top">Top</button>
+        <button class="rotation-btn" data-view="auto">Auto Rotate</button>
+    </div>
+    
+    <div class="configurator-panel">
+        <div class="configurator-title">Luxury Sofa Configurator</div>
+        
+        <div class="config-section">
+            <div class="section-title">Upholstery Color</div>
+            <div class="color-palette">
+                <div class="color-option selected" style="background: #8B4513;" data-color="Brown"></div>
+                <div class="color-option" style="background: #2F4F4F;" data-color="Charcoal"></div>
+                <div class="color-option" style="background: #800080;" data-color="Purple"></div>
+                <div class="color-option" style="background: #008080;" data-color="Teal"></div>
+                <div class="color-option" style="background: #FF6347;" data-color="Coral"></div>
+                <div class="color-option" style="background: #32CD32;" data-color="Lime"></div>
+                <div class="color-option" style="background: #FFA500;" data-color="Orange"></div>
+                <div class="color-option" style="background: #FFFFFF;" data-color="White"></div>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <div class="section-title">Material</div>
+            <div class="material-grid">
+                <div class="material-option selected">
+                    <div class="material-name">Premium Leather</div>
+                    <div class="material-price">+$500</div>
+                </div>
+                <div class="material-option">
+                    <div class="material-name">Velvet Fabric</div>
+                    <div class="material-price">+$200</div>
+                </div>
+                <div class="material-option">
+                    <div class="material-name">Cotton Blend</div>
+                    <div class="material-price">Base Price</div>
+                </div>
+                <div class="material-option">
+                    <div class="material-name">Microfiber</div>
+                    <div class="material-price">+$100</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <div class="section-title">Size</div>
+            <div class="size-options">
+                <div class="size-option">
+                    <div class="size-label">Small</div>
+                    <div class="size-dimensions">2-Seat</div>
+                </div>
+                <div class="size-option selected">
+                    <div class="size-label">Medium</div>
+                    <div class="size-dimensions">3-Seat</div>
+                </div>
+                <div class="size-option">
+                    <div class="size-label">Large</div>
+                    <div class="size-dimensions">4-Seat</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <div class="section-title">Accessories</div>
+            <div class="accessories-list">
+                <div class="accessory-item">
+                    <div class="accessory-checkbox"></div>
+                    <div class="accessory-info">
+                        <div class="accessory-name">Decorative Pillows (Set of 2)</div>
+                        <div class="accessory-description">Premium throw pillows</div>
+                        <div class="accessory-price">$89</div>
+                    </div>
+                </div>
+                <div class="accessory-item">
+                    <div class="accessory-checkbox"></div>
+                    <div class="accessory-info">
+                        <div class="accessory-name">Ottoman</div>
+                        <div class="accessory-description">Matching footrest</div>
+                        <div class="accessory-price">$299</div>
+                    </div>
+                </div>
+                <div class="accessory-item">
+                    <div class="accessory-checkbox"></div>
+                    <div class="accessory-info">
+                        <div class="accessory-name">USB Charging Ports</div>
+                        <div class="accessory-description">Built-in power outlets</div>
+                        <div class="accessory-price">$149</div>
+                    </div>
+                </div>
+                <div class="accessory-item">
+                    <div class="accessory-checkbox"></div>
+                    <div class="accessory-info">
+                        <div class="accessory-name">LED Ambient Lighting</div>
+                        <div class="accessory-description">Under-sofa lighting</div>
+                        <div class="accessory-price">$199</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <div class="price-summary">
+                <div class="price-row">
+                    <span>Base Price (3-Seat):</span>
+                    <span>$1,299</span>
+                </div>
+                <div class="price-row">
+                    <span>Premium Leather:</span>
+                    <span>+$500</span>
+                </div>
+                <div class="price-row">
+                    <span>Accessories:</span>
+                    <span>$0</span>
+                </div>
+                <div class="price-row total">
+                    <span>Total:</span>
+                    <span>$1,799</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="btn btn-secondary">Save Design</button>
+            <button class="btn btn-primary">Add to Cart</button>
+        </div>
+    </div>
+
+    <script>
+        class ProductConfigurator {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.setupEventListeners();
+                
+                // Product state
+                this.product = {
+                    color: '#8B4513',
+                    material: 'Premium Leather',
+                    size: 'Medium',
+                    accessories: []
+                };
+                
+                // Pricing
+                this.pricing = {
+                    base: {
+                        'Small': 899,
+                        'Medium': 1299,
+                        'Large': 1699
+                    },
+                    materials: {
+                        'Premium Leather': 500,
+                        'Velvet Fabric': 200,
+                        'Cotton Blend': 0,
+                        'Microfiber': 100
+                    },
+                    accessories: {
+                        'Decorative Pillows (Set of 2)': 89,
+                        'Ottoman': 299,
+                        'USB Charging Ports': 149,
+                        'LED Ambient Lighting': 199
+                    }
+                };
+                
+                // Camera and interaction
+                this.camera = {
+                    x: 0,
+                    y: 0,
+                    z: 5,
+                    rotationX: 0,
+                    rotationY: 0,
+                    zoom: 1
+                };
+                
+                this.mouse = {
+                    x: 0,
+                    y: 0,
+                    isDragging: false,
+                    lastX: 0,
+                    lastY: 0
+                };
+                
+                this.autoRotate = false;
+                this.selectedPart = null;
+                
+                this.init();
+            }
+            
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                });
+            }
+            
+            setupEventListeners() {
+                // Mouse controls for 3D interaction
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.mouse.isDragging = true;
+                    this.mouse.lastX = e.clientX;
+                    this.mouse.lastY = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.mouse.x = e.clientX;
+                    this.mouse.y = e.clientY;
+                    
+                    if (this.mouse.isDragging) {
+                        const deltaX = e.clientX - this.mouse.lastX;
+                        const deltaY = e.clientY - this.mouse.lastY;
+                        
+                        this.camera.rotationY += deltaX * 0.01;
+                        this.camera.rotationX += deltaY * 0.01;
+                        
+                        this.camera.rotationX = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.camera.rotationX));
+                        
+                        this.mouse.lastX = e.clientX;
+                        this.mouse.lastY = e.clientY;
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.mouse.isDragging = false;
+                });
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    this.camera.zoom += e.deltaY * -0.001;
+                    this.camera.zoom = Math.max(0.5, Math.min(3, this.camera.zoom));
+                });
+                
+                this.canvas.addEventListener('click', (e) => {
+                    this.handleProductClick(e);
+                });
+                
+                // UI event listeners
+                this.setupUIEventListeners();
+            }
+            
+            setupUIEventListeners() {
+                // Color selection
+                document.querySelectorAll('.color-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        this.product.color = option.style.background;
+                        this.updatePrice();
+                    });
+                });
+                
+                // Material selection
+                document.querySelectorAll('.material-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.material-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        this.product.material = option.querySelector('.material-name').textContent;
+                        this.updatePrice();
+                    });
+                });
+                
+                // Size selection
+                document.querySelectorAll('.size-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.size-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        this.product.size = option.querySelector('.size-label').textContent;
+                        this.updatePrice();
+                    });
+                });
+                
+                // Accessory selection
+                document.querySelectorAll('.accessory-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        item.classList.toggle('selected');
+                        const accessoryName = item.querySelector('.accessory-name').textContent;
+                        
+                        if (item.classList.contains('selected')) {
+                            this.product.accessories.push(accessoryName);
+                        } else {
+                            this.product.accessories = this.product.accessories.filter(a => a !== accessoryName);
+                        }
+                        
+                        this.updatePrice();
+                    });
+                });
+                
+                // View controls
+                document.querySelectorAll('.rotation-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.rotation-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        
+                        const view = btn.dataset.view;
+                        this.setView(view);
+                    });
+                });
+            }
+            
+            setView(view) {
+                switch(view) {
+                    case 'front':
+                        this.camera.rotationX = 0;
+                        this.camera.rotationY = 0;
+                        this.autoRotate = false;
+                        break;
+                    case 'back':
+                        this.camera.rotationX = 0;
+                        this.camera.rotationY = Math.PI;
+                        this.autoRotate = false;
+                        break;
+                    case 'left':
+                        this.camera.rotationX = 0;
+                        this.camera.rotationY = -Math.PI/2;
+                        this.autoRotate = false;
+                        break;
+                    case 'right':
+                        this.camera.rotationX = 0;
+                        this.camera.rotationY = Math.PI/2;
+                        this.autoRotate = false;
+                        break;
+                    case 'top':
+                        this.camera.rotationX = -Math.PI/4;
+                        this.camera.rotationY = 0;
+                        this.autoRotate = false;
+                        break;
+                    case 'auto':
+                        this.autoRotate = true;
+                        break;
+                }
+            }
+            
+            handleProductClick(e) {
+                // Convert mouse coordinates to world space (simplified)
+                const rect = this.canvas.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Simple part selection based on coordinates
+                if (Math.abs(x) < 0.3 && Math.abs(y) < 0.3) {
+                    this.selectedPart = 'seat';
+                } else if (x < -0.3) {
+                    this.selectedPart = 'left_arm';
+                } else if (x > 0.3) {
+                    this.selectedPart = 'right_arm';
+                } else {
+                    this.selectedPart = null;
+                }
+            }
+            
+            updatePrice() {
+                const basePrice = this.pricing.base[this.product.size];
+                const materialPrice = this.pricing.materials[this.product.material];
+                const accessoriesPrice = this.product.accessories.reduce((sum, accessory) => {
+                    return sum + (this.pricing.accessories[accessory] || 0);
+                }, 0);
+                
+                const total = basePrice + materialPrice + accessoriesPrice;
+                
+                // Update price display
+                const priceRows = document.querySelectorAll('.price-row');
+                if (priceRows.length >= 4) {
+                    priceRows[0].querySelector('span:last-child').textContent = `$${basePrice.toLocaleString()}`;
+                    priceRows[1].querySelector('span:last-child').textContent = materialPrice >= 0 ? `+$${materialPrice}` : `$${materialPrice}`;
+                    priceRows[2].querySelector('span:last-child').textContent = `$${accessoriesPrice}`;
+                    priceRows[3].querySelector('span:last-child').textContent = `$${total.toLocaleString()}`;
+                }
+            }
+            
+            init() {
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    this.animate();
+                }, 2000);
+                
+                this.updatePrice();
+            }
+            
+            drawSofa() {
+                const { x, y, z } = this.camera;
+                const size = this.product.size;
+                const color = this.product.color;
+                
+                // Base seat
+                this.drawRect3D(-1.5, -0.5, -0.5, 3, 1, 1, color, 0.8);
+                
+                // Backrest
+                this.drawRect3D(-1.5, 0.5, -0.5, 3, 1.5, 0.5, color, 0.9);
+                
+                // Seat cushions
+                this.drawRect3D(-1.3, -0.3, -0.4, 1.2, 0.6, 0.8, this.adjustColor(color, -20), 1.0);
+                this.drawRect3D(-0.1, -0.3, -0.4, 1.2, 0.6, 0.8, this.adjustColor(color, -20), 1.0);
+                this.drawRect3D(1.1, -0.3, -0.4, 1.2, 0.6, 0.8, this.adjustColor(color, -20), 1.0);
+                
+                // Armrests
+                this.drawRect3D(-1.8, -0.2, -0.3, 0.3, 1.2, 0.6, this.adjustColor(color, 10), 1.0);
+                this.drawRect3D(1.5, -0.2, -0.3, 0.3, 1.2, 0.6, this.adjustColor(color, 10), 1.0);
+                
+                // Legs
+                this.drawRect3D(-1.4, -1, -0.2, 0.2, 0.5, 0.2, '#8B4513', 1.0);
+                this.drawRect3D(0.2, -1, -0.2, 0.2, 0.5, 0.2, '#8B4513', 1.0);
+                this.drawRect3D(1.2, -1, -0.2, 0.2, 0.5, 0.2, '#8B4513', 1.0);
+                
+                // Material texture (based on selected material)
+                this.drawMaterialTexture();
+                
+                // Accessories
+                this.drawAccessories();
+                
+                // Selection highlight
+                if (this.selectedPart) {
+                    this.drawSelectionHighlight();
+                }
+            }
+            
+            drawMaterialTexture() {
+                const material = this.product.material;
+                const alpha = material === 'Premium Leather' ? 0.8 : 0.6;
+                
+                // Draw texture lines based on material
+                this.ctx.globalAlpha = alpha;
+                this.ctx.strokeStyle = material === 'Premium Leather' ? '#000' : '#444';
+                this.ctx.lineWidth = 0.5;
+                
+                for (let i = -1.5; i <= 1.5; i += 0.3) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.worldToScreenX(i, -0.4), this.worldToScreenY(-0.3, -0.4));
+                    this.ctx.lineTo(this.worldToScreenX(i, 0.4), this.worldToScreenY(-0.3, 0.4));
+                    this.ctx.stroke();
+                }
+                
+                this.ctx.globalAlpha = 1.0;
+            }
+            
+            drawAccessories() {
+                this.product.accessories.forEach(accessory => {
+                    switch(accessory) {
+                        case 'Decorative Pillows (Set of 2)':
+                            this.drawPillow(-0.8, 0.2, 0.3);
+                            this.drawPillow(0.8, 0.2, 0.3);
+                            break;
+                        case 'Ottoman':
+                            this.drawRect3D(-2.2, -0.3, 0, 0.6, 0.6, 0.6, this.adjustColor(this.product.color, 20), 0.9);
+                            break;
+                        case 'USB Charging Ports':
+                            this.drawChargingPort(-0.5, -0.2, 0.5);
+                            this.drawChargingPort(0.5, -0.2, 0.5);
+                            break;
+                        case 'LED Ambient Lighting':
+                            this.drawLEDStrip(-2, -0.8, -0.3);
+                            this.drawLEDStrip(2, -0.8, -0.3);
+                            break;
+                    }
+                });
+            }
+            
+            drawPillow(x, y, z) {
+                const colors = ['#FFB6C1', '#E6E6FA', '#F0E68C', '#FFA07A'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                this.drawRect3D(x - 0.2, y, z, 0.4, 0.4, 0.4, color, 0.9);
+            }
+            
+            drawChargingPort(x, y, z) {
+                this.ctx.fillStyle = '#333';
+                this.drawCircle2D(x, y, z, 0.05);
+            }
+            
+            drawLEDStrip(x, y, z) {
+                this.ctx.fillStyle = '#00FFFF';
+                this.drawRect2D(x - 0.1, y, z, 0.2, 0.05, 0.05);
+            }
+            
+            drawSelectionHighlight() {
+                this.ctx.strokeStyle = '#FFD700';
+                this.ctx.lineWidth = 3;
+                this.ctx.globalAlpha = 0.7;
+                
+                switch(this.selectedPart) {
+                    case 'seat':
+                        this.drawRect3D(-1.5, -0.5, -0.5, 3, 1, 1, 'transparent', 1.0);
+                        break;
+                    case 'left_arm':
+                        this.drawRect3D(-1.8, -0.2, -0.3, 0.3, 1.2, 0.6, 'transparent', 1.0);
+                        break;
+                    case 'right_arm':
+                        this.drawRect3D(1.5, -0.2, -0.3, 0.3, 1.2, 0.6, 'transparent', 1.0);
+                        break;
+                }
+                
+                this.ctx.globalAlpha = 1.0;
+            }
+            
+            drawRect3D(x, y, z, width, height, depth, color, alpha = 1.0) {
+                // Simplified 3D to 2D projection
+                this.ctx.globalAlpha = alpha;
+                this.ctx.fillStyle = color;
+                
+                const points = this.project3DPoints([
+                    { x: x, y: y, z: z },
+                    { x: x + width, y: y, z: z },
+                    { x: x + width, y: y + height, z: z },
+                    { x: x, y: y + height, z: z },
+                    { x: x, y: y, z: z + depth },
+                    { x: x + width, y: y, z: z + depth },
+                    { x: x + width, y: y + height, z: z + depth },
+                    { x: x, y: y + height, z: z + depth }
+                ]);
+                
+                // Draw front face
+                this.ctx.beginPath();
+                this.ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < 4; i++) {
+                    this.ctx.lineTo(points[i].x, points[i].y);
+                }
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Draw side faces
+                this.ctx.beginPath();
+                this.ctx.moveTo(points[4].x, points[4].y);
+                this.ctx.lineTo(points[5].x, points[5].y);
+                this.ctx.lineTo(points[6].x, points[6].y);
+                this.ctx.lineTo(points[7].x, points[7].y);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                this.ctx.globalAlpha = 1.0;
+            }
+            
+            drawRect2D(x, y, z, width, height, depth) {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                const scale = 150 * this.camera.zoom;
+                
+                const screenX = centerX + x * scale - this.camera.x * 50;
+                const screenY = centerY + y * scale + this.camera.z * 50;
+                
+                this.ctx.fillRect(screenX - (width * scale) / 2, screenY - (height * scale) / 2, width * scale, height * scale);
+            }
+            
+            drawCircle2D(x, y, z, radius) {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                const scale = 150 * this.camera.zoom;
+                
+                const screenX = centerX + x * scale - this.camera.x * 50;
+                const screenY = centerY + y * scale + this.camera.z * 50;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(screenX, screenY, radius * scale, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            project3DPoints(points) {
+                return points.map(point => {
+                    const centerX = this.canvas.width / 2;
+                    const centerY = this.canvas.height / 2;
+                    const scale = 150 * this.camera.zoom;
+                    
+                    // Apply rotation
+                    const rotatedX = point.x * Math.cos(this.camera.rotationY) - point.z * Math.sin(this.camera.rotationY);
+                    const rotatedZ = point.x * Math.sin(this.camera.rotationY) + point.z * Math.cos(this.camera.rotationY);
+                    const rotatedY = point.y * Math.cos(this.camera.rotationX) - rotatedZ * Math.sin(this.camera.rotationX);
+                    const finalZ = point.y * Math.sin(this.camera.rotationX) + rotatedZ * Math.cos(this.camera.rotationX);
+                    
+                    return {
+                        x: centerX + rotatedX * scale - this.camera.x * 50,
+                        y: centerY - rotatedY * scale + this.camera.z * 50,
+                        z: finalZ
+                    };
+                });
+            }
+            
+            worldToScreenX(x, z) {
+                const centerX = this.canvas.width / 2;
+                const scale = 150 * this.camera.zoom;
+                
+                const rotatedX = x * Math.cos(this.camera.rotationY) - z * Math.sin(this.camera.rotationY);
+                return centerX + rotatedX * scale - this.camera.x * 50;
+            }
+            
+            worldToScreenY(y, z) {
+                const centerY = this.canvas.height / 2;
+                const scale = 150 * this.camera.zoom;
+                
+                const rotatedY = y * Math.cos(this.camera.rotationX) - z * Math.sin(this.camera.rotationX);
+                return centerY - rotatedY * scale + this.camera.z * 50;
+            }
+            
+            adjustColor(color, amount) {
+                // Simple color adjustment
+                const hex = color.replace('#', '');
+                const num = parseInt(hex, 16);
+                const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+                const g = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amount));
+                const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+                return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+            }
+            
+            drawEnvironment() {
+                // Draw floor
+                const gradient = this.ctx.createLinearGradient(0, this.canvas.height * 0.7, 0, this.canvas.height);
+                gradient.addColorStop(0, '#f0f0f0');
+                gradient.addColorStop(1, '#d0d0d0');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, this.canvas.height * 0.7, this.canvas.width, this.canvas.height * 0.3);
+                
+                // Draw background
+                const bgGradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height * 0.7);
+                bgGradient.addColorStop(0, '#87CEEB');
+                bgGradient.addColorStop(1, '#E6E6FA');
+                this.ctx.fillStyle = bgGradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height * 0.7);
+            }
+            
+            animate() {
+                if (this.autoRotate) {
+                    this.camera.rotationY += 0.005;
+                }
+                
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw environment
+                this.drawEnvironment();
+                
+                // Draw product
+                this.drawSofa();
+                
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // Initialize configurator when page loads
+        window.addEventListener('load', () => {
+            new ProductConfigurator();
+        });
+    </script>
+</body>
+</html>

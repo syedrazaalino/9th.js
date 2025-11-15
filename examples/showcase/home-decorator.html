@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Decorator - Interior Design Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .decorator-ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            color: #333;
+            min-width: 320px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .decorator-ui h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 26px;
+            color: #667eea;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-bottom: 3px solid rgba(102, 126, 234, 0.3);
+            padding-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .room-section {
+            margin-bottom: 25px;
+        }
+
+        .room-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            padding-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .room-types {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .room-btn {
+            padding: 12px 10px;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #333;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .room-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .room-btn.active {
+            background: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .furniture-section {
+            margin-bottom: 25px;
+        }
+
+        .furniture-section h4 {
+            color: #764ba2;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .furniture-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .furniture-btn {
+            padding: 10px 6px;
+            border: 2px solid #764ba2;
+            border-radius: 8px;
+            background: rgba(118, 75, 162, 0.1);
+            color: #333;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .furniture-btn:hover {
+            background: rgba(118, 75, 162, 0.2);
+            box-shadow: 0 3px 10px rgba(118, 75, 162, 0.3);
+        }
+
+        .furniture-btn.active {
+            background: rgba(118, 75, 162, 0.3);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        .wall-section {
+            margin-bottom: 25px;
+        }
+
+        .wall-section h4 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .wall-types {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .wall-btn {
+            padding: 10px 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: rgba(221, 221, 221, 0.5);
+            color: #333;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .wall-btn:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .wall-btn.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .color-picker {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .color-option {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .color-option.active {
+            border-color: #667eea;
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+        }
+
+        .texture-section {
+            margin-bottom: 25px;
+        }
+
+        .texture-section h4 {
+            color: #764ba2;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .texture-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .texture-btn {
+            padding: 8px 6px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: rgba(221, 221, 221, 0.5);
+            color: #333;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .texture-btn:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.2);
+        }
+
+        .texture-btn.active {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.3);
+            box-shadow: 0 3px 10px rgba(118, 75, 162, 0.2);
+        }
+
+        .lighting-section {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .lighting-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .lighting-control {
+            margin-bottom: 15px;
+        }
+
+        .lighting-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .lighting-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .lighting-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .lighting-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .lighting-value {
+            text-align: right;
+            color: #667eea;
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .atmosphere-presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .preset-btn {
+            padding: 12px 8px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #333;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .preset-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .scene-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .room-stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 15px 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            backdrop-filter: blur(10px);
+            max-width: 280px;
+        }
+
+        .room-stats h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .stat-item {
+            margin-bottom: 5px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #764ba2;
+        }
+
+        .room-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .layout-btn {
+            padding: 8px 6px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: rgba(221, 221, 221, 0.5);
+            color: #333;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .layout-btn:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .layout-btn.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .decorator-ui {
+                width: 280px;
+                right: 10px;
+                top: 10px;
+                padding: 15px;
+            }
+            
+            .room-types,
+            .wall-types,
+            .texture-options,
+            .atmosphere-presets {
+                grid-template-columns: 1fr;
+            }
+            
+            .furniture-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .color-picker {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="decorator-ui">
+        <h1>🏠 Home Decorator</h1>
+        
+        <div class="room-section">
+            <h3>Room Type</h3>
+            <div class="room-types">
+                <button class="room-btn active" data-room="living">Living Room</button>
+                <button class="room-btn" data-room="bedroom">Bedroom</button>
+                <button class="room-btn" data-room="kitchen">Kitchen</button>
+                <button class="room-btn" data-room="office">Office</button>
+            </div>
+            
+            <div class="room-layout">
+                <div class="layout-btn active" data-layout="modern">Modern</div>
+                <div class="layout-btn" data-layout="classic">Classic</div>
+                <div class="layout-btn" data-layout="minimalist">Minimalist</div>
+                <div class="layout-btn" data-layout="rustic">Rustic</div>
+            </div>
+        </div>
+
+        <div class="wall-section">
+            <h4>Wall Design</h4>
+            <div class="wall-types">
+                <div class="wall-btn active" data-wall="paint">Paint</div>
+                <div class="wall-btn" data-wall="wallpaper">Wallpaper</div>
+                <div class="wall-btn" data-wall="brick">Brick</div>
+                <div class="wall-btn" data-wall="wood">Wood Panel</div>
+            </div>
+            
+            <div class="color-picker" id="wallColors">
+                <div class="color-option active" style="background: #F5F5DC" data-color="#F5F5DC"></div>
+                <div class="color-option" style="background: #FFF8DC" data-color="#FFF8DC"></div>
+                <div class="color-option" style="background: #F0F8FF" data-color="#F0F8FF"></div>
+                <div class="color-option" style="background: #F5F0FF" data-color="#F5F0FF"></div>
+                <div class="color-option" style="background: #FFF0F5" data-color="#FFF0F5"></div>
+                <div class="color-option" style="background: #F0FFF0" data-color="#F0FFF0"></div>
+            </div>
+        </div>
+
+        <div class="furniture-section">
+            <h4>Sofas & Chairs</h4>
+            <div class="furniture-grid">
+                <div class="furniture-btn active" data-furniture="sofa-modern">Modern Sofa</div>
+                <div class="furniture-btn" data-furniture="sofa-sectional">Sectional</div>
+                <div class="furniture-btn" data-furniture="chair-armchair">Armchair</div>
+                <div class="furniture-btn" data-furniture="chair-dining">Dining Chair</div>
+                <div class="furniture-btn" data-furniture="chair-office">Office Chair</div>
+                <div class="furniture-btn" data-furniture="chair-rocker">Rocking Chair</div>
+            </div>
+            
+            <h4>Tables & Storage</h4>
+            <div class="furniture-grid">
+                <div class="furniture-btn" data-furniture="table-coffee">Coffee Table</div>
+                <div class="furniture-btn" data-furniture="table-dining">Dining Table</div>
+                <div class="furniture-btn" data-furniture="table-side">Side Table</div>
+                <div class="furniture-btn" data-furniture="cabinet-bookshelf">Bookshelf</div>
+                <div class="furniture-btn" data-furniture="cabinet-display">Display Cabinet</div>
+                <div class="furniture-btn" data-furniture="cabinet-storage">Storage Unit</div>
+            </div>
+            
+            <h4>Decor & Plants</h4>
+            <div class="furniture-grid">
+                <div class="furniture-btn" data-furniture="decor-vase">Vase</div>
+                <div class="furniture-btn" data-furniture="decor-lamp">Floor Lamp</div>
+                <div class="furniture-btn" data-furniture="decor-mirror">Mirror</div>
+                <div class="furniture-btn" data-furniture="decor-plant">Potted Plant</div>
+                <div class="furniture-btn" data-furniture="decor-artwork">Artwork</div>
+                <div class="furniture-btn" data-furniture="decor-rug">Rug</div>
+            </div>
+        </div>
+
+        <div class="texture-section">
+            <h4>Floor Material</h4>
+            <div class="texture-options">
+                <div class="texture-btn active" data-texture="hardwood">Hardwood</div>
+                <div class="texture-btn" data-texture="laminate">Laminate</div>
+                <div class="texture-btn" data-texture="tile">Ceramic Tile</div>
+                <div class="texture-btn" data-texture="carpet">Carpet</div>
+                <div class="texture-btn" data-texture="marble">Marble</div>
+                <div class="texture-btn" data-texture="concrete">Polished Concrete</div>
+            </div>
+        </div>
+
+        <div class="lighting-section">
+            <h3>💡 Lighting Design</h3>
+            
+            <div class="lighting-control">
+                <label>Natural Light:</label>
+                <input type="range" class="lighting-slider" id="naturalLight" min="0" max="150" value="80">
+                <div class="lighting-value" id="naturalValue">80%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Ambient Light:</label>
+                <input type="range" class="lighting-slider" id="ambientLight" min="0" max="100" value="40">
+                <div class="lighting-value" id="ambientValue">40%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Task Lighting:</label>
+                <input type="range" class="lighting-slider" id="taskLight" min="0" max="120" value="60">
+                <div class="lighting-value" id="taskValue">60%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Accent Light:</label>
+                <input type="range" class="lighting-slider" id="accentLight" min="0" max="100" value="30">
+                <div class="lighting-value" id="accentValue">30%</div>
+            </div>
+
+            <div class="atmosphere-presets">
+                <button class="preset-btn" onclick="setAtmospherePreset('cozy')">Cozy</button>
+                <button class="preset-btn" onclick="setAtmospherePreset('bright')">Bright</button>
+                <button class="preset-btn" onclick="setAtmospherePreset('dramatic')">Dramatic</button>
+                <button class="preset-btn" onclick="setAtmospherePreset('relaxing')">Relaxing</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="scene-info">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Polygons: <span id="polygons">4,892</span></div>
+        <div>Materials: <span id="materials">12</span></div>
+        <div>Textures: <span id="textures">8</span></div>
+        <div>Lights: <span id="lights">7</span></div>
+    </div>
+
+    <div class="room-stats">
+        <h4>Room Summary</h4>
+        <div class="stat-item">
+            <span class="stat-label">Room:</span>
+            <span id="roomType">Living Room</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Style:</span>
+            <span id="roomStyle">Modern</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Wall:</span>
+            <span id="wallType">Paint - Beige</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Floor:</span>
+            <span id="floorType">Hardwood</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Furniture:</span>
+            <span id="furnitureCount">6 items</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Lighting:</span>
+            <span id="lightingType">Balanced</span>
+        </div>
+    </div>
+
+    <script src="../../dist/umd/9th.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, room, animationId;
+        let naturalLight, ambientLight, taskLight, accentLight, spotLight;
+        let wallMaterial, floorMaterial, furnitureMaterial;
+        let currentRoom = 'living', currentLayout = 'modern', currentWallType = 'paint';
+        let currentWallColor = '#F5F5DC', currentTexture = 'hardwood';
+        let selectedFurniture = new Set(['sofa-modern', 'table-coffee']);
+        
+        const stats = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: performance.now()
+        };
+
+        // Furniture definitions
+        const furnitureTypes = {
+            'sofa-modern': { name: 'Modern Sofa', position: [-2, 0.4, 0], size: [3, 0.8, 1] },
+            'sofa-sectional': { name: 'Sectional Sofa', position: [-1.5, 0.4, 0], size: [3.5, 0.8, 2] },
+            'chair-armchair': { name: 'Armchair', position: [2, 0.4, 0], size: [0.8, 0.8, 0.8] },
+            'chair-dining': { name: 'Dining Chair', position: [0, 0.4, -2], size: [0.5, 0.9, 0.5] },
+            'chair-office': { name: 'Office Chair', position: [1, 0.4, 1], size: [0.6, 1.2, 0.6] },
+            'chair-rocker': { name: 'Rocking Chair', position: [2, 0.4, -1], size: [0.6, 1, 0.8] },
+            'table-coffee': { name: 'Coffee Table', position: [0, 0.25, 0], size: [1.2, 0.1, 0.6] },
+            'table-dining': { name: 'Dining Table', position: [0, 0.75, -2], size: [1.8, 0.1, 0.9] },
+            'table-side': { name: 'Side Table', position: [2.2, 0.6, 1.5], size: [0.4, 0.6, 0.4] },
+            'cabinet-bookshelf': { name: 'Bookshelf', position: [-2.8, 1.5, -1], size: [0.3, 3, 1.2] },
+            'cabinet-display': { name: 'Display Cabinet', position: [2.8, 1.5, 0], size: [0.4, 2.5, 1] },
+            'cabinet-storage': { name: 'Storage Unit', position: [-2.8, 0.75, 1.5], size: [0.4, 1.5, 2] },
+            'decor-vase': { name: 'Decorative Vase', position: [1.5, 0.8, 1.5], size: [0.2, 0.4, 0.2] },
+            'decor-lamp': { name: 'Floor Lamp', position: [2.5, 1.8, -1], size: [0.3, 1.8, 0.3] },
+            'decor-mirror': { name: 'Wall Mirror', position: [-3, 1.5, 0], size: [0.05, 1, 0.8] },
+            'decor-plant': { name: 'Potted Plant', position: [2.5, 0, -0.5], size: [0.4, 1.2, 0.4] },
+            'decor-artwork': { name: 'Artwork', position: [0, 1.5, -3], size: [0.05, 1.2, 0.9] },
+            'decor-rug': { name: 'Area Rug', position: [0, 0.01, 0], size: [4, 0.02, 3] }
+        };
+
+        // Texture properties
+        const textureProperties = {
+            hardwood: { color: 0x8B4513, roughness: 0.4, metalness: 0.1 },
+            laminate: { color: 0xD2B48C, roughness: 0.6, metalness: 0.0 },
+            tile: { color: 0xF5F5F5, roughness: 0.2, metalness: 0.0 },
+            carpet: { color: 0x8B7355, roughness: 0.8, metalness: 0.0 },
+            marble: { color: 0xF8F8FF, roughness: 0.1, metalness: 0.2 },
+            concrete: { color: 0x696969, roughness: 0.7, metalness: 0.0 }
+        };
+
+        // Initialize the application
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create scene
+            scene = new Ninth.Scene();
+            scene.background = new Ninth.Color(0x87CEEB);
+
+            // Create camera
+            camera = new Ninth.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 4, 8);
+            camera.lookAt(0, 2, 0);
+
+            // Create renderer
+            renderer = new Ninth.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = Ninth.PCFSoftShadowMap;
+            renderer.toneMapping = Ninth.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputEncoding = Ninth.sRGBEncoding;
+
+            // Setup lighting
+            setupLighting();
+
+            // Create room
+            createRoom();
+
+            // Setup controls
+            setupControls();
+
+            // Start animation loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Natural light (sunlight)
+            naturalLight = new Ninth.DirectionalLight(0xffffff, 0.8);
+            naturalLight.position.set(10, 10, 5);
+            naturalLight.castShadow = true;
+            naturalLight.shadow.mapSize.width = 2048;
+            naturalLight.shadow.mapSize.height = 2048;
+            naturalLight.shadow.camera.near = 0.5;
+            naturalLight.shadow.camera.far = 50;
+            scene.add(naturalLight);
+
+            // Ambient light
+            ambientLight = new Ninth.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            // Task lighting
+            taskLight = new Ninth.PointLight(0xffffff, 0.6, 20);
+            taskLight.position.set(0, 6, 0);
+            taskLight.castShadow = true;
+            scene.add(taskLight);
+
+            // Accent lighting
+            accentLight = new Ninth.SpotLight(0xffffff, 0.3, 30, Math.PI / 8, 0.3, 1);
+            accentLight.position.set(5, 4, 5);
+            accentLight.target.position.set(0, 2, 0);
+            scene.add(accentLight);
+            scene.add(accentLight.target);
+
+            // Additional spot light
+            spotLight = new Ninth.SpotLight(0xfff8dc, 0.4, 25, Math.PI / 6, 0.4, 1);
+            spotLight.position.set(-5, 4, -5);
+            spotLight.target.position.set(0, 1, 0);
+            scene.add(spotLight);
+            scene.add(spotLight.target);
+        }
+
+        function createRoom() {
+            // Remove existing room
+            if (room) {
+                scene.remove(room);
+            }
+
+            // Create room group
+            room = new Ninth.Group();
+
+            // Create materials
+            createMaterials();
+
+            // Create walls
+            createWalls();
+
+            // Create floor and ceiling
+            createFloorAndCeiling();
+
+            // Add furniture
+            addFurniture();
+
+            // Position room
+            room.position.y = 0;
+            scene.add(room);
+
+            updateStats();
+            updateRoomStats();
+        }
+
+        function createMaterials() {
+            // Wall material
+            wallMaterial = new Ninth.MeshStandardMaterial({
+                color: parseInt(currentWallColor.replace('#', '0x')),
+                roughness: 0.7,
+                metalness: 0.0
+            });
+
+            // Floor material
+            const floorProps = textureProperties[currentTexture];
+            floorMaterial = new Ninth.MeshStandardMaterial({
+                color: floorProps.color,
+                roughness: floorProps.roughness,
+                metalness: floorProps.metalness
+            });
+
+            // Furniture material
+            furnitureMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x8B4513,
+                roughness: 0.5,
+                metalness: 0.1
+            });
+        }
+
+        function createWalls() {
+            // Back wall
+            const backWallGeometry = new Ninth.PlaneGeometry(8, 3);
+            const backWall = new Ninth.Mesh(backWallGeometry, wallMaterial);
+            backWall.position.set(0, 1.5, -4);
+            backWall.receiveShadow = true;
+            room.add(backWall);
+
+            // Left wall
+            const leftWallGeometry = new Ninth.PlaneGeometry(8, 3);
+            const leftWall = new Ninth.Mesh(leftWallGeometry, wallMaterial);
+            leftWall.position.set(-4, 1.5, 0);
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.receiveShadow = true;
+            room.add(leftWall);
+
+            // Right wall
+            const rightWallGeometry = new Ninth.PlaneGeometry(8, 3);
+            const rightWall = new Ninth.Mesh(rightWallGeometry, wallMaterial);
+            rightWall.position.set(4, 1.5, 0);
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.receiveShadow = true;
+            room.add(rightWall);
+
+            // Front wall (partial, with window opening)
+            const frontWallGeometry = new Ninth.PlaneGeometry(8, 3);
+            const frontWall = new Ninth.Mesh(frontWallGeometry, wallMaterial);
+            frontWall.position.set(0, 1.5, 4);
+            frontWall.rotation.y = Math.PI;
+            frontWall.receiveShadow = true;
+            room.add(frontWall);
+        }
+
+        function createFloorAndCeiling() {
+            // Floor
+            const floorGeometry = new Ninth.PlaneGeometry(8, 8);
+            const floor = new Ninth.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            room.add(floor);
+
+            // Ceiling
+            const ceilingGeometry = new Ninth.PlaneGeometry(8, 8);
+            const ceilingMaterial = new Ninth.MeshStandardMaterial({
+                color: 0xF5F5F5,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const ceiling = new Ninth.Mesh(ceilingGeometry, ceilingMaterial);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.y = 3;
+            ceiling.receiveShadow = true;
+            room.add(ceiling);
+        }
+
+        function addFurniture() {
+            selectedFurniture.forEach(furnitureKey => {
+                const furniture = furnitureTypes[furnitureKey];
+                if (furniture) {
+                    createFurniturePiece(furnitureKey);
+                }
+            });
+        }
+
+        function createFurniturePiece(type) {
+            const furniture = furnitureTypes[type];
+            if (!furniture) return;
+
+            const furnitureGroup = new Ninth.Group();
+
+            // Create main piece
+            const geometry = new Ninth.BoxGeometry(...furniture.size);
+            const mesh = new Ninth.Mesh(geometry, furnitureMaterial);
+            mesh.position.set(...furniture.position);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            furnitureGroup.add(mesh);
+
+            // Add specific details based on furniture type
+            if (type.includes('sofa')) {
+                addSofaDetails(furnitureGroup, furniture);
+            } else if (type.includes('chair')) {
+                addChairDetails(furnitureGroup, furniture);
+            } else if (type.includes('table')) {
+                addTableDetails(furnitureGroup, furniture);
+            } else if (type.includes('cabinet')) {
+                addCabinetDetails(furnitureGroup, furniture);
+            } else if (type.includes('decor')) {
+                addDecorDetails(furnitureGroup, furniture);
+            }
+
+            room.add(furnitureGroup);
+        }
+
+        function addSofaDetails(group, furniture) {
+            // Add cushions
+            for (let i = 0; i < 3; i++) {
+                const cushionGeometry = new Ninth.BoxGeometry(0.8, 0.2, 0.9);
+                const cushion = new Ninth.Mesh(cushionGeometry, furnitureMaterial);
+                cushion.position.set(-0.8 + i * 0.8, furniture.position[1] + 0.5, furniture.position[2]);
+                cushion.castShadow = true;
+                group.add(cushion);
+            }
+        }
+
+        function addChairDetails(group, furniture) {
+            // Add backrest
+            const backrestGeometry = new Ninth.BoxGeometry(furniture.size[0], 0.8, 0.1);
+            const backrest = new Ninth.Mesh(backrestGeometry, furnitureMaterial);
+            backrest.position.set(furniture.position[0], furniture.position[1] + 0.6, furniture.position[2] - furniture.size[2] / 2 + 0.05);
+            backrest.castShadow = true;
+            group.add(backrest);
+        }
+
+        function addTableDetails(group, furniture) {
+            // Add legs
+            const legPositions = [
+                [-furniture.size[0]/2 + 0.1, furniture.position[1] - furniture.size[1]/2, furniture.position[2] - furniture.size[2]/2 + 0.1],
+                [furniture.size[0]/2 - 0.1, furniture.position[1] - furniture.size[1]/2, furniture.position[2] - furniture.size[2]/2 + 0.1],
+                [-furniture.size[0]/2 + 0.1, furniture.position[1] - furniture.size[1]/2, furniture.position[2] + furniture.size[2]/2 - 0.1],
+                [furniture.size[0]/2 - 0.1, furniture.position[1] - furniture.size[1]/2, furniture.position[2] + furniture.size[2]/2 - 0.1]
+            ];
+
+            legPositions.forEach(pos => {
+                const legGeometry = new Ninth.CylinderGeometry(0.05, 0.05, furniture.size[1]);
+                const leg = new Ninth.Mesh(legGeometry, furnitureMaterial);
+                leg.position.set(...pos);
+                leg.castShadow = true;
+                group.add(leg);
+            });
+        }
+
+        function addCabinetDetails(group, furniture) {
+            // Add shelves
+            for (let i = 1; i < 4; i++) {
+                const shelfGeometry = new Ninth.BoxGeometry(furniture.size[0], 0.05, furniture.size[2]);
+                const shelf = new Ninth.Mesh(shelfGeometry, furnitureMaterial);
+                shelf.position.set(furniture.position[0], furniture.position[1] - furniture.size[1]/2 + i * (furniture.size[1]/4), furniture.position[2]);
+                shelf.castShadow = true;
+                group.add(shelf);
+            }
+        }
+
+        function addDecorDetails(group, furniture) {
+            // Special decorations based on type
+            if (furnitureTypes[furniture.key]?.name === 'Potted Plant') {
+                // Add plant pot and leaves
+                const potGeometry = new Ninth.CylinderGeometry(0.15, 0.2, 0.3);
+                const pot = new Ninth.Mesh(potGeometry, furnitureMaterial);
+                pot.position.set(furniture.position[0], furniture.position[1] - 0.2, furniture.position[2]);
+                pot.castShadow = true;
+                group.add(pot);
+
+                // Add simple plant representation
+                const plantGeometry = new Ninth.SphereGeometry(0.3, 6, 4);
+                const plant = new Ninth.Mesh(plantGeometry, furnitureMaterial);
+                plant.position.set(furniture.position[0], furniture.position[1] + 0.3, furniture.position[2]);
+                plant.castShadow = true;
+                group.add(plant);
+            }
+        }
+
+        function setupControls() {
+            // Room type buttons
+            document.querySelectorAll('.room-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.room-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentRoom = this.dataset.room;
+                    updateRoomStats();
+                });
+            });
+
+            // Layout buttons
+            document.querySelectorAll('.layout-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentLayout = this.dataset.layout;
+                    updateRoomStats();
+                });
+            });
+
+            // Wall type buttons
+            document.querySelectorAll('.wall-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.wall-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentWallType = this.dataset.wall;
+                    createRoom();
+                });
+            });
+
+            // Color selection
+            document.querySelectorAll('.color-option').forEach(color => {
+                color.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    currentWallColor = this.dataset.color;
+                    createRoom();
+                });
+            });
+
+            // Texture options
+            document.querySelectorAll('.texture-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTexture = this.dataset.texture;
+                    createRoom();
+                    updateRoomStats();
+                });
+            });
+
+            // Furniture buttons
+            document.querySelectorAll('.furniture-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const furnitureKey = this.dataset.furniture;
+                    this.classList.toggle('active');
+                    
+                    if (this.classList.contains('active')) {
+                        selectedFurniture.add(furnitureKey);
+                    } else {
+                        selectedFurniture.delete(furnitureKey);
+                    }
+                    
+                    createRoom();
+                    updateRoomStats();
+                });
+            });
+
+            // Lighting controls
+            const lightControls = [
+                { id: 'naturalLight', obj: naturalLight, valueId: 'naturalValue', suffix: '%' },
+                { id: 'ambientLight', obj: ambientLight, valueId: 'ambientValue', suffix: '%' },
+                { id: 'taskLight', obj: taskLight, valueId: 'taskValue', suffix: '%' },
+                { id: 'accentLight', obj: accentLight, valueId: 'accentValue', suffix: '%' }
+            ];
+
+            lightControls.forEach(control => {
+                const element = document.getElementById(control.id);
+                const valueElement = document.getElementById(control.valueId);
+                
+                element.addEventListener('input', function() {
+                    const value = parseFloat(this.value);
+                    control.obj.intensity = value / 100;
+                    valueElement.textContent = value + control.suffix;
+                });
+            });
+        }
+
+        function updateRoomStats() {
+            const roomNames = {
+                living: 'Living Room',
+                bedroom: 'Bedroom',
+                kitchen: 'Kitchen',
+                office: 'Office'
+            };
+
+            const layoutNames = {
+                modern: 'Modern',
+                classic: 'Classic',
+                minimalist: 'Minimalist',
+                rustic: 'Rustic'
+            };
+
+            const textureNames = {
+                hardwood: 'Hardwood',
+                laminate: 'Laminate',
+                tile: 'Ceramic Tile',
+                carpet: 'Carpet',
+                marble: 'Marble',
+                concrete: 'Polished Concrete'
+            };
+
+            document.getElementById('roomType').textContent = roomNames[currentRoom];
+            document.getElementById('roomStyle').textContent = layoutNames[currentLayout];
+            document.getElementById('wallType').textContent = 
+                currentWallType.charAt(0).toUpperCase() + currentWallType.slice(1) + ' - ' + getColorName();
+            document.getElementById('floorType').textContent = textureNames[currentTexture];
+            document.getElementById('furnitureCount').textContent = `${selectedFurniture.size} items`;
+            document.getElementById('lightingType').textContent = getLightingType();
+        }
+
+        function getColorName() {
+            const colorNames = {
+                '#F5F5DC': 'Beige',
+                '#FFF8DC': 'Cornsilk',
+                '#F0F8FF': 'Alice Blue',
+                '#F5F0FF': 'Lavender',
+                '#FFF0F5': 'Lavender Blush',
+                '#F0FFF0': 'Honeydew'
+            };
+            return colorNames[currentWallColor] || 'Custom';
+        }
+
+        function getLightingType() {
+            const natural = parseInt(document.getElementById('naturalLight').value);
+            const ambient = parseInt(document.getElementById('ambientLight').value);
+            
+            if (natural > 100 && ambient < 50) return 'Bright';
+            if (natural < 60 && ambient > 60) return 'Cozy';
+            if (ambient > 80) return 'Warm';
+            return 'Balanced';
+        }
+
+        function setAtmospherePreset(preset) {
+            const presets = {
+                cozy: { natural: 40, ambient: 80, task: 70, accent: 40 },
+                bright: { natural: 120, ambient: 60, task: 100, accent: 30 },
+                dramatic: { natural: 20, ambient: 30, task: 90, accent: 100 },
+                relaxing: { natural: 60, ambient: 50, task: 40, accent: 60 }
+            };
+
+            const p = presets[preset];
+            if (p) {
+                document.getElementById('naturalLight').value = p.natural;
+                document.getElementById('ambientLight').value = p.ambient;
+                document.getElementById('taskLight').value = p.task;
+                document.getElementById('accentLight').value = p.accent;
+                
+                naturalLight.intensity = p.natural / 100;
+                ambientLight.intensity = p.ambient / 100;
+                taskLight.intensity = p.task / 100;
+                accentLight.intensity = p.accent / 100;
+                
+                document.getElementById('naturalValue').textContent = p.natural + '%';
+                document.getElementById('ambientValue').textContent = p.ambient + '%';
+                document.getElementById('taskValue').textContent = p.task + '%';
+                document.getElementById('accentValue').textContent = p.accent + '%';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('materials').textContent = '12';
+            document.getElementById('textures').textContent = '8';
+            document.getElementById('lights').textContent = '7';
+            document.getElementById('polygons').textContent = '4,892';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Update FPS counter
+            const now = performance.now();
+            stats.frameCount++;
+            
+            if (now - stats.lastTime >= 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (now - stats.lastTime));
+                document.getElementById('fps').textContent = stats.fps;
+                stats.frameCount = 0;
+                stats.lastTime = now;
+            }
+
+            // Gentle camera movement for showcase
+            if (room) {
+                const time = Date.now() * 0.001;
+                camera.position.x = Math.cos(time * 0.1) * 8;
+                camera.position.z = Math.sin(time * 0.1) * 8;
+                camera.lookAt(0, 2, 0);
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

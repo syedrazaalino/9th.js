@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astronomy Education - Space Exploration Learning</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .demo-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #87ceeb;
+        }
+        
+        .learning-objectives {
+            background: rgba(135, 206, 235, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin: 12px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            background: #87ceeb;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #4169e1;
+            transform: translateY(-1px);
+        }
+        
+        .control-group button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .control-group button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .space-info {
+            background: rgba(135, 206, 235, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #87ceeb;
+        }
+        
+        .cosmic-info {
+            background: rgba(138, 43, 226, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #8a2be2;
+        }
+        
+        .distance-display {
+            background: rgba(255, 215, 0, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .telescope-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .warp-controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .velocity-indicator {
+            background: rgba(255, 255, 255, 0.1);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .velocity-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #87ceeb, #4169e1, #8a2be2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #87ceeb;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(135, 206, 235, 0.3) !important;
+            border: 1px solid #87ceeb;
+        }
+        
+        .celestial-button {
+            background: rgba(135, 206, 235, 0.3);
+            color: white;
+            border: 1px solid rgba(135, 206, 235, 0.5);
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .celestial-button:hover {
+            background: rgba(135, 206, 235, 0.5);
+        }
+        
+        .celestial-button.active {
+            background: #87ceeb;
+            border-color: #87ceeb;
+        }
+        
+        .star-field {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="star-field" id="star-field"></div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h1>Astronomy Education</h1>
+            
+            <div class="demo-section" onclick="selectDemo('solarsystem')">
+                <div class="demo-title">Solar System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore planetary orbits<br>
+                    • Understand scale and distances<br>
+                    • Learn about planetary characteristics
+                </div>
+                
+                <div class="control-group">
+                    <label>Target Planet:</label>
+                    <select id="planet-selector" onchange="focusOnPlanet()">
+                        <option value="sun">Sun</option>
+                        <option value="mercury">Mercury</option>
+                        <option value="venus">Venus</option>
+                        <option value="earth">Earth</option>
+                        <option value="mars">Mars</option>
+                        <option value="jupiter">Jupiter</option>
+                        <option value="saturn">Saturn</option>
+                        <option value="uranus">Uranus</option>
+                        <option value="neptune">Neptune</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Time Speed:</label>
+                    <input type="range" id="time-speed" min="0.1" max="10" step="0.1" value="1" onchange="updateTimeSpeed()">
+                    <span id="speed-value">1.0x</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Scale Factor:</label>
+                    <input type="range" id="scale-factor" min="0.01" max="1" step="0.01" value="0.1" onchange="updateScale()">
+                    <span id="scale-value">0.1</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="toggleOrbits()">Toggle Orbits</button>
+                    <button onclick="showPlanetData()">Show Planet Data</button>
+                    <button onclick="resetView()">Reset View</button>
+                </div>
+                
+                <div class="warp-controls">
+                    <div class="control-group">
+                        <label>Warp Speed:</label>
+                        <div class="velocity-indicator">
+                            <div class="velocity-bar" id="warp-bar"></div>
+                        </div>
+                        <span id="warp-speed-display">1.0c</span>
+                    </div>
+                    <div class="control-group">
+                        <button onclick="engageWarp()">Engage Warp</button>
+                        <button onclick="setCruise()">Set Cruise</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('stardeath')">
+                <div class="demo-title">Stellar Evolution</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand star lifecycle<br>
+                    • Explore stellar remnants<br>
+                    • Learn about nuclear fusion
+                </div>
+                
+                <div class="control-group">
+                    <label>Stellar Mass (Solar Masses):</label>
+                    <input type="range" id="stellar-mass" min="0.1" max="25" step="0.1" value="1" onchange="updateStellarEvolution()">
+                    <span id="mass-value">1.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Evolution Stage:</label>
+                    <select id="evolution-stage" onchange="setEvolutionStage()">
+                        <option value="protostar">Protostar</option>
+                        <option value="main-sequence">Main Sequence</option>
+                        <option value="red-giant">Red Giant</option>
+                        <option value="white-dwarf">White Dwarf</option>
+                        <option value="supernova">Supernova</option>
+                        <option value="neutron-star">Neutron Star</option>
+                        <option value="black-hole">Black Hole</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="startStellarEvolution()">Start Evolution</button>
+                    <button onclick="simulateSupernova()">Simulate Supernova</button>
+                    <button onclick="showNuclearFusion()">Show Fusion Process</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="celestial-button" onclick="showMainSequence()">Main Sequence</div>
+                    <div class="celestial-button" onclick="showRedGiant()">Red Giant</div>
+                    <div class="celestial-button" onclick="showWhiteDwarf()">White Dwarf</div>
+                    <div class="celestial-button" onclick="showNeutronStar()">Neutron Star</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('galaxies')">
+                <div class="demo-title">Galaxies & Cosmology</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore galaxy types<br>
+                    • Understand cosmic expansion<br>
+                    • Learn about dark matter
+                </div>
+                
+                <div class="control-group">
+                    <label>Galaxy Type:</label>
+                    <select id="galaxy-type" onchange="createGalaxy()">
+                        <option value="spiral">Spiral Galaxy</option>
+                        <option value="elliptical">Elliptical Galaxy</option>
+                        <option value="irregular">Irregular Galaxy</option>
+                        <option value="barred-spiral">Barred Spiral</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Galaxy Distance (Mly):</label>
+                    <input type="range" id="galaxy-distance" min="0.1" max="1000" step="0.1" value="10" onchange="updateGalaxyDistance()">
+                    <span id="distance-value">10.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="exploreMilkyWay()">Explore Milky Way</button>
+                    <button onclick="showGalaxyCluster()">Show Galaxy Cluster</button>
+                    <button onclick="simulateExpansion()">Simulate Cosmic Expansion</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="celestial-button" onclick="showSpiralArms()">Spiral Arms</div>
+                    <div class="celestial-button" onclick="showGalacticCenter()">Galactic Center</div>
+                    <div class="celestial-button" onclick="showHalo()">Dark Matter Halo</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('blackholes')">
+                <div class="demo-title">Black Holes & Relativity</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand event horizon<br>
+                    • Explore gravitational effects<br>
+                    • Learn about time dilation
+                </div>
+                
+                <div class="control-group">
+                    <label>Black Hole Mass (Solar Masses):</label>
+                    <input type="range" id="bh-mass" min="3" max="1000" step="1" value="10" onchange="updateBlackHole()">
+                    <span id="bh-mass-value">10</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Distance from Black Hole:</label>
+                    <input type="range" id="bh-distance" min="1" max="50" step="1" value="10" onchange="updateBlackHole()">
+                    <span id="bh-distance-value">10</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="simulateAccretionDisk()">Simulate Accretion Disk</button>
+                    <button onclick="showEventHorizon()">Show Event Horizon</button>
+                    <button onclick="simulateSpaghettification()">Simulate Spaghettification</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="distance-display" id="time-dilation-display">
+                        Time Dilation: 1.00x
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('exoplanets')">
+                <div class="demo-title">Exoplanets & Life</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Discover exoplanets<br>
+                    • Explore habitable zones<br>
+                    • Understand astrobiology
+                </div>
+                
+                <div class="control-group">
+                    <label>Star Type:</label>
+                    <select id="star-type" onchange="createExoplanetSystem()">
+                        <option value="red-dwarf">Red Dwarf</option>
+                        <option value="yellow-star">Yellow Star (Sun-like)</option>
+                        <option value="blue-giant">Blue Giant</option>
+                        <option value="brown-dwarf">Brown Dwarf</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Detection Method:</label>
+                    <select id="detection-method" onchange="setDetectionMethod()">
+                        <option value="transit">Transit Method</option>
+                        <option value="radial-velocity">Radial Velocity</option>
+                        <option value="direct-imaging">Direct Imaging</option>
+                        <option value="microlensing">Microlensing</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="searchForExoplanets()">Search for Exoplanets</button>
+                    <button onclick="analyzeHabitableZone()">Analyze Habitable Zone</button>
+                    <button onclick="assessAstrobiology()">Assess Astrobiology Potential</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="space-info" id="habitable-info">
+                        Habitable Zone: Distance from star where liquid water can exist
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a topic to begin</h3>
+                <div id="demo-description">
+                    Journey through the cosmos and explore the wonders of astronomy!
+                </div>
+                <div id="cosmic-display"></div>
+                <div id="distance-display"></div>
+            </div>
+            <div class="telescope-overlay" id="telescope-overlay">
+                Telescope Mode: Active<br>
+                Resolution: High<br>
+                Exposure: Optimal
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Astronomical objects and systems
+        let solarSystemObjects = {};
+        let stellarEvolutionObjects = {};
+        let galaxyObjects = {};
+        let blackHoleObjects = {};
+        let exoplanetObjects = {};
+        
+        // Simulation variables
+        let simulationTime = 0;
+        let warpSpeed = 1.0;
+        let timeScale = 1.0;
+        let scaleFactor = 0.1;
+        
+        // Create starfield background
+        createStarfield();
+        
+        init();
+        
+        function createStarfield() {
+            const starField = document.getElementById('star-field');
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Create gradient background
+            const gradient = context.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, canvas.width / 2
+            );
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(0.5, '#16213e');
+            gradient.addColorStop(1, '#0f0f23');
+            
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add stars
+            for (let i = 0; i < 1000; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 2;
+                const brightness = Math.random();
+                
+                context.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                context.beginPath();
+                context.arc(x, y, size, 0, Math.PI * 2);
+                context.fill();
+                
+                // Add some colored stars
+                if (Math.random() < 0.1) {
+                    const colors = ['#87ceeb', '#ff6b6b', '#ffd700', '#8a2be2'];
+                    context.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                    context.beginPath();
+                    context.arc(x, y, size * 0.5, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+            
+            starField.appendChild(canvas);
+        }
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 0.1, 10000);
+            camera.position.set(0, 50, 100);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 5000;
+            controls.minDistance = 1;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x222222, 0.4);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0x87ceeb, 1, 1000);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+            
+            // Create space environment
+            createSpaceEnvironment();
+            
+            // Start render loop
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createSpaceEnvironment() {
+            // Create distant star field
+            const starGeometry = new THREE.BufferGeometry();
+            const starMaterial = new THREE.PointsMaterial({ 
+                color: 0xffffff, 
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const starVertices = [];
+            for (let i = 0; i < 2000; i++) {
+                starVertices.push(
+                    (Math.random() - 0.5) * 2000,
+                    (Math.random() - 0.5) * 2000,
+                    (Math.random() - 0.5) * 2000
+                );
+            }
+            
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+            
+            // Create cosmic dust nebula
+            const nebulaGeometry = new THREE.SphereGeometry(500, 32, 32);
+            const nebulaMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4b0082,
+                transparent: true,
+                opacity: 0.1,
+                side: THREE.BackSide
+            });
+            const nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+            scene.add(nebula);
+        }
+        
+        function selectDemo(demoName) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = demoName;
+            
+            switch(demoName) {
+                case 'solarsystem':
+                    setupSolarSystem();
+                    break;
+                case 'stardeath':
+                    setupStellarEvolution();
+                    break;
+                case 'galaxies':
+                    setupGalaxyExploration();
+                    break;
+                case 'blackholes':
+                    setupBlackHolePhysics();
+                    break;
+                case 'exoplanets':
+                    setupExoplanetSearch();
+                    break;
+            }
+        }
+        
+        function setupSolarSystem() {
+            updateInfoPanel('Solar System', 
+                'Explore our cosmic neighborhood and learn about planetary dynamics.', 
+                '8 Planets • Multiple Moons • Asteroid Belt • Oort Cloud', 
+                'Distance scale: 1 unit = 1 AU (Earth-Sun distance)');
+            
+            clearScene();
+            createSpaceEnvironment();
+            createSolarSystem();
+        }
+        
+        function setupStellarEvolution() {
+            updateInfoPanel('Stellar Evolution', 
+                'Journey through the life cycle of stars from birth to death.', 
+                'Mass Determines Destiny', 
+                'Stellar evolution timescales: millions to billions of years');
+            
+            clearScene();
+            createSpaceEnvironment();
+            createStellarSystem();
+        }
+        
+        function setupGalaxyExploration() {
+            updateInfoPanel('Galaxies & Cosmology', 
+                'Discover the structure and evolution of galaxies.', 
+                'Billions of Galaxies • Dark Matter • Cosmic Expansion', 
+                'Observable universe: ~93 billion light-years across');
+            
+            clearScene();
+            createSpaceEnvironment();
+            createGalaxyCluster();
+        }
+        
+        function setupBlackHolePhysics() {
+            updateInfoPanel('Black Holes & Relativity', 
+                'Explore the extreme physics of black holes.', 
+                'Event Horizon • Time Dilation • Spaghettification', 
+                'Where gravity is so strong that nothing can escape');
+            
+            clearScene();
+            createSpaceEnvironment();
+            createBlackHoleSystem();
+        }
+        
+        function setupExoplanetSearch() {
+            updateInfoPanel('Exoplanets & Astrobiology', 
+                'Search for worlds beyond our solar system.', 
+                '4000+ Exoplanets Discovered • Potentially Habitable Worlds', 
+                'Kepler Space Telescope discoveries');
+            
+            clearScene();
+            createSpaceEnvironment();
+            createExoplanetSystem();
+        }
+        
+        function createSolarSystem() {
+            const planetData = [
+                { name: 'Sun', color: 0xffaa00, radius: 4, distance: 0, orbitSpeed: 0 },
+                { name: 'Mercury', color: 0x8c7853, radius: 0.15, distance: 8, orbitSpeed: 4 },
+                { name: 'Venus', color: 0xffc649, radius: 0.38, distance: 12, orbitSpeed: 3 },
+                { name: 'Earth', color: 0x6b93d6, radius: 0.4, distance: 16, orbitSpeed: 2 },
+                { name: 'Mars', color: 0xdc7b4e, radius: 0.21, distance: 20, orbitSpeed: 1.5 },
+                { name: 'Jupiter', color: 0xd8ca9d, radius: 1.4, distance: 28, orbitSpeed: 0.8 },
+                { name: 'Saturn', color: 0xfff1d2, radius: 1.2, distance: 36, orbitSpeed: 0.6 },
+                { name: 'Uranus', color: 0x4fd0e7, radius: 0.5, distance: 44, orbitSpeed: 0.4 },
+                { name: 'Neptune', color: 0x4b70dd, radius: 0.5, distance: 52, orbitSpeed: 0.3 }
+            ];
+            
+            // Create sun
+            const sunGeometry = new THREE.SphereGeometry(4, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffaa00,
+                emissive: 0xffaa00,
+                emissiveIntensity: 0.5
+            });
+            const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            sun.userData = { name: 'Sun', type: 'star' };
+            scene.add(sun);
+            solarSystemObjects.sun = sun;
+            
+            // Create planets
+            planetData.slice(1).forEach((planet, index) => {
+                // Create planet
+                const planetGeometry = new THREE.SphereGeometry(planet.radius, 16, 16);
+                const planetMaterial = new THREE.MeshPhongMaterial({ color: planet.color });
+                const planetMesh = new THREE.Mesh(planetGeometry, planetMaterial);
+                
+                planetMesh.position.set(planet.distance, 0, 0);
+                planetMesh.userData = { 
+                    name: planet.name, 
+                    type: 'planet',
+                    orbitSpeed: planet.orbitSpeed,
+                    angle: Math.random() * Math.PI * 2
+                };
+                scene.add(planetMesh);
+                
+                // Create orbit ring
+                const orbitGeometry = new THREE.RingGeometry(planet.distance - 0.1, planet.distance + 0.1, 64);
+                const orbitMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x444444, 
+                    transparent: true, 
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+                orbit.rotation.x = Math.PI / 2;
+                scene.add(orbit);
+                
+                solarSystemObjects.planets.push(planetMesh);
+                solarSystemObjects.orbits.push(orbit);
+                
+                // Create moons for some planets
+                if (['Earth', 'Mars', 'Jupiter', 'Saturn'].includes(planet.name)) {
+                    createMoons(planetMesh, planet.name);
+                }
+            });
+            
+            // Create asteroid belt
+            for (let i = 0; i < 100; i++) {
+                const asteroidGeometry = new THREE.SphereGeometry(Math.random() * 0.05 + 0.01, 8, 8);
+                const asteroidMaterial = new THREE.MeshBasicMaterial({ color: 0x8c7853 });
+                const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+                
+                const distance = 24 + Math.random() * 4; // Between Mars and Jupiter
+                const angle = Math.random() * Math.PI * 2;
+                asteroid.position.set(
+                    Math.cos(angle) * distance,
+                    (Math.random() - 0.5) * 2,
+                    Math.sin(angle) * distance
+                );
+                asteroid.userData = { orbitSpeed: 1.2, angle };
+                
+                scene.add(asteroid);
+                solarSystemObjects.asteroids.push(asteroid);
+            }
+        }
+        
+        function createMoons(parent, planetName) {
+            const moonData = {
+                'Earth': [{ name: 'Moon', distance: 2, size: 0.1, color: 0xcccccc }],
+                'Mars': [{ name: 'Phobos', distance: 1, size: 0.05, color: 0x8c7853 }, 
+                        { name: 'Deimos', distance: 1.5, size: 0.03, color: 0x8c7853 }],
+                'Jupiter': [
+                    { name: 'Io', distance: 3, size: 0.08, color: 0xffff00 },
+                    { name: 'Europa', distance: 4, size: 0.07, color: 0xcccccc },
+                    { name: 'Ganymede', distance: 5, size: 0.1, color: 0x8c7853 },
+                    { name: 'Callisto', distance: 6, size: 0.09, color: 0x8c7853 }
+                ],
+                'Saturn': [
+                    { name: 'Titan', distance: 4, size: 0.12, color: 0xffa500 },
+                    { name: 'Enceladus', distance: 3, size: 0.05, color: 0xffffff }
+                ]
+            };
+            
+            const moons = moonData[planetName] || [];
+            moons.forEach(moonInfo => {
+                const moonGeometry = new THREE.SphereGeometry(moonInfo.size, 8, 8);
+                const moonMaterial = new THREE.MeshPhongMaterial({ color: moonInfo.color });
+                const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+                moon.userData = { 
+                    parent: parent, 
+                    distance: moonInfo.distance, 
+                    orbitSpeed: 3,
+                    angle: Math.random() * Math.PI * 2
+                };
+                scene.add(moon);
+                solarSystemObjects.moons.push(moon);
+            });
+        }
+        
+        function createStellarSystem() {
+            // Create main sequence star
+            const starGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const starMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x87ceeb,
+                emissive: 0x87ceeb,
+                emissiveIntensity: 0.6
+            });
+            const star = new THREE.Mesh(starGeometry, starMaterial);
+            star.userData = { name: 'Star', type: 'main-sequence', mass: 1 };
+            scene.add(star);
+            stellarEvolutionObjects.mainStar = star;
+            
+            // Create protostellar disk
+            const diskGeometry = new THREE.RingGeometry(3, 6, 32);
+            const diskMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x8a2be2, 
+                transparent: true, 
+                opacity: 0.4,
+                side: THREE.DoubleSide
+            });
+            const disk = new THREE.Mesh(diskGeometry, diskMaterial);
+            disk.rotation.x = Math.PI / 2;
+            scene.add(disk);
+            stellarEvolutionObjects.protoplanetaryDisk = disk;
+            
+            // Create stellar wind particles
+            for (let i = 0; i < 50; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                const distance = Math.random() * 10 + 2;
+                const angle = Math.random() * Math.PI * 2;
+                particle.position.set(
+                    Math.cos(angle) * distance,
+                    (Math.random() - 0.5) * 2,
+                    Math.sin(angle) * distance
+                );
+                particle.userData = { 
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1
+                    )
+                };
+                
+                scene.add(particle);
+                stellarEvolutionObjects.particles.push(particle);
+            }
+        }
+        
+        function createGalaxyCluster() {
+            // Create spiral galaxy
+            createSpiralGalaxy();
+            
+            // Create companion galaxies
+            const companions = [
+                { name: 'Andromeda', distance: 200, size: 1.2, color: 0x4169e1 },
+                { name: 'Triangulum', distance: 250, size: 0.8, color: 0x87ceeb }
+            ];
+            
+            companions.forEach(companion => {
+                const galaxyGeometry = new THREE.SphereGeometry(companion.size, 32, 16);
+                const galaxyMaterial = new THREE.MeshBasicMaterial({ 
+                    color: companion.color,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const galaxy = new THREE.Mesh(galaxyGeometry, galaxyMaterial);
+                galaxy.position.set(companion.distance, 0, 0);
+                galaxy.userData = { 
+                    name: companion.name, 
+                    type: 'galaxy',
+                    rotationSpeed: 0.01
+                };
+                scene.add(galaxy);
+                galaxyObjects.companions.push(galaxy);
+            });
+        }
+        
+        function createSpiralGalaxy() {
+            // Create spiral arms
+            const armCount = 4;
+            const starsPerArm = 500;
+            
+            for (let arm = 0; arm < armCount; arm++) {
+                const stars = [];
+                for (let i = 0; i < starsPerArm; i++) {
+                    const radius = (i / starsPerArm) * 30;
+                    const angle = arm * (Math.PI * 2 / armCount) + (radius * 0.1);
+                    const height = (Math.random() - 0.5) * 2;
+                    
+                    stars.push({
+                        x: Math.cos(angle) * radius,
+                        y: height,
+                        z: Math.sin(angle) * radius,
+                        brightness: Math.random()
+                    });
+                }
+                
+                // Create star geometry
+                const starGeometry = new THREE.BufferGeometry();
+                const starPositions = [];
+                const starColors = [];
+                
+                stars.forEach(star => {
+                    starPositions.push(star.x, star.y, star.z);
+                    starColors.push(star.brightness, star.brightness, star.brightness);
+                });
+                
+                starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+                starGeometry.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
+                
+                const starMaterial = new THREE.PointsMaterial({ 
+                    vertexColors: true,
+                    size: 0.5,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const starField = new THREE.Points(starGeometry, starMaterial);
+                starField.userData = { rotationSpeed: 0.005, arm: arm };
+                scene.add(starField);
+                galaxyObjects.spiralArms.push(starField);
+            }
+            
+            // Create galactic center (black hole)
+            const centerGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const centerMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const center = new THREE.Mesh(centerGeometry, centerMaterial);
+            scene.add(center);
+            galaxyObjects.center = center;
+            
+            // Create accretion disk around center
+            const diskGeometry = new THREE.RingGeometry(3, 8, 32);
+            const diskMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00, 
+                transparent: true, 
+                opacity: 0.6,
+                side: THREE.DoubleSide
+            });
+            const accretionDisk = new THREE.Mesh(diskGeometry, diskMaterial);
+            accretionDisk.rotation.x = Math.PI / 2;
+            scene.add(accretionDisk);
+            galaxyObjects.accretionDisk = accretionDisk;
+        }
+        
+        function createBlackHoleSystem() {
+            // Create black hole
+            const bhGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const bhMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x000000,
+                emissive: 0x000000
+            });
+            const blackHole = new THREE.Mesh(bhGeometry, bhMaterial);
+            scene.add(blackHole);
+            blackHoleObjects.main = blackHole;
+            
+            // Create event horizon
+            const horizonGeometry = new THREE.SphereGeometry(2.5, 32, 32);
+            const horizonMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x8a2be2, 
+                transparent: true, 
+                opacity: 0.3,
+                wireframe: true
+            });
+            const eventHorizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
+            scene.add(eventHorizon);
+            blackHoleObjects.eventHorizon = eventHorizon;
+            
+            // Create accretion disk
+            for (let i = 0; i < 5; i++) {
+                const diskGeometry = new THREE.RingGeometry(3 + i * 0.5, 3.2 + i * 0.5, 32);
+                const diskMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xff6b35, 
+                    transparent: true, 
+                    opacity: 0.8 - i * 0.1,
+                    side: THREE.DoubleSide
+                });
+                const disk = new THREE.Mesh(diskGeometry, diskMaterial);
+                disk.rotation.x = Math.PI / 2;
+                scene.add(disk);
+                blackHoleObjects.accretionDisks.push(disk);
+            }
+            
+            // Create matter being consumed
+            for (let i = 0; i < 20; i++) {
+                const matterGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const matterMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+                const matter = new THREE.Mesh(matterGeometry, matterMaterial);
+                
+                const distance = 8 + Math.random() * 4;
+                const angle = Math.random() * Math.PI * 2;
+                matter.position.set(
+                    Math.cos(angle) * distance,
+                    (Math.random() - 0.5) * 2,
+                    Math.sin(angle) * distance
+                );
+                matter.userData = { 
+                    velocity: new THREE.Vector3(-0.02, 0, 0),
+                    distance: distance,
+                    angle: angle
+                };
+                
+                scene.add(matter);
+                blackHoleObjects.matter.push(matter);
+            }
+        }
+        
+        function createExoplanetSystem() {
+            const starType = document.getElementById('star-type').value;
+            
+            // Create star
+            const starColors = {
+                'red-dwarf': 0xff0000,
+                'yellow-star': 0xffaa00,
+                'blue-giant': 0x0000ff,
+                'brown-dwarf': 0x8b4513
+            };
+            
+            const starSize = {
+                'red-dwarf': 0.8,
+                'yellow-star': 1.2,
+                'blue-giant': 2.5,
+                'brown-dwarf': 0.6
+            };
+            
+            const starGeometry = new THREE.SphereGeometry(starSize[starType], 32, 32);
+            const starMaterial = new THREE.MeshBasicMaterial({ 
+                color: starColors[starType],
+                emissive: starColors[starType],
+                emissiveIntensity: 0.5
+            });
+            const star = new THREE.Mesh(starGeometry, starMaterial);
+            star.userData = { type: 'exoplanet-star', subtype: starType };
+            scene.add(star);
+            exoplanetObjects.star = star;
+            
+            // Create habitable zone indicator
+            const habitableGeometry = new THREE.RingGeometry(8, 12, 32);
+            const habitableMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00, 
+                transparent: true, 
+                opacity: 0.2,
+                side: THREE.DoubleSide
+            });
+            const habitableZone = new THREE.Mesh(habitableGeometry, habitableMaterial);
+            habitableZone.rotation.x = Math.PI / 2;
+            scene.add(habitableZone);
+            exoplanetObjects.habitableZone = habitableZone;
+            
+            // Create exoplanets
+            const planetCount = Math.floor(Math.random() * 5) + 2;
+            for (let i = 0; i < planetCount; i++) {
+                const planetGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 16, 16);
+                const planetMaterial = new THREE.MeshPhongMaterial({ 
+                    color: Math.random() * 0xffffff 
+                });
+                const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+                
+                const distance = 6 + i * 4 + Math.random() * 2;
+                const angle = Math.random() * Math.PI * 2;
+                planet.position.set(
+                    Math.cos(angle) * distance,
+                    (Math.random() - 0.5) * 1,
+                    Math.sin(angle) * distance
+                );
+                planet.userData = { 
+                    orbitSpeed: 1 / (i + 1),
+                    angle: angle,
+                    distance: distance,
+                    inHabitableZone: distance > 6 && distance < 14
+                };
+                
+                scene.add(planet);
+                exoplanetObjects.planets.push(planet);
+                
+                // Add orbit visualization
+                const orbitGeometry = new THREE.RingGeometry(distance - 0.1, distance + 0.1, 32);
+                const orbitMaterial = new THREE.MeshBasicMaterial({ 
+                    color: planet.userData.inHabitableZone ? 0x00ff00 : 0x666666,
+                    transparent: true, 
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+                orbit.rotation.x = Math.PI / 2;
+                scene.add(orbit);
+                exoplanetObjects.orbits.push(orbit);
+            }
+            
+            // Create transit detection effect
+            if (document.getElementById('detection-method').value === 'transit') {
+                createTransitDetection();
+            }
+        }
+        
+        function createTransitDetection() {
+            // Create light curve visualization
+            const detectionGeometry = new THREE.PlaneGeometry(20, 10);
+            const detectionMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x87ceeb, 
+                transparent: true, 
+                opacity: 0.8
+            });
+            const detectionPanel = new THREE.Mesh(detectionGeometry, detectionMaterial);
+            detectionPanel.position.set(0, 15, 0);
+            scene.add(detectionPanel);
+            exoplanetObjects.detectionPanel = detectionPanel;
+            
+            // Add text overlay for light curve
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 512;
+            canvas.height = 256;
+            context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            context.fillRect(0, 0, 512, 256);
+            context.fillStyle = '#87ceeb';
+            context.font = '24px Arial';
+            context.fillText('Transit Detection', 20, 40);
+            context.font = '16px Arial';
+            context.fillText('Light Curve showing planetary transit', 20, 80);
+            
+            // Draw light curve
+            context.strokeStyle = '#ffffff';
+            context.lineWidth = 2;
+            context.beginPath();
+            for (let x = 0; x < 400; x++) {
+                const y = 180 + Math.sin(x * 0.02) * 20;
+                if (x === 0) {
+                    context.moveTo(x + 50, y);
+                } else {
+                    context.lineTo(x + 50, y);
+                }
+            }
+            context.stroke();
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            detectionMaterial.map = texture;
+        }
+        
+        // Animation and interaction functions
+        
+        function updateTimeSpeed() {
+            timeScale = parseFloat(document.getElementById('time-speed').value);
+            document.getElementById('speed-value').textContent = timeScale.toFixed(1) + 'x';
+        }
+        
+        function updateScale() {
+            scaleFactor = parseFloat(document.getElementById('scale-factor').value);
+            document.getElementById('scale-value').textContent = scaleFactor.toFixed(2);
+            
+            // Apply scale to all objects
+            scene.scale.setScalar(scaleFactor);
+        }
+        
+        function updateStellarEvolution() {
+            const mass = parseFloat(document.getElementById('stellar-mass').value);
+            document.getElementById('mass-value').textContent = mass.toFixed(1);
+            
+            // Update stellar properties based on mass
+            if (stellarEvolutionObjects.mainStar) {
+                const size = Math.max(0.5, mass * 0.2);
+                stellarEvolutionObjects.mainStar.scale.setScalar(size);
+            }
+        }
+        
+        function updateGalaxyDistance() {
+            const distance = parseFloat(document.getElementById('galaxy-distance').value);
+            document.getElementById('distance-value').textContent = distance.toFixed(1);
+        }
+        
+        function updateBlackHole() {
+            const mass = parseInt(document.getElementById('bh-mass').value);
+            const distance = parseInt(document.getElementById('bh-distance').value);
+            
+            document.getElementById('bh-mass-value').textContent = mass;
+            document.getElementById('bh-distance-value').textContent = distance;
+            
+            // Calculate time dilation
+            const schwarzschildRadius = 2 * mass; // Simplified
+            const timeDilation = 1 / Math.sqrt(1 - (schwarzschildRadius / distance));
+            
+            document.getElementById('time-dilation-display').textContent = 
+                `Time Dilation: ${timeDilation.toFixed(2)}x`;
+        }
+        
+        function focusOnPlanet() {
+            const planetName = document.getElementById('planet-selector').value;
+            const planet = solarSystemObjects.planets.find(p => 
+                p.userData.name.toLowerCase() === planetName
+            );
+            
+            if (planet) {
+                const targetPosition = planet.position.clone();
+                camera.position.copy(targetPosition).add(new THREE.Vector3(10, 5, 10));
+                controls.target.copy(targetPosition);
+            }
+        }
+        
+        function toggleOrbits() {
+            solarSystemObjects.orbits.forEach(orbit => {
+                orbit.visible = !orbit.visible;
+            });
+        }
+        
+        function engageWarp() {
+            warpSpeed = Math.min(10, warpSpeed + 2);
+            document.getElementById('warp-bar').style.width = (warpSpeed * 10) + '%';
+            document.getElementById('warp-speed-display').textContent = warpSpeed.toFixed(1) + 'c';
+        }
+        
+        function setCruise() {
+            warpSpeed = 2.0;
+            document.getElementById('warp-bar').style.width = '20%';
+            document.getElementById('warp-speed-display').textContent = '2.0c';
+        }
+        
+        function startStellarEvolution() {
+            const mass = parseFloat(document.getElementById('stellar-mass').value);
+            const stage = document.getElementById('evolution-stage').value;
+            
+            let starColor = 0x87ceeb;
+            let starSize = 2;
+            let evolutionTime = 0;
+            
+            switch(stage) {
+                case 'protostar':
+                    starColor = 0xff0000;
+                    starSize = 3;
+                    break;
+                case 'main-sequence':
+                    starColor = 0x87ceeb;
+                    starSize = 2;
+                    break;
+                case 'red-giant':
+                    starColor = 0xff4500;
+                    starSize = 5;
+                    break;
+                case 'white-dwarf':
+                    starColor = 0xffffff;
+                    starSize = 1;
+                    break;
+                case 'supernova':
+                    starColor = 0xffff00;
+                    starSize = 8;
+                    break;
+                case 'neutron-star':
+                    starColor = 0x87ceeb;
+                    starSize = 0.5;
+                    break;
+                case 'black-hole':
+                    starColor = 0x000000;
+                    starSize = 2;
+                    break;
+            }
+            
+            if (stellarEvolutionObjects.mainStar) {
+                stellarEvolutionObjects.mainStar.material.color.setHex(starColor);
+                stellarEvolutionObjects.mainStar.material.emissive.setHex(starColor);
+                stellarEvolutionObjects.mainStar.scale.setScalar(starSize);
+            }
+        }
+        
+        function showPlanetData() {
+            const planetData = {
+                'Mercury': 'Smallest planet • No atmosphere • Extreme temperatures',
+                'Venus': 'Hottest planet • Thick atmosphere • Runaway greenhouse',
+                'Earth': 'Our home planet • Liquid water • Life exists here',
+                'Mars': 'Red planet • Polar ice caps • Evidence of ancient water',
+                'Jupiter': 'Largest planet • Gas giant • Great Red Spot storm',
+                'Saturn': 'Ringed planet • Low density • Multiple moons',
+                'Uranus': 'Ice giant • Tilted axis • Faint rings',
+                'Neptune': 'Windiest planet • Deep blue • Farthest from Sun'
+            };
+            
+            const selectedPlanet = document.getElementById('planet-selector').value;
+            const info = planetData[selectedPlanet.charAt(0).toUpperCase() + selectedPlanet.slice(1)];
+            
+            updateInfoPanel('Planet Information', 
+                `Facts about ${selectedPlanet}`, 
+                'Planetary Data', info);
+        }
+        
+        function clearScene() {
+            // Remove all objects except lights
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && 
+                    object.type !== 'AmbientLight' && 
+                    object.type !== 'PointLight') {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+            
+            // Clear object arrays
+            solarSystemObjects = { planets: [], orbits: [], moons: [], asteroids: [] };
+            stellarEvolutionObjects = { particles: [] };
+            galaxyObjects = { spiralArms: [], companions: [] };
+            blackHoleObjects = { accretionDisks: [], matter: [] };
+            exoplanetObjects = { planets: [], orbits: [] };
+        }
+        
+        function updateInfoPanel(title, description, scale, details) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('cosmic-display').innerHTML = `
+                <div class="space-info">
+                    <strong>Scale:</strong> ${scale}<br>
+                    ${details}
+                </div>
+            `;
+            
+            if (currentDemo === 'solarsystem') {
+                document.getElementById('distance-display').innerHTML = `
+                    <div class="distance-display">
+                        Current Speed: ${warpSpeed.toFixed(1)}c<br>
+                        Time Scale: ${timeScale.toFixed(1)}x<br>
+                        Scale Factor: ${scaleFactor.toFixed(2)}
+                    </div>
+                `;
+            }
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            const time = Date.now() * 0.001 * timeScale;
+            simulationTime += 0.01 * timeScale;
+            
+            // Solar system animation
+            if (currentDemo === 'solarsystem') {
+                // Animate planets
+                solarSystemObjects.planets?.forEach(planet => {
+                    planet.userData.angle += planet.userData.orbitSpeed * 0.01;
+                    planet.position.x = Math.cos(planet.userData.angle) * planet.userData.orbitSpeed * 4;
+                    planet.position.z = Math.sin(planet.userData.angle) * planet.userData.orbitSpeed * 4;
+                    planet.rotation.y += 0.01;
+                });
+                
+                // Animate moons
+                solarSystemObjects.moons?.forEach(moon => {
+                    moon.userData.angle += moon.userData.orbitSpeed * 0.01;
+                    const parentPos = moon.userData.parent.position;
+                    moon.position.x = parentPos.x + Math.cos(moon.userData.angle) * moon.userData.distance;
+                    moon.position.z = parentPos.z + Math.sin(moon.userData.angle) * moon.userData.distance;
+                });
+                
+                // Animate asteroids
+                solarSystemObjects.asteroids?.forEach(asteroid => {
+                    asteroid.userData.angle += asteroid.userData.orbitSpeed * 0.01;
+                    const distance = 24 + Math.sin(asteroid.userData.angle) * 2;
+                    asteroid.position.x = Math.cos(asteroid.userData.angle) * distance;
+                    asteroid.position.z = Math.sin(asteroid.userData.angle) * distance;
+                });
+            }
+            
+            // Stellar evolution animation
+            if (currentDemo === 'stardeath') {
+                // Animate protoplanetary disk
+                if (stellarEvolutionObjects.protoplanetaryDisk) {
+                    stellarEvolutionObjects.protoplanetaryDisk.rotation.z += 0.01;
+                }
+                
+                // Animate stellar wind
+                stellarEvolutionObjects.particles?.forEach(particle => {
+                    particle.position.add(particle.userData.velocity);
+                    
+                    // Reset particles that go too far
+                    if (particle.position.length() > 50) {
+                        particle.position.set(
+                            (Math.random() - 0.5) * 10,
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 10
+                        );
+                    }
+                });
+            }
+            
+            // Galaxy animation
+            if (currentDemo === 'galaxies') {
+                // Rotate spiral arms
+                galaxyObjects.spiralArms?.forEach(arm => {
+                    arm.rotation.y += arm.userData.rotationSpeed;
+                });
+                
+                // Rotate accretion disk
+                if (galaxyObjects.accretionDisk) {
+                    galaxyObjects.accretionDisk.rotation.z += 0.02;
+                }
+                
+                // Animate companion galaxies
+                galaxyObjects.companions?.forEach(companion => {
+                    companion.rotation.y += companion.userData.rotationSpeed;
+                });
+            }
+            
+            // Black hole animation
+            if (currentDemo === 'blackholes') {
+                // Rotate accretion disks
+                blackHoleObjects.accretionDisks?.forEach((disk, index) => {
+                    disk.rotation.z += 0.02 + index * 0.01;
+                });
+                
+                // Animate matter falling into black hole
+                blackHoleObjects.matter?.forEach(matter => {
+                    const bhPosition = new THREE.Vector3(0, 0, 0);
+                    const direction = bhPosition.clone().sub(matter.position).normalize();
+                    matter.position.add(direction.multiplyScalar(matter.userData.velocity));
+                    
+                    // Remove matter that crosses event horizon
+                    if (matter.position.length() < 2.5) {
+                        const distance = 8 + Math.random() * 4;
+                        const angle = Math.random() * Math.PI * 2;
+                        matter.position.set(
+                            Math.cos(angle) * distance,
+                            (Math.random() - 0.5) * 2,
+                            Math.sin(angle) * distance
+                        );
+                    }
+                });
+            }
+            
+            // Exoplanet system animation
+            if (currentDemo === 'exoplanets') {
+                exoplanetObjects.planets?.forEach(planet => {
+                    planet.userData.angle += planet.userData.orbitSpeed * 0.01;
+                    const distance = planet.userData.distance;
+                    planet.position.x = Math.cos(planet.userData.angle) * distance;
+                    planet.position.z = Math.sin(planet.userData.angle) * distance;
+                });
+            }
+            
+            // Starfield rotation
+            if (scene.children.length > 0) {
+                const stars = scene.children.find(child => child.type === 'Points');
+                if (stars) {
+                    stars.rotation.y += 0.0002;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

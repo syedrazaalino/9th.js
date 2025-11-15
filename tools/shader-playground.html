@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shader Playground - Developer Tools Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toolbar h1 {
+            font-size: 18px;
+            color: #00ff88;
+            margin-right: 30px;
+        }
+
+        .tool-btn {
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #505050;
+            border-color: #00ff88;
+        }
+
+        .tool-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        .editor-panel {
+            width: 400px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-tabs {
+            background: #333;
+            display: flex;
+            border-bottom: 1px solid #444;
+        }
+
+        .editor-tab {
+            padding: 10px 20px;
+            background: #3a3a3a;
+            border-right: 1px solid #444;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .editor-tab.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .editor-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .shader-editor {
+            flex: 1;
+            background: #1e1e1e;
+            border: none;
+            padding: 15px;
+            color: #d4d4d4;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        .editor-label {
+            background: #333;
+            padding: 8px 15px;
+            font-size: 11px;
+            color: #888;
+            border-bottom: 1px solid #444;
+            text-transform: uppercase;
+        }
+
+        .uniforms-panel {
+            background: #2a2a2a;
+            border-top: 1px solid #444;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .uniform-group {
+            margin-bottom: 8px;
+        }
+
+        .uniform-label {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        .uniform-input {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .uniform-input[type="range"] {
+            padding: 0;
+        }
+
+        .uniform-input[type="color"] {
+            height: 25px;
+            padding: 2px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        #shaderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .info-panel {
+            width: 250px;
+            background: #2d2d2d;
+            border-left: 1px solid #444;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+        }
+
+        .info-title {
+            color: #00ff88;
+            font-size: 13px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        .preset-list {
+            margin-bottom: 15px;
+        }
+
+        .preset-item {
+            background: #3a3a3a;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .preset-item:hover {
+            background: #454545;
+        }
+
+        .stats {
+            background: rgba(0, 0, 0, 0.7);
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #00ff88;
+        }
+
+        .error-display {
+            background: #ff4444;
+            color: #fff;
+            padding: 8px 12px;
+            margin: 5px 15px;
+            border-radius: 4px;
+            font-size: 11px;
+            display: none;
+        }
+
+        .syntax-error {
+            border-left: 3px solid #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .validation-status {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .validation-status.valid {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+
+        .validation-status.invalid {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .examples-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .examples-content {
+            display: none;
+            position: absolute;
+            background: #333;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 1;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+
+        .examples-content a {
+            color: #fff;
+            padding: 8px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 12px;
+        }
+
+        .examples-content a:hover {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .examples-dropdown:hover .examples-content {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>🎨 Shader Playground</h1>
+        <div class="examples-dropdown">
+            <button class="tool-btn">Examples ▼</button>
+            <div class="examples-content">
+                <a href="#" onclick="loadExample('basic')">Basic Shader</a>
+                <a href="#" onclick="loadExample('procedural')">Procedural Noise</a>
+                <a href="#" onclick="loadExample('waves')">Water Waves</a>
+                <a href="#" onclick="loadExample('fractal')">Fractal Patterns</a>
+                <a href="#" onclick="loadExample('animation')">Animated Colors</a>
+            </div>
+        </div>
+        <button class="tool-btn" id="compileBtn">Compile</button>
+        <button class="tool-btn" id="validateBtn">Validate</button>
+        <button class="tool-btn" id="saveBtn">Save</button>
+        <button class="tool-btn" id="exportBtn">Export</button>
+        <button class="tool-btn" id="shareBtn">Share</button>
+    </div>
+
+    <div class="main-container">
+        <div class="editor-panel">
+            <div class="editor-tabs">
+                <div class="editor-tab active" data-tab="vertex">Vertex Shader</div>
+                <div class="editor-tab" data-tab="fragment">Fragment Shader</div>
+            </div>
+            
+            <div class="editor-content">
+                <div class="editor-label" id="currentEditorLabel">Vertex Shader</div>
+                <textarea class="shader-editor" id="vertexShader" placeholder="Write your vertex shader here..."></textarea>
+                <textarea class="shader-editor" id="fragmentShader" placeholder="Write your fragment shader here..." style="display: none;"></textarea>
+                
+                <div class="error-display" id="errorDisplay"></div>
+                
+                <div class="uniforms-panel">
+                    <div class="info-title">Uniforms</div>
+                    <div id="uniformsContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="shaderCanvas"></canvas>
+            <div class="stats" id="stats">
+                FPS: <span id="fps">60</span><br>
+                Draw Calls: <span id="drawCalls">1</span><br>
+                Time: <span id="time">0.00</span>s
+            </div>
+            <div class="validation-status" id="validationStatus">Ready</div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-section">
+                <div class="info-title">Quick Reference</div>
+                <div class="info-text">
+                    <strong>Built-in Variables:</strong><br>
+                    • gl_Position (vertex)<br>
+                    • gl_FragColor (fragment)<br>
+                    • gl_FragCoord (fragment)<br>
+                    • varying vec2 vUv<br>
+                    • uniform float uTime<br>
+                    • uniform vec2 uResolution<br>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">Available Functions</div>
+                <div class="info-text">
+                    <strong>Noise:</strong><br>
+                    • noise(vec2)<br>
+                    • fractal(vec2)<br>
+                    • smoothstep(a, b, x)<br>
+                    • clamp(x, a, b)<br>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">Tips</div>
+                <div class="info-text">
+                    • Use uTime for animation<br>
+                    • Use vUv for texture coords<br>
+                    • Use uResolution for aspect ratio<br>
+                    • Compiles automatically on change<br>
+                    • Click Examples for inspiration
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">Presets</div>
+                <div class="preset-list">
+                    <div class="preset-item" onclick="applyPreset('simple-color')">Simple Color</div>
+                    <div class="preset-item" onclick="applyPreset('gradient')">Gradient</div>
+                    <div class="preset-item" onclick="applyPreset('stripes')">Stripes</div>
+                    <div class="preset-item" onclick="applyPreset('checkerboard')">Checkerboard</div>
+                    <div class="preset-item" onclick="applyPreset('radial')">Radial</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ShaderPlayground {
+            constructor() {
+                this.canvas = document.getElementById('shaderCanvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.vertexShaderSource = '';
+                this.fragmentShaderSource = '';
+                this.program = null;
+                this.uniforms = {};
+                this.startTime = Date.now();
+                this.frameCount = 0;
+                this.lastFpsUpdate = Date.now();
+
+                this.init();
+                this.setupEventListeners();
+                this.loadExample('basic');
+                this.animate();
+            }
+
+            init() {
+                // Set up canvas
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                // Initialize uniforms
+                this.uniforms = {
+                    uTime: { type: 'float', value: 0 },
+                    uResolution: { type: 'vec2', value: [this.canvas.width, this.canvas.height] },
+                    uColor1: { type: 'color', value: [1, 0, 0] },
+                    uColor2: { type: 'color', value: [0, 1, 0] },
+                    uSpeed: { type: 'float', value: 1.0 },
+                    uScale: { type: 'float', value: 1.0 },
+                    uIntensity: { type: 'float', value: 0.5 }
+                };
+
+                this.updateUniformsPanel();
+            }
+
+            setupEventListeners() {
+                // Tab switching
+                document.querySelectorAll('.editor-tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        
+                        const target = tab.dataset.tab;
+                        if (target === 'vertex') {
+                            document.getElementById('vertexShader').style.display = 'block';
+                            document.getElementById('fragmentShader').style.display = 'none';
+                            document.getElementById('currentEditorLabel').textContent = 'Vertex Shader';
+                        } else {
+                            document.getElementById('vertexShader').style.display = 'none';
+                            document.getElementById('fragmentShader').style.display = 'block';
+                            document.getElementById('currentEditorLabel').textContent = 'Fragment Shader';
+                        }
+                    });
+                });
+
+                // Auto-compile on input
+                document.getElementById('vertexShader').addEventListener('input', () => {
+                    this.vertexShaderSource = document.getElementById('vertexShader').value;
+                    this.debouncedCompile();
+                });
+
+                document.getElementById('fragmentShader').addEventListener('input', () => {
+                    this.fragmentShaderSource = document.getElementById('fragmentShader').value;
+                    this.debouncedCompile();
+                });
+
+                // Manual buttons
+                document.getElementById('compileBtn').addEventListener('click', () => this.compile());
+                document.getElementById('validateBtn').addEventListener('click', () => this.validate());
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveShader());
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportShader());
+                document.getElementById('shareBtn').addEventListener('click', () => this.shareShader());
+            }
+
+            resizeCanvas() {
+                this.canvas.width = this.canvas.clientWidth;
+                this.canvas.height = this.canvas.clientHeight;
+                this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                
+                if (this.uniforms.uResolution) {
+                    this.uniforms.uResolution.value = [this.canvas.width, this.canvas.height];
+                }
+            }
+
+            createShader(type, source) {
+                const shader = this.gl.createShader(type);
+                this.gl.shaderSource(shader, source);
+                this.gl.compileShader(shader);
+
+                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                    const info = this.gl.getShaderInfoLog(shader);
+                    this.gl.deleteShader(shader);
+                    throw new Error('Shader compile error: ' + info);
+                }
+
+                return shader;
+            }
+
+            createProgram(vertexShader, fragmentShader) {
+                const program = this.gl.createProgram();
+                this.gl.attachShader(program, vertexShader);
+                this.gl.attachShader(program, fragmentShader);
+                this.gl.linkProgram(program);
+
+                if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+                    const info = this.gl.getProgramInfoLog(program);
+                    this.gl.deleteProgram(program);
+                    throw new Error('Program link error: ' + info);
+                }
+
+                return program;
+            }
+
+            compile() {
+                try {
+                    // Clear previous errors
+                    this.hideError();
+                    
+                    // Create shaders
+                    const vertexShader = this.createShader(
+                        this.gl.VERTEX_SHADER, 
+                        this.vertexShaderSource
+                    );
+                    
+                    const fragmentShader = this.createShader(
+                        this.gl.FRAGMENT_SHADER, 
+                        this.fragmentShaderSource
+                    );
+
+                    // Create program
+                    this.program = this.createProgram(vertexShader, fragmentShader);
+                    
+                    // Clean up shaders (program keeps them)
+                    this.gl.deleteShader(vertexShader);
+                    this.gl.deleteShader(fragmentShader);
+
+                    this.showValidation('Valid', true);
+                    this.updateUniformLocations();
+
+                } catch (error) {
+                    this.showError(error.message);
+                    this.showValidation('Invalid', false);
+                }
+            }
+
+            validate() {
+                // Syntax validation (basic)
+                const vertexValid = this.validateShaderSource(this.vertexShaderSource, 'vertex');
+                const fragmentValid = this.validateShaderSource(this.fragmentShaderSource, 'fragment');
+                
+                if (vertexValid && fragmentValid) {
+                    this.showValidation('Syntax Valid', true);
+                } else {
+                    this.showValidation('Syntax Error', false);
+                }
+            }
+
+            validateShaderSource(source, type) {
+                const errors = [];
+                
+                // Basic GLSL validation
+                if (type === 'vertex') {
+                    if (!source.includes('gl_Position')) {
+                        errors.push('Missing gl_Position assignment');
+                    }
+                } else {
+                    if (!source.includes('gl_FragColor') && !source.includes('void main()')) {
+                        errors.push('Missing gl_FragColor or main function');
+                    }
+                }
+
+                if (source.includes('void main()') === false) {
+                    errors.push('Missing void main() function');
+                }
+
+                return errors.length === 0;
+            }
+
+            updateUniformLocations() {
+                if (!this.program) return;
+
+                Object.keys(this.uniforms).forEach(name => {
+                    this.uniforms[name].location = this.gl.getUniformLocation(
+                        this.program, 
+                        name
+                    );
+                });
+            }
+
+            updateUniforms() {
+                if (!this.program) return;
+
+                const time = (Date.now() - this.startTime) / 1000;
+
+                Object.keys(this.uniforms).forEach(name => {
+                    const uniform = this.uniforms[name];
+                    if (!uniform.location) return;
+
+                    switch (uniform.type) {
+                        case 'float':
+                            this.gl.uniform1f(uniform.location, uniform.value);
+                            break;
+                        case 'vec2':
+                            this.gl.uniform2fv(uniform.location, uniform.value);
+                            break;
+                        case 'vec3':
+                            this.gl.uniform3fv(uniform.location, uniform.value);
+                            break;
+                        case 'color':
+                            this.gl.uniform3fv(uniform.location, uniform.value);
+                            break;
+                    }
+                });
+
+                // Always update time
+                this.gl.uniform1f(
+                    this.gl.getUniformLocation(this.program, 'uTime'), 
+                    time
+                );
+            }
+
+            render() {
+                if (!this.program) return;
+
+                this.gl.clearColor(0, 0, 0, 1);
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+                this.gl.useProgram(this.program);
+                
+                // Update uniforms
+                this.uniforms.uTime.value = (Date.now() - this.startTime) / 1000;
+                this.updateUniforms();
+
+                // Create a simple quad
+                const positions = new Float32Array([
+                    -1, -1,
+                     1, -1,
+                    -1,  1,
+                     1,  1
+                ]);
+
+                const positionBuffer = this.gl.createBuffer();
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW);
+
+                const positionLocation = this.gl.getAttribLocation(this.program, 'aPosition');
+                this.gl.enableVertexAttribArray(positionLocation);
+                this.gl.vertexAttribPointer(positionLocation, 2, this.gl.FLOAT, false, 0, 0);
+
+                this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+                // Clean up
+                this.gl.deleteBuffer(positionBuffer);
+            }
+
+            updateStats() {
+                this.frameCount++;
+                const now = Date.now();
+                
+                if (now - this.lastFpsUpdate >= 1000) {
+                    const fps = Math.round(this.frameCount * 1000 / (now - this.lastFpsUpdate));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                }
+
+                const time = ((Date.now() - this.startTime) / 1000).toFixed(2);
+                document.getElementById('time').textContent = time;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                try {
+                    this.render();
+                    this.updateStats();
+                } catch (error) {
+                    console.error('Render error:', error);
+                }
+            }
+
+            showError(message) {
+                const errorDisplay = document.getElementById('errorDisplay');
+                errorDisplay.textContent = 'Error: ' + message;
+                errorDisplay.style.display = 'block';
+            }
+
+            hideError() {
+                document.getElementById('errorDisplay').style.display = 'none';
+            }
+
+            showValidation(message, valid) {
+                const status = document.getElementById('validationStatus');
+                status.textContent = message;
+                status.className = 'validation-status ' + (valid ? 'valid' : 'invalid');
+            }
+
+            updateUniformsPanel() {
+                const container = document.getElementById('uniformsContainer');
+                container.innerHTML = '';
+
+                Object.keys(this.uniforms).forEach(name => {
+                    const uniform = this.uniforms[name];
+                    const group = document.createElement('div');
+                    group.className = 'uniform-group';
+
+                    const label = document.createElement('div');
+                    label.className = 'uniform-label';
+                    label.textContent = name;
+
+                    let input;
+                    switch (uniform.type) {
+                        case 'float':
+                            input = document.createElement('input');
+                            input.type = 'range';
+                            input.min = '0';
+                            input.max = '2';
+                            input.step = '0.01';
+                            input.value = uniform.value;
+                            input.className = 'uniform-input';
+                            input.oninput = (e) => {
+                                uniform.value = parseFloat(e.target.value);
+                            };
+                            break;
+                        case 'color':
+                            input = document.createElement('input');
+                            input.type = 'color';
+                            const hex = '#' + uniform.value.map(v => {
+                                const h = Math.floor(v * 255).toString(16);
+                                return h.length === 1 ? '0' + h : h;
+                            }).join('');
+                            input.value = hex;
+                            input.className = 'uniform-input';
+                            input.oninput = (e) => {
+                                const hex = e.target.value.replace('#', '');
+                                uniform.value = [
+                                    parseInt(hex.substr(0, 2), 16) / 255,
+                                    parseInt(hex.substr(2, 2), 16) / 255,
+                                    parseInt(hex.substr(4, 2), 16) / 255
+                                ];
+                            };
+                            break;
+                    }
+
+                    group.appendChild(label);
+                    group.appendChild(input);
+                    container.appendChild(group);
+                });
+            }
+
+            saveShader() {
+                const data = {
+                    vertex: this.vertexShaderSource,
+                    fragment: this.fragmentShaderSource,
+                    uniforms: this.uniforms
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'shader.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportShader() {
+                const vertexCode = this.vertexShaderSource;
+                const fragmentCode = this.fragmentShaderSource;
+                
+                const exportWindow = window.open('', '_blank');
+                exportWindow.document.write(`
+                    <html>
+                    <head><title>Exported Shader</title></head>
+                    <body style="font-family: monospace; padding: 20px;">
+                        <h2>Vertex Shader:</h2>
+                        <pre>${vertexCode}</pre>
+                        <h2>Fragment Shader:</h2>
+                        <pre>${fragmentCode}</pre>
+                    </body>
+                    </html>
+                `);
+            }
+
+            shareShader() {
+                const data = {
+                    vertex: this.vertexShaderSource,
+                    fragment: this.fragmentShaderSource
+                };
+                
+                const encoded = btoa(JSON.stringify(data));
+                const url = window.location.origin + window.location.pathname + '#' + encoded;
+                
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Shader URL copied to clipboard!');
+                });
+            }
+
+            debouncedCompile() {
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = setTimeout(() => {
+                    this.compile();
+                }, 500);
+            }
+        }
+
+        // Example shader sources
+        function loadExample(type) {
+            const examples = {
+                basic: {
+                    vertex: `
+attribute vec2 aPosition;
+varying vec2 vUv;
+
+void main() {
+    vUv = (aPosition + 1.0) * 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+}
+                    `,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uTime;
+
+void main() {
+    gl_FragColor = vec4(vUv, sin(uTime) * 0.5 + 0.5, 1.0);
+}
+                    `
+                },
+                procedural: {
+                    vertex: `
+attribute vec2 aPosition;
+varying vec2 vUv;
+
+void main() {
+    vUv = (aPosition + 1.0) * 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+}
+                    `,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uTime;
+
+float noise(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float fractal(vec2 p) {
+    float value = 0.0;
+    float amplitude = 1.0;
+    float frequency = 1.0;
+    
+    for(int i = 0; i < 4; i++) {
+        value += noise(p * frequency) * amplitude;
+        frequency *= 2.0;
+        amplitude *= 0.5;
+    }
+    
+    return value;
+}
+
+void main() {
+    vec2 uv = vUv * uScale;
+    float n = fractal(uv + uTime * 0.1);
+    gl_FragColor = vec4(vec3(n), 1.0);
+}
+                    `
+                },
+                waves: {
+                    vertex: `
+attribute vec2 aPosition;
+varying vec2 vUv;
+
+void main() {
+    vUv = (aPosition + 1.0) * 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+}
+                    `,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uTime;
+
+void main() {
+    vec2 uv = vUv;
+    
+    // Create waves
+    float wave1 = sin(uv.x * 10.0 + uTime * 2.0) * 0.1;
+    float wave2 = sin(uv.y * 8.0 + uTime * 1.5) * 0.1;
+    float height = wave1 + wave2;
+    
+    // Color based on height
+    vec3 color1 = vec3(0.0, 0.5, 1.0);
+    vec3 color2 = vec3(0.0, 1.0, 0.5);
+    vec3 color = mix(color1, color2, height + 0.5);
+    
+    gl_FragColor = vec4(color, 1.0);
+}
+                    `
+                },
+                fractal: {
+                    vertex: `
+attribute vec2 aPosition;
+varying vec2 vUv;
+
+void main() {
+    vUv = (aPosition + 1.0) * 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+}
+                    `,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uTime;
+
+vec2 complexMul(vec2 a, vec2 b) {
+    return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+}
+
+vec2 complexPow(vec2 z, float n) {
+    float r = length(z);
+    float theta = atan(z.y, z.x);
+    r = pow(r, n);
+    theta = n * theta;
+    return r * vec2(cos(theta), sin(theta));
+}
+
+void main() {
+    vec2 z = (vUv - 0.5) * 2.0;
+    vec2 c = z;
+    
+    float maxIter = 50.0;
+    float iter = 0.0;
+    
+    for(float i = 0.0; i < 100.0; i++) {
+        if(iter > maxIter) break;
+        
+        z = complexMul(z, z) + c;
+        
+        if(length(z) > 2.0) break;
+        iter++;
+    }
+    
+    float t = iter / maxIter;
+    vec3 color = vec3(t, t*t, sin(t * 6.28));
+    
+    gl_FragColor = vec4(color, 1.0);
+}
+                    `
+                },
+                animation: {
+                    vertex: `
+attribute vec2 aPosition;
+varying vec2 vUv;
+
+void main() {
+    vUv = (aPosition + 1.0) * 0.5;
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+}
+                    `,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uTime;
+
+void main() {
+    vec2 uv = vUv;
+    
+    // Create animated colors
+    float r = sin(uv.x * 6.28 + uTime) * 0.5 + 0.5;
+    float g = sin(uv.y * 6.28 + uTime * 1.3) * 0.5 + 0.5;
+    float b = sin((uv.x + uv.y) * 3.14 + uTime * 0.7) * 0.5 + 0.5;
+    
+    gl_FragColor = vec4(r, g, b, 1.0);
+}
+                    `
+                }
+            };
+
+            const example = examples[type];
+            if (example) {
+                document.getElementById('vertexShader').value = example.vertex.trim();
+                document.getElementById('fragmentShader').value = example.fragment.trim();
+                playground.vertexShaderSource = example.vertex.trim();
+                playground.fragmentShaderSource = example.fragment.trim();
+                playground.compile();
+            }
+        }
+
+        function applyPreset(type) {
+            const presets = {
+                'simple-color': {
+                    vertex: playground.vertexShaderSource,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform vec3 uColor1;
+
+void main() {
+    gl_FragColor = vec4(uColor1, 1.0);
+}
+                    `
+                },
+                'gradient': {
+                    vertex: playground.vertexShaderSource,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform vec3 uColor1;
+uniform vec3 uColor2;
+
+void main() {
+    float t = vUv.y;
+    vec3 color = mix(uColor1, uColor2, t);
+    gl_FragColor = vec4(color, 1.0);
+}
+                    `
+                },
+                'stripes': {
+                    vertex: playground.vertexShaderSource,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uScale;
+
+void main() {
+    float stripes = sin(vUv.x * uScale * 20.0) * 0.5 + 0.5;
+    gl_FragColor = vec4(vec3(stripes), 1.0);
+}
+                    `
+                },
+                'checkerboard': {
+                    vertex: playground.vertexShaderSource,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform float uScale;
+
+void main() {
+    vec2 uv = vUv * uScale;
+    float checker = mod(floor(uv.x) + floor(uv.y), 2.0);
+    gl_FragColor = vec4(vec3(checker), 1.0);
+}
+                    `
+                },
+                'radial': {
+                    vertex: playground.vertexShaderSource,
+                    fragment: `
+precision mediump float;
+varying vec2 vUv;
+uniform vec3 uColor1;
+uniform vec3 uColor2;
+
+void main() {
+    vec2 center = vec2(0.5, 0.5);
+    float dist = distance(vUv, center);
+    float t = smoothstep(0.0, 0.7, dist);
+    vec3 color = mix(uColor1, uColor2, t);
+    gl_FragColor = vec4(color, 1.0);
+}
+                    `
+                }
+            };
+
+            const preset = presets[type];
+            if (preset) {
+                document.getElementById('fragmentShader').value = preset.fragment.trim();
+                playground.fragmentShaderSource = preset.fragment.trim();
+                playground.compile();
+            }
+        }
+
+        // Initialize playground
+        const playground = new ShaderPlayground();
+        window.playground = playground;
+        window.loadExample = loadExample;
+        window.applyPreset = applyPreset;
+    </script>
+</body>
+</html>

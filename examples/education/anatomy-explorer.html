@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anatomy Explorer - Human Body Systems</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .demo-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+        
+        .learning-objectives {
+            background: rgba(255, 107, 107, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin: 12px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            background: #ff6b6b;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #ff5252;
+            transform: translateY(-1px);
+        }
+        
+        .control-group button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .control-group button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .system-info {
+            background: rgba(255, 107, 107, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .organ-info {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .functionality-display {
+            background: rgba(33, 150, 243, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .interactive-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .progress-indicator {
+            background: rgba(255, 255, 255, 0.1);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff5252);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(255, 107, 107, 0.3) !important;
+            border: 1px solid #ff6b6b;
+        }
+        
+        .system-button {
+            background: rgba(255, 107, 107, 0.3);
+            color: white;
+            border: 1px solid rgba(255, 107, 107, 0.5);
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .system-button:hover {
+            background: rgba(255, 107, 107, 0.5);
+        }
+        
+        .system-button.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        
+        .label-popup {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Anatomy Explorer</h1>
+            
+            <div class="demo-section" onclick="selectDemo('skeletal')">
+                <div class="demo-title">Skeletal System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand bone structure<br>
+                    • Explore skeletal functions<br>
+                    • Learn about bone formation
+                </div>
+                
+                <div class="control-group">
+                    <label>View Mode:</label>
+                    <select id="skeletal-view" onchange="updateSkeletalView()">
+                        <option value="full">Complete Skeleton</option>
+                        <option value="spine">Spine Only</option>
+                        <option value="skull">Skull Only</option>
+                        <option value="ribs">Rib Cage</option>
+                        <option value="limbs">Limbs Only</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Animation Speed:</label>
+                    <input type="range" id="bone-animation-speed" min="0" max="2" step="0.1" value="0.5" onchange="updateSkeletalAnimation()">
+                    <span id="bone-speed-value">0.5</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="highlightBone()">Highlight Long Bones</button>
+                    <button onclick="showBoneJoints()">Show Joints</button>
+                    <button onclick="resetSkeletalView()">Reset View</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="progress-indicator">
+                        <div class="progress-bar" id="bone-formation-progress"></div>
+                    </div>
+                    <div id="bone-formation-status">Bone formation: 0%</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('circulatory')">
+                <div class="demo-title">Circulatory System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Trace blood flow<br>
+                    • Understand heart function<br>
+                    • Explore blood vessel types
+                </div>
+                
+                <div class="control-group">
+                    <label>Heart Animation:</label>
+                    <select id="heart-animation" onchange="updateHeartAnimation()">
+                        <option value="normal">Normal Rate</option>
+                        <option value="slow">Slow (Bradycardia)</option>
+                        <option value="fast">Fast (Tachycardia)</option>
+                        <option value="pause">Paused</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Blood Flow Speed:</label>
+                    <input type="range" id="blood-flow-speed" min="0.1" max="3" step="0.1" value="1" onchange="updateBloodFlow()">
+                    <span id="blood-speed-value">1.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="highlightBloodVessels()">Highlight Vessels</button>
+                    <button onclick="showOxygenation()">Show Oxygen Levels</button>
+                    <button onclick="traceCirculation()">Trace Circulation Path</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="system-button" onclick="showHeartChambers()">Heart Chambers</div>
+                    <div class="system-button" onclick="showValves()">Heart Valves</div>
+                    <div class="system-button" onclick="showMajorArteries()">Major Arteries</div>
+                    <div class="system-button" onclick="showMajorVeins()">Major Veins</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('respiratory')">
+                <div class="demo-title">Respiratory System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand breathing mechanics<br>
+                    • Visualize gas exchange<br>
+                    • Explore lung structure
+                </div>
+                
+                <div class="control-group">
+                    <label>Breathing Rate (breaths/min):</label>
+                    <input type="range" id="breathing-rate" min="5" max="30" value="12" onchange="updateBreathingRate()">
+                    <span id="breathing-rate-value">12</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Lung Volume:</label>
+                    <select id="lung-volume" onchange="updateLungVolume()">
+                        <option value="normal">Normal</option>
+                        <option value="inhale">Deep Inhale</option>
+                        <option value="exhale">Forced Exhale</option>
+                        <option value="tidal">Tidal Breathing</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="startBreathingAnimation()">Start Breathing</button>
+                    <button onclick="showAlveoli()">Show Alveoli</button>
+                    <button onclick="simulateGasExchange()">Simulate Gas Exchange</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="functionality-display" id="breathing-info">
+                        O₂: 21% | CO₂: 0.04% | Rate: 12/min
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('nervous')">
+                <div class="demo-title">Nervous System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand neural pathways<br>
+                    • Explore brain regions<br>
+                    • Learn about signal transmission
+                </div>
+                
+                <div class="control-group">
+                    <label>Neural Activity Level:</label>
+                    <input type="range" id="neural-activity" min="0" max="100" value="50" onchange="updateNeuralActivity()">
+                    <span id="neural-activity-value">50</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Signal Speed (m/s):</label>
+                    <input type="range" id="signal-speed" min="1" max="120" value="50" onchange="updateSignalSpeed()">
+                    <span id="signal-speed-value">50</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="highlightBrainRegions()">Highlight Brain Regions</button>
+                    <button onclick="showSpinalCord()">Show Spinal Cord</button>
+                    <button onclick="simulateNerveImpulse()">Simulate Nerve Impulse</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="system-button" onclick="showCerebrum()">Cerebrum</div>
+                    <div class="system-button" onclick="showCerebellum()">Cerebellum</div>
+                    <div class="system-button" onclick="showBrainstem()">Brainstem</div>
+                    <div class="system-button" onclick="showNeurons()">Neurons</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('muscular')">
+                <div class="demo-title">Muscular System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand muscle contraction<br>
+                    • Explore muscle types<br>
+                    • Learn about muscle attachment
+                </div>
+                
+                <div class="control-group">
+                    <label>Contraction Force:</label>
+                    <input type="range" id="contraction-force" min="0" max="100" value="50" onchange="updateContraction()">
+                    <span id="contraction-value">50</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Muscle Group:</label>
+                    <select id="muscle-group" onchange="highlightMuscleGroup()">
+                        <option value="all">All Muscles</option>
+                        <option value="cardiac">Cardiac Muscle</option>
+                        <option value="skeletal">Skeletal Muscles</option>
+                        <option value="smooth">Smooth Muscles</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="startMuscleContraction()">Start Contraction</button>
+                    <button onclick="showMuscleFibers()">Show Muscle Fibers</button>
+                    <button onclick="simulateMuscleAction()">Simulate Muscle Action</button>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('digestive')">
+                <div class="demo-title">Digestive System</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Trace food pathway<br>
+                    • Understand digestion stages<br>
+                    • Explore nutrient absorption
+                </div>
+                
+                <div class="control-group">
+                    <label>Digestion Stage:</label>
+                    <select id="digestion-stage" onchange="updateDigestionStage()">
+                        <option value="mouth">Mouth</option>
+                        <option value="esophagus">Esophagus</option>
+                        <option value="stomach">Stomach</option>
+                        <option value="intestines">Intestines</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="startDigestion()">Start Digestion</button>
+                    <button onclick="showEnzymes()">Show Digestive Enzymes</button>
+                    <button onclick="highlightAbsorption()">Highlight Absorption Sites</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="progress-indicator">
+                        <div class="progress-bar" id="digestion-progress"></div>
+                    </div>
+                    <div id="digestion-status">Digestion: 0% complete</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a system to begin</h3>
+                <div id="demo-description">
+                    Explore human anatomy through interactive 3D models!
+                </div>
+                <div id="system-display"></div>
+                <div id="functionality-display"></div>
+            </div>
+            <div class="interactive-overlay" id="interactive-overlay">
+                Click on organs for detailed information<br>
+                Drag to rotate, scroll to zoom
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Anatomical system objects
+        let skeletalObjects = {};
+        let circulatoryObjects = {};
+        let respiratoryObjects = {};
+        let nervousObjects = {};
+        let muscularObjects = {};
+        let digestiveObjects = {};
+        
+        // Animation variables
+        let heartBeatTime = 0;
+        let breathingTime = 0;
+        let neuralActivityTime = 0;
+        let muscleContractionTime = 0;
+        let digestionTime = 0;
+        
+        // Interactive elements
+        let interactiveObjects = [];
+        let raycaster, mouse;
+        
+        init();
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 20);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0, 0);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0xff6b6b, 0.6, 50);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+            
+            // Initialize interactive elements
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Create human body reference (invisible)
+            createBodyReference();
+            
+            // Start render loop
+            animate();
+            
+            // Handle mouse interactions
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createBodyReference() {
+            // Create a wireframe reference of human body
+            const bodyGeometry = new THREE.CapsuleGeometry(2, 8, 4, 8);
+            const bodyMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x333333, 
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.1 
+            });
+            const bodyReference = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            scene.add(bodyReference);
+        }
+        
+        function selectDemo(systemName) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = systemName;
+            
+            switch(systemName) {
+                case 'skeletal':
+                    setupSkeletalSystem();
+                    break;
+                case 'circulatory':
+                    setupCirculatorySystem();
+                    break;
+                case 'respiratory':
+                    setupRespiratorySystem();
+                    break;
+                case 'nervous':
+                    setupNervousSystem();
+                    break;
+                case 'muscular':
+                    setupMuscularSystem();
+                    break;
+                case 'digestive':
+                    setupDigestiveSystem();
+                    break;
+            }
+        }
+        
+        function setupSkeletalSystem() {
+            updateInfoPanel('Skeletal System', 
+                'The skeletal system provides structure and protects organs.', 
+                'Functions: Support, Protection, Movement, Blood Production', 
+                '206 bones in adult human body');
+            
+            clearScene();
+            createBodyReference();
+            createSkeletalSystem();
+        }
+        
+        function setupCirculatorySystem() {
+            updateInfoPanel('Circulatory System', 
+                'The circulatory system transports blood throughout the body.', 
+                'Heart pumps blood through blood vessels', 
+                'Beats ~100,000 times per day');
+            
+            clearScene();
+            createBodyReference();
+            createCirculatorySystem();
+        }
+        
+        function setupRespiratorySystem() {
+            updateInfoPanel('Respiratory System', 
+                'The respiratory system brings oxygen into the body.', 
+                'Gas exchange in alveoli', 
+                'Breathes ~20,000 times per day');
+            
+            clearScene();
+            createBodyReference();
+            createRespiratorySystem();
+        }
+        
+        function setupNervousSystem() {
+            updateInfoPanel('Nervous System', 
+                'The nervous system controls body functions and responses.', 
+                'Brain, spinal cord, and nerves', 
+                'Billions of neurons in the body');
+            
+            clearScene();
+            createBodyReference();
+            createNervousSystem();
+        }
+        
+        function setupMuscularSystem() {
+            updateInfoPanel('Muscular System', 
+                'The muscular system enables movement and maintains posture.', 
+                'Over 600 muscles in the body', 
+                'Makes up ~40% of body weight');
+            
+            clearScene();
+            createBodyReference();
+            createMuscularSystem();
+        }
+        
+        function setupDigestiveSystem() {
+            updateInfoPanel('Digestive System', 
+                'The digestive system breaks down food for energy.', 
+                '30-foot long digestive tract', 
+                'Processes ~2-3 pounds of food daily');
+            
+            clearScene();
+            createBodyReference();
+            createDigestiveSystem();
+        }
+        
+        function createSkeletalSystem() {
+            // Create spine
+            for (let i = 0; i < 26; i++) {
+                const vertebraeGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2);
+                const vertebraeMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
+                const vertebrae = new THREE.Mesh(vertebraeGeometry, vertebraeMaterial);
+                vertebrae.position.set(0, i * 0.4 - 5, 0);
+                vertebrae.userData = { name: 'Vertebrae', type: 'bone' };
+                scene.add(vertebrae);
+                skeletalObjects.vertebrae.push(vertebrae);
+                interactiveObjects.push(vertebrae);
+            }
+            
+            // Create ribs
+            for (let i = 0; i < 12; i++) {
+                const ribGeometry = new THREE.TorusGeometry(2, 0.1, 8, 16, Math.PI);
+                const ribMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
+                const rib = new THREE.Mesh(ribGeometry, ribMaterial);
+                rib.position.set(0, i * 0.5 - 2, 0);
+                rib.rotation.z = Math.PI;
+                rib.userData = { name: 'Rib', type: 'bone' };
+                scene.add(rib);
+                skeletalObjects.ribs.push(rib);
+                interactiveObjects.push(rib);
+            }
+            
+            // Create skull
+            const skullGeometry = new THREE.SphereGeometry(1.5, 16, 12);
+            const skullMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
+            const skull = new THREE.Mesh(skullGeometry, skullMaterial);
+            skull.position.set(0, 6, 0);
+            skull.userData = { name: 'Skull', type: 'bone' };
+            scene.add(skull);
+            skeletalObjects.skull = skull;
+            interactiveObjects.push(skull);
+            
+            // Create long bones (arms and legs)
+            const longBonePositions = [
+                [-3, 2, 0], [-3, -1, 0], // Left arm
+                [3, 2, 0], [3, -1, 0],   // Right arm
+                [-1.5, -3, 0], [-1.5, -7, 0], // Left leg
+                [1.5, -3, 0], [1.5, -7, 0]   // Right leg
+            ];
+            
+            longBonePositions.forEach((pos, index) => {
+                const boneGeometry = new THREE.CylinderGeometry(0.2, 0.25, 4);
+                const boneMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
+                const bone = new THREE.Mesh(boneGeometry, boneMaterial);
+                bone.position.set(pos[0], pos[1], pos[2]);
+                bone.userData = { 
+                    name: index < 4 ? 'Humerus/Femur' : 'Radius/Tibia', 
+                    type: 'bone' 
+                };
+                scene.add(bone);
+                skeletalObjects.longBones.push(bone);
+                interactiveObjects.push(bone);
+            });
+        }
+        
+        function createCirculatorySystem() {
+            // Create heart
+            const heartGeometry = new THREE.SphereGeometry(0.8, 16, 12);
+            const heartMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff0000,
+                shininess: 100
+            });
+            const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+            heart.position.set(0, 0, 0);
+            heart.userData = { name: 'Heart', type: 'organ', system: 'circulatory' };
+            scene.add(heart);
+            circulatoryObjects.heart = heart;
+            interactiveObjects.push(heart);
+            
+            // Create blood vessels (simplified as tubes)
+            const vesselData = [
+                { start: [0, 0, 0], end: [0, 4, 0], color: 0xff0000, name: 'Aorta' },
+                { start: [0, 0, 0], end: [0, -4, 0], color: 0x0000ff, name: 'Vena Cava' },
+                { start: [-2, 1, 0], end: [-4, 3, 0], color: 0xff0000, name: 'Left Carotid' },
+                { start: [2, 1, 0], end: [4, 3, 0], color: 0xff0000, name: 'Right Carotid' }
+            ];
+            
+            vesselData.forEach(vessel => {
+                const start = new THREE.Vector3(vessel.start[0], vessel.start[1], vessel.start[2]);
+                const end = new THREE.Vector3(vessel.end[0], vessel.end[1], vessel.end[2]);
+                const direction = new THREE.Vector3().subVectors(end, start);
+                const length = direction.length();
+                
+                const vesselGeometry = new THREE.CylinderGeometry(0.1, 0.1, length);
+                const vesselMaterial = new THREE.MeshPhongMaterial({ color: vessel.color });
+                const vesselMesh = new THREE.Mesh(vesselGeometry, vesselMaterial);
+                
+                vesselMesh.position.copy(start).add(direction.multiplyScalar(0.5));
+                vesselMesh.lookAt(end);
+                vesselMesh.rotateX(Math.PI / 2);
+                vesselMesh.userData = { name: vessel.name, type: 'vessel' };
+                
+                scene.add(vesselMesh);
+                circulatoryObjects.vessels.push(vesselMesh);
+                interactiveObjects.push(vesselMesh);
+            });
+            
+            // Create blood particles
+            for (let i = 0; i < 50; i++) {
+                const bloodGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const bloodMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                const blood = new THREE.Mesh(bloodGeometry, bloodMaterial);
+                
+                blood.position.set(
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 2
+                );
+                
+                blood.userData = { 
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.1
+                    )
+                };
+                
+                scene.add(blood);
+                circulatoryObjects.blood.push(blood);
+            }
+        }
+        
+        function createRespiratorySystem() {
+            // Create lungs
+            const leftLungGeometry = new THREE.SphereGeometry(1.2, 16, 12);
+            const rightLungGeometry = new THREE.SphereGeometry(1.3, 16, 12);
+            
+            const lungMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffb6c1,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const leftLung = new THREE.Mesh(leftLungGeometry, lungMaterial);
+            leftLung.position.set(-1.5, 2, 0);
+            leftLung.userData = { name: 'Left Lung', type: 'organ', system: 'respiratory' };
+            scene.add(leftLung);
+            respiratoryObjects.leftLung = leftLung;
+            interactiveObjects.push(leftLung);
+            
+            const rightLung = new THREE.Mesh(rightLungGeometry, lungMaterial);
+            rightLung.position.set(1.5, 2, 0);
+            rightLung.userData = { name: 'Right Lung', type: 'organ', system: 'respiratory' };
+            scene.add(rightLung);
+            respiratoryObjects.rightLung = rightLung;
+            interactiveObjects.push(rightLung);
+            
+            // Create trachea
+            const tracheaGeometry = new THREE.CylinderGeometry(0.3, 0.3, 3);
+            const tracheaMaterial = new THREE.MeshPhongMaterial({ color: 0x90ee90 });
+            const trachea = new THREE.Mesh(tracheaGeometry, tracheaMaterial);
+            trachea.position.set(0, 4, 0);
+            trachea.userData = { name: 'Trachea', type: 'organ', system: 'respiratory' };
+            scene.add(trachea);
+            respiratoryObjects.trachea = trachea;
+            interactiveObjects.push(trachea);
+            
+            // Create bronchi
+            const leftBronchusGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5);
+            const rightBronchusGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5);
+            
+            const leftBronchus = new THREE.Mesh(leftBronchusGeometry, tracheaMaterial);
+            leftBronchus.position.set(-0.8, 3, -1);
+            leftBronchus.rotation.z = Math.PI / 4;
+            leftBronchus.userData = { name: 'Left Bronchus', type: 'organ', system: 'respiratory' };
+            scene.add(leftBronchus);
+            interactiveObjects.push(leftBronchus);
+            
+            const rightBronchus = new THREE.Mesh(rightBronchusGeometry, tracheaMaterial);
+            rightBronchus.position.set(0.8, 3, -1);
+            rightBronchus.rotation.z = -Math.PI / 4;
+            rightBronchus.userData = { name: 'Right Bronchus', type: 'organ', system: 'respiratory' };
+            scene.add(rightBronchus);
+            interactiveObjects.push(rightBronchus);
+            
+            // Create alveoli
+            for (let i = 0; i < 20; i++) {
+                const alveoliGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const alveoliMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const alveoli = new THREE.Mesh(alveoliGeometry, alveoliMaterial);
+                
+                const lung = i < 10 ? leftLung : rightLung;
+                alveoli.position.copy(lung.position).add(new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                ));
+                
+                alveoli.userData = { name: 'Alveoli', type: 'tissue', system: 'respiratory' };
+                scene.add(alveoli);
+                respiratoryObjects.alveoli.push(alveoli);
+                interactiveObjects.push(alveoli);
+            }
+        }
+        
+        function createNervousSystem() {
+            // Create brain
+            const brainGeometry = new THREE.SphereGeometry(1.2, 16, 12);
+            const brainMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffc0cb,
+                shininess: 50
+            });
+            const brain = new THREE.Mesh(brainGeometry, brainMaterial);
+            brain.position.set(0, 6, 0);
+            brain.userData = { name: 'Brain', type: 'organ', system: 'nervous' };
+            scene.add(brain);
+            nervousObjects.brain = brain;
+            interactiveObjects.push(brain);
+            
+            // Create spinal cord
+            const spinalCordGeometry = new THREE.CylinderGeometry(0.2, 0.2, 10);
+            const spinalCordMaterial = new THREE.MeshPhongMaterial({ color: 0xdaa520 });
+            const spinalCord = new THREE.Mesh(spinalCordGeometry, spinalCordMaterial);
+            spinalCord.position.set(0, 0, 0);
+            spinalCord.userData = { name: 'Spinal Cord', type: 'organ', system: 'nervous' };
+            scene.add(spinalCord);
+            nervousObjects.spinalCord = spinalCord;
+            interactiveObjects.push(spinalCord);
+            
+            // Create neurons
+            for (let i = 0; i < 30; i++) {
+                const neuronGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+                const neuronMaterial = new THREE.MeshPhongMaterial({ color: 0x4169e1 });
+                const neuron = new THREE.Mesh(neuronGeometry, neuronMaterial);
+                
+                neuron.position.set(
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 10
+                );
+                
+                neuron.userData = { name: 'Neuron', type: 'cell', system: 'nervous' };
+                scene.add(neuron);
+                nervousObjects.neurons.push(neuron);
+                interactiveObjects.push(neuron);
+            }
+            
+            // Create nerve impulses
+            for (let i = 0; i < 10; i++) {
+                const impulseGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const impulseMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xffff00,
+                    emissive: 0xffff00,
+                    emissiveIntensity: 0.3
+                });
+                const impulse = new THREE.Mesh(impulseGeometry, impulseMaterial);
+                
+                impulse.userData = { 
+                    path: Math.random() * Math.PI * 2,
+                    speed: Math.random() * 0.05 + 0.01
+                };
+                
+                scene.add(impulse);
+                nervousObjects.impulses.push(impulse);
+            }
+        }
+        
+        function createMuscularSystem() {
+            // Create major muscle groups
+            const muscleGroups = [
+                { name: 'Pectorals', pos: [-2, 3, 0], color: 0xff0000, size: [1, 0.5, 0.3] },
+                { name: 'Biceps', pos: [-3.5, 2, 0], color: 0xff0000, size: [0.3, 1.5, 0.3] },
+                { name: 'Quadriceps', pos: [-1, -4, 0], color: 0xff0000, size: [0.5, 2, 0.4] },
+                { name: 'Hamstrings', pos: [1, -4, 0], color: 0xff0000, size: [0.5, 2, 0.4] }
+            ];
+            
+            muscleGroups.forEach(muscle => {
+                const muscleGeometry = new THREE.BoxGeometry(muscle.size[0], muscle.size[1], muscle.size[2]);
+                const muscleMaterial = new THREE.MeshPhongMaterial({ color: muscle.color });
+                const muscleMesh = new THREE.Mesh(muscleGeometry, muscleMaterial);
+                muscleMesh.position.set(muscle.pos[0], muscle.pos[1], muscle.pos[2]);
+                muscleMesh.userData = { name: muscle.name, type: 'muscle' };
+                scene.add(muscleMesh);
+                muscularObjects.muscles.push(muscleMesh);
+                interactiveObjects.push(muscleMesh);
+            });
+            
+            // Create heart muscle
+            const cardiacMuscleGeometry = new THREE.SphereGeometry(0.8, 16, 12);
+            const cardiacMuscleMaterial = new THREE.MeshPhongMaterial({ color: 0x8b0000 });
+            const heartMuscle = new THREE.Mesh(cardiacMuscleGeometry, cardiacMuscleMaterial);
+            heartMuscle.position.set(0, 0, 0);
+            heartMuscle.userData = { name: 'Cardiac Muscle', type: 'muscle' };
+            scene.add(heartMuscle);
+            muscularObjects.cardiacMuscle = heartMuscle;
+            interactiveObjects.push(heartMuscle);
+        }
+        
+        function createDigestiveSystem() {
+            // Create esophagus
+            const esophagusGeometry = new THREE.CylinderGeometry(0.3, 0.3, 4);
+            const esophagusMaterial = new THREE.MeshPhongMaterial({ color: 0xdaa520 });
+            const esophagus = new THREE.Mesh(esophagusGeometry, esophagusMaterial);
+            esophagus.position.set(0, 3, 0);
+            esophagus.userData = { name: 'Esophagus', type: 'organ', system: 'digestive' };
+            scene.add(esophagus);
+            digestiveObjects.esophagus = esophagus;
+            interactiveObjects.push(esophagus);
+            
+            // Create stomach
+            const stomachGeometry = new THREE.SphereGeometry(1.5, 16, 12);
+            const stomachMaterial = new THREE.MeshPhongMaterial({ color: 0xffa500 });
+            const stomach = new THREE.Mesh(stomachGeometry, stomachMaterial);
+            stomach.position.set(0, 0, 0);
+            stomach.userData = { name: 'Stomach', type: 'organ', system: 'digestive' };
+            scene.add(stomach);
+            digestiveObjects.stomach = stomach;
+            interactiveObjects.push(stomach);
+            
+            // Create small intestine
+            for (let i = 0; i < 8; i++) {
+                const intestineGeometry = new THREE.TorusGeometry(0.8, 0.2, 8, 16);
+                const intestineMaterial = new THREE.MeshPhongMaterial({ color: 0x98fb98 });
+                const intestine = new THREE.Mesh(intestineGeometry, intestineMaterial);
+                intestine.position.set(0, -2, i * 0.5);
+                intestine.userData = { name: 'Small Intestine', type: 'organ', system: 'digestive' };
+                scene.add(intestine);
+                digestiveObjects.smallIntestine.push(intestine);
+                interactiveObjects.push(intestine);
+            }
+            
+            // Create food particles
+            for (let i = 0; i < 20; i++) {
+                const foodGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const foodMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+                const food = new THREE.Mesh(foodGeometry, foodMaterial);
+                
+                food.position.set(
+                    (Math.random() - 0.5) * 3,
+                    Math.random() * 8 - 2,
+                    (Math.random() - 0.5) * 3
+                );
+                
+                food.userData = { 
+                    velocity: new THREE.Vector3(0, -0.02, 0),
+                    stage: 'mouth'
+                };
+                
+                scene.add(food);
+                digestiveObjects.food.push(food);
+            }
+        }
+        
+        // Animation and interaction functions
+        
+        function updateSkeletalAnimation() {
+            const speed = parseFloat(document.getElementById('bone-animation-speed').value);
+            document.getElementById('bone-speed-value').textContent = speed;
+        }
+        
+        function updateHeartAnimation() {
+            const mode = document.getElementById('heart-animation').value;
+            // Heart animation speed will be used in animate() function
+        }
+        
+        function updateBloodFlow() {
+            const speed = parseFloat(document.getElementById('blood-flow-speed').value);
+            document.getElementById('blood-speed-value').textContent = speed;
+        }
+        
+        function updateBreathingRate() {
+            const rate = parseInt(document.getElementById('breathing-rate').value);
+            document.getElementById('breathing-rate-value').textContent = rate;
+        }
+        
+        function updateLungVolume() {
+            const volume = document.getElementById('lung-volume').value;
+            // Lung volume will be used in animate() function
+        }
+        
+        function updateNeuralActivity() {
+            const activity = parseInt(document.getElementById('neural-activity').value);
+            document.getElementById('neural-activity-value').textContent = activity;
+        }
+        
+        function updateSignalSpeed() {
+            const speed = parseInt(document.getElementById('signal-speed').value);
+            document.getElementById('signal-speed-value').textContent = speed;
+        }
+        
+        function updateContraction() {
+            const force = parseInt(document.getElementById('contraction-force').value);
+            document.getElementById('contraction-value').textContent = force;
+        }
+        
+        function highlightBone() {
+            if (skeletalObjects.longBones) {
+                skeletalObjects.longBones.forEach(bone => {
+                    bone.material.color.setHex(0xffff00);
+                });
+            }
+        }
+        
+        function showBoneJoints() {
+            // Create joint spheres
+            const jointPositions = [
+                [-3, 2, 0], [-3, -1, 0], [3, 2, 0], [3, -1, 0], // Arms
+                [-1.5, -3, 0], [-1.5, -7, 0], [1.5, -3, 0], [1.5, -7, 0] // Legs
+            ];
+            
+            jointPositions.forEach(pos => {
+                const jointGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const jointMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x00ff00,
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 0.2
+                });
+                const joint = new THREE.Mesh(jointGeometry, jointMaterial);
+                joint.position.set(pos[0], pos[1], pos[2]);
+                joint.userData = { name: 'Joint', type: 'joint' };
+                scene.add(joint);
+                skeletalObjects.joints.push(joint);
+            });
+        }
+        
+        function highlightBloodVessels() {
+            if (circulatoryObjects.vessels) {
+                circulatoryObjects.vessels.forEach(vessel => {
+                    vessel.material.color.setHex(0xffff00);
+                });
+            }
+        }
+        
+        function showOxygenation() {
+            // Change blood color based on oxygenation
+            circulatoryObjects.blood.forEach(blood => {
+                if (Math.random() > 0.7) {
+                    blood.material.color.setHex(0xff0000); // Oxygenated (arterial)
+                } else {
+                    blood.material.color.setHex(0x0000ff); // Deoxygenated (venous)
+                }
+            });
+        }
+        
+        function showAlveoli() {
+            if (respiratoryObjects.alveoli) {
+                respiratoryObjects.alveoli.forEach(alveoli => {
+                    alveoli.material.opacity = 1.0;
+                    alveoli.material.color.setHex(0xffffff);
+                });
+            }
+        }
+        
+        function simulateGasExchange() {
+            if (respiratoryObjects.alveoli) {
+                respiratoryObjects.alveoli.forEach(alveoli => {
+                    // Animate gas exchange
+                    alveoli.material.emissive.setHex(0x00ff00);
+                    setTimeout(() => {
+                        alveoli.material.emissive.setHex(0x000000);
+                    }, 1000);
+                });
+            }
+        }
+        
+        function showBrainRegions() {
+            // Create brain region highlights
+            const regions = [
+                { name: 'Frontal Lobe', pos: [0.5, 6.5, 0], color: 0xff0000 },
+                { name: 'Parietal Lobe', pos: [0, 6.5, -0.5], color: 0x00ff00 },
+                { name: 'Temporal Lobe', pos: [-0.5, 6, 0], color: 0x0000ff },
+                { name: 'Occipital Lobe', pos: [0, 6, -1], color: 0xffff00 }
+            ];
+            
+            regions.forEach(region => {
+                const regionGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const regionMaterial = new THREE.MeshPhongMaterial({ 
+                    color: region.color,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const regionMesh = new THREE.Mesh(regionGeometry, regionMaterial);
+                regionMesh.position.set(region.pos[0], region.pos[1], region.pos[2]);
+                regionMesh.userData = { name: region.name, type: 'brain-region' };
+                scene.add(regionMesh);
+                nervousObjects.regions.push(regionMesh);
+            });
+        }
+        
+        function startMuscleContraction() {
+            const force = parseInt(document.getElementById('contraction-force').value);
+            const contraction = force / 100;
+            
+            if (muscularObjects.muscles) {
+                muscularObjects.muscles.forEach(muscle => {
+                    muscle.scale.y = 1 - contraction * 0.3;
+                    muscle.scale.x = 1 + contraction * 0.1;
+                    muscle.scale.z = 1 + contraction * 0.1;
+                });
+            }
+        }
+        
+        function startDigestion() {
+            digestionTime = 0;
+            // Animate food movement through digestive system
+        }
+        
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveObjects);
+            
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                showObjectInfo(object);
+            }
+        }
+        
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveObjects);
+            
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'pointer';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }
+        
+        function showObjectInfo(object) {
+            const info = object.userData;
+            if (!info) return;
+            
+            let systemInfo = '';
+            if (info.system) {
+                switch(info.system) {
+                    case 'circulatory':
+                        systemInfo = 'Part of the circulatory system';
+                        break;
+                    case 'respiratory':
+                        systemInfo = 'Part of the respiratory system';
+                        break;
+                    case 'nervous':
+                        systemInfo = 'Part of the nervous system';
+                        break;
+                    case 'digestive':
+                        systemInfo = 'Part of the digestive system';
+                        break;
+                }
+            }
+            
+            let additionalInfo = '';
+            switch(info.name) {
+                case 'Heart':
+                    additionalInfo = 'Pumps blood throughout the body • Beats ~100,000 times/day';
+                    break;
+                case 'Lungs':
+                    additionalInfo = 'Gas exchange organs • Process ~11,000 liters of air/day';
+                    break;
+                case 'Brain':
+                    additionalInfo = 'Control center of the body • Contains ~86 billion neurons';
+                    break;
+                case 'Stomach':
+                    additionalInfo = 'Chemical digestion of food • Produces gastric acid';
+                    break;
+                case 'Skull':
+                    additionalInfo = 'Protects the brain • 22 bones fused together';
+                    break;
+            }
+            
+            updateInfoPanel(info.name, systemInfo, getSystemFunction(info.system), additionalInfo);
+        }
+        
+        function getSystemFunction(system) {
+            switch(system) {
+                case 'circulatory':
+                    return 'Transports blood, oxygen, and nutrients';
+                case 'respiratory':
+                    return 'Gas exchange and oxygen delivery';
+                case 'nervous':
+                    return 'Controls and coordinates body functions';
+                case 'digestive':
+                    return 'Breaks down food for energy and nutrients';
+                default:
+                    return 'Part of human anatomy';
+            }
+        }
+        
+        function clearScene() {
+            // Remove all objects except lights
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && 
+                    object.type !== 'AmbientLight' && 
+                    object.type !== 'DirectionalLight' && 
+                    object.type !== 'PointLight') {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+            
+            // Clear object arrays
+            skeletalObjects = { vertebrae: [], ribs: [], longBones: [], joints: [] };
+            circulatoryObjects = { vessels: [], blood: [] };
+            respiratoryObjects = { alveoli: [] };
+            nervousObjects = { neurons: [], impulses: [], regions: [] };
+            muscularObjects = { muscles: [] };
+            digestiveObjects = { smallIntestine: [], food: [] };
+            interactiveObjects = [];
+        }
+        
+        function updateInfoPanel(title, description, functionInfo, details) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('system-display').innerHTML = `
+                <div class="system-info">
+                    <strong>Function:</strong> ${functionInfo}<br>
+                    ${details}
+                </div>
+            `;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            const time = Date.now() * 0.001;
+            
+            // Heart beat animation
+            if (currentDemo === 'circulatory' && circulatoryObjects.heart) {
+                const heartMode = document.getElementById('heart-animation')?.value || 'normal';
+                let beatSpeed = 1;
+                
+                switch(heartMode) {
+                    case 'slow': beatSpeed = 0.5; break;
+                    case 'fast': beatSpeed = 2; break;
+                    case 'pause': beatSpeed = 0; break;
+                }
+                
+                const beat = Math.sin(time * 2 * beatSpeed) * 0.1 + 1;
+                circulatoryObjects.heart.scale.setScalar(beat);
+            }
+            
+            // Blood flow animation
+            if (circulatoryObjects.blood) {
+                const flowSpeed = parseFloat(document.getElementById('blood-flow-speed')?.value || 1);
+                
+                circulatoryObjects.blood.forEach(blood => {
+                    blood.position.add(blood.userData.velocity.clone().multiplyScalar(flowSpeed));
+                    
+                    // Wrap around bounds
+                    blood.position.x = (blood.position.x + 10) % 20 - 10;
+                    blood.position.y = (blood.position.y + 10) % 20 - 10;
+                    blood.position.z = (blood.position.z + 5) % 10 - 5;
+                });
+            }
+            
+            // Breathing animation
+            if (currentDemo === 'respiratory' && (respiratoryObjects.leftLung || respiratoryObjects.rightLung)) {
+                const breathingRate = parseInt(document.getElementById('breathing-rate')?.value || 12);
+                const lungVolume = document.getElementById('lung-volume')?.value || 'normal';
+                
+                const breath = Math.sin(time * breathingRate * Math.PI / 30) * 0.1 + 1;
+                
+                if (respiratoryObjects.leftLung) {
+                    respiratoryObjects.leftLung.scale.setScalar(breath);
+                }
+                if (respiratoryObjects.rightLung) {
+                    respiratoryObjects.rightLung.scale.setScalar(breath);
+                }
+            }
+            
+            // Neural activity animation
+            if (currentDemo === 'nervous' && nervousObjects.impulses) {
+                const activity = parseInt(document.getElementById('neural-activity')?.value || 50);
+                const signalSpeed = parseInt(document.getElementById('signal-speed')?.value || 50);
+                
+                nervousObjects.impulses.forEach(impulse => {
+                    impulse.userData.path += impulse.userData.speed * (signalSpeed / 50);
+                    impulse.position.x = Math.cos(impulse.userData.path) * 3;
+                    impulse.position.y = Math.sin(impulse.userData.path) * 3;
+                    impulse.material.emissiveIntensity = activity / 200;
+                });
+            }
+            
+            // Muscle contraction animation
+            if (currentDemo === 'muscular' && muscularObjects.muscles) {
+                const force = parseInt(document.getElementById('contraction-force')?.value || 50);
+                const contraction = force / 100 * Math.sin(time * 2) * 0.1 + 1;
+                
+                muscularObjects.muscles.forEach(muscle => {
+                    muscle.scale.y = contraction;
+                    muscle.scale.x = 2 - contraction;
+                });
+            }
+            
+            // Food digestion animation
+            if (currentDemo === 'digestive' && digestiveObjects.food) {
+                digestiveObjects.food.forEach(food => {
+                    food.position.add(food.userData.velocity);
+                    
+                    // Digestive progression
+                    if (food.position.y < 5 && food.position.y > -2) {
+                        food.userData.velocity.y = -0.02; // Esophagus
+                    } else if (food.position.y <= -2) {
+                        food.userData.velocity.set(0, 0, 0); // Stomach
+                    }
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

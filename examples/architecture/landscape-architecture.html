@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landscape Architecture - Garden/Park Design</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #landscape-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 350px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #landscape-panel h3 {
+            margin: 0 0 12px 0;
+            color: #4caf50;
+            font-size: 18px;
+        }
+        
+        #landscape-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 10px 0;
+            color: #8bc34a;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .terrain-tool {
+            display: inline-block;
+            margin: 4px;
+            padding: 10px 8px;
+            background-color: #2e7d32;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 70px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .terrain-tool:hover {
+            background-color: #388e3c;
+            transform: translateY(-1px);
+        }
+        
+        .terrain-tool.active {
+            background-color: #ff9800;
+        }
+        
+        .plant-item {
+            display: inline-block;
+            margin: 3px;
+            padding: 8px;
+            background-color: #1b5e20;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 60px;
+            font-size: 10px;
+        }
+        
+        .plant-item:hover {
+            background-color: #2e7d32;
+        }
+        
+        .plant-item.selected {
+            background-color: #4caf50;
+        }
+        
+        .slider-group {
+            margin: 8px 0;
+        }
+        
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            outline: none;
+        }
+        
+        .button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 4px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #388e3c;
+            transform: translateY(-1px);
+        }
+        
+        .button.danger {
+            background-color: #f44336;
+        }
+        
+        .button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #season-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        
+        #season-control h4 {
+            margin: 0 0 8px 0;
+            color: #2e7d32;
+        }
+        
+        #time-of-day {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #time-slider {
+            flex: 1;
+        }
+        
+        #weather-info {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="landscape-panel">
+        <h3>Landscape Architecture</h3>
+        <p>Garden and park design studio</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Terrain Area: <span id="terrain-area">0.0</span> m²</p>
+        <p>Plants: <span id="plant-count">0</span></p>
+        
+        <div class="control-section">
+            <h4>Terrain Tools</h4>
+            <div class="terrain-tool active" data-tool="raise">Raise</div>
+            <div class="terrain-tool" data-tool="lower">Lower</div>
+            <div class="terrain-tool" data-tool="smooth">Smooth</div>
+            <div class="terrain-tool" data-tool="level">Level</div>
+            <div class="terrain-tool" data-tool="path">Path</div>
+            <div class="terrain-tool" data-tool="water">Water</div>
+            <div class="control-group">
+                <label>Brush Size:</label>
+                <div class="slider-group">
+                    <input type="range" id="brush-size" min="1" max="10" value="3">
+                    <span id="brush-size-value">3m</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Brush Intensity:</label>
+                <div class="slider-group">
+                    <input type="range" id="brush-intensity" min="1" max="100" value="50">
+                    <span id="brush-intensity-value">50%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Plant Library</h4>
+            <div class="plant-item" data-type="tree">🌳 Tree</div>
+            <div class="plant-item" data-type="pine">🌲 Pine</div>
+            <div class="plant-item" data-type="palm">🌴 Palm</div>
+            <div class="plant-item" data-type="flower">🌸 Flowers</div>
+            <div class="plant-item" data-type="bush">🌿 Bush</div>
+            <div class="plant-item" data-type="grass">🌱 Grass</div>
+            <div class="plant-item" data-type="cactus">🌵 Cactus</div>
+            <div class="plant-item" data-type="bamboo">🎋 Bamboo</div>
+            <div class="control-group">
+                <label>Plant Size:</label>
+                <div class="slider-group">
+                    <input type="range" id="plant-size" min="0.5" max="3" value="1" step="0.1">
+                    <span id="plant-size-value">1.0x</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Environment</h4>
+            <div class="control-group">
+                <label>Sky Color:</label>
+                <input type="color" id="sky-color" value="#87ceeb">
+            </div>
+            <div class="control-group">
+                <label>Ground Color:</label>
+                <input type="color" id="ground-color" value="#8d6e63">
+            </div>
+            <div class="control-group">
+                <label>Water Level:</label>
+                <div class="slider-group">
+                    <input type="range" id="water-level" min="0" max="2" value="0" step="0.1">
+                    <span id="water-level-value">0.0m</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Lighting</h4>
+            <div class="control-group">
+                <label>Sun Intensity:</label>
+                <div class="slider-group">
+                    <input type="range" id="sun-intensity" min="0" max="100" value="80">
+                    <span id="sun-intensity-value">80%</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Ambient Light:</label>
+                <div class="slider-group">
+                    <input type="range" id="ambient-light" min="0" max="100" value="30">
+                    <span id="ambient-light-value">30%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Actions</h4>
+            <button class="button" onclick="resetTerrain()">Reset Terrain</button>
+            <button class="button" onclick="generateGarden()">Auto Garden</button>
+            <button class="button" onclick="exportDesign()">Export</button>
+            <button class="button danger" onclick="clearAll()">Clear All</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Click to paint • Scroll to adjust height • Shift+Click to remove
+            </p>
+        </div>
+    </div>
+    
+    <div id="season-control">
+        <h4>Environment</h4>
+        <div id="time-of-day">
+            <label>Time:</label>
+            <input type="range" id="time-slider" min="0" max="24" value="12">
+            <span id="time-display">12:00</span>
+        </div>
+        <div id="weather-info">
+            Season: <span id="season">Spring</span><br>
+            Weather: <span id="weather">Sunny</span>
+        </div>
+    </div>
+
+    <canvas id="landscape-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            SphereGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class LandscapeArchitecture {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#87ceeb');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(15, 15, 15);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.terrain = [];
+                this.plants = [];
+                this.waterBodies = [];
+                this.selectedTool = 'raise';
+                this.brushSize = 3;
+                this.brushIntensity = 0.5;
+                this.selectedPlantType = 'tree';
+                this.plantSize = 1.0;
+                this.timeOfDay = 12;
+                this.season = 'spring';
+                
+                this.terrainSize = 20;
+                this.terrainResolution = 50;
+                this.heightmap = [];
+                
+                this.isPainting = false;
+                this.paintPosition = new Vec3();
+                
+                this.initializeLights();
+                this.createTerrain();
+                this.createInitialPlants();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting for overall illumination
+                this.ambientLight = new AmbientLight(0.3, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Sun light
+                this.sunLight = new DirectionalLight(1.0, '#ffffff');
+                this.sunLight.setDirection(-1, -1, -1);
+                this.scene.add(this.sunLight);
+
+                // Additional point lights for depth
+                this.pointLight1 = new PointLight(0.3, '#ffeaa7');
+                this.pointLight1.setPosition(-10, 8, -10);
+                this.scene.add(this.pointLight1);
+
+                this.pointLight2 = new PointLight(0.3, '#74b9ff');
+                this.pointLight2.setPosition(10, 8, 10);
+                this.scene.add(this pointLight2);
+            }
+
+            createTerrain() {
+                // Create heightmap
+                this.heightmap = [];
+                for (let x = 0; x <= this.terrainResolution; x++) {
+                    this.heightmap[x] = [];
+                    for (let z = 0; z <= this.terrainResolution; z++) {
+                        // Generate basic terrain with some variation
+                        const noise = Math.sin(x * 0.2) * Math.cos(z * 0.2) * 0.5 + 
+                                     Math.sin(x * 0.1) * 0.3;
+                        this.heightmap[x][z] = noise;
+                    }
+                }
+                
+                // Create terrain mesh
+                this.createTerrainMesh();
+            }
+
+            createTerrainMesh() {
+                const vertices = [];
+                const indices = [];
+                const normals = [];
+                
+                // Generate vertices
+                for (let x = 0; x <= this.terrainResolution; x++) {
+                    for (let z = 0; z <= this.terrainResolution; z++) {
+                        const posX = (x / this.terrainResolution - 0.5) * this.terrainSize;
+                        const posZ = (z / this.terrainResolution - 0.5) * this.terrainSize;
+                        const posY = this.heightmap[x][z];
+                        
+                        vertices.push(posX, posY, posZ);
+                        normals.push(0, 1, 0);
+                    }
+                }
+                
+                // Generate indices
+                for (let x = 0; x < this.terrainResolution; x++) {
+                    for (let z = 0; z < this.terrainResolution; z++) {
+                        const i1 = x * (this.terrainResolution + 1) + z;
+                        const i2 = i1 + 1;
+                        const i3 = (x + 1) * (this.terrainResolution + 1) + z;
+                        const i4 = i3 + 1;
+                        
+                        indices.push(i1, i3, i2);
+                        indices.push(i2, i3, i4);
+                    }
+                }
+                
+                // Create mesh
+                const geometry = new PlaneGeometry(this.terrainSize, this.terrainSize, 
+                                                  this.terrainResolution, this.terrainResolution);
+                
+                // Set vertex positions
+                geometry.vertices = vertices;
+                geometry.indices = indices;
+                geometry.normals = normals;
+                
+                const material = new StandardMaterial({ 
+                    color: '#8d6e63',
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                
+                const terrainMesh = new Mesh(geometry);
+                terrainMesh.setRotation(-Math.PI / 2, 0, 0);
+                terrainMesh.userData.isTerrain = true;
+                this.scene.add(terrainMesh);
+                this.terrain = [terrainMesh];
+            }
+
+            createInitialPlants() {
+                // Add some default plants
+                const positions = [
+                    [-8, -8], [-6, -7], [-7, -6], [-5, -8],
+                    [7, -6], [6, -7], [8, -5], [6, -8],
+                    [-8, 6], [-6, 7], [-5, 8], [-7, 5],
+                    [7, 8], [6, 6], [8, 7], [5, 6]
+                ];
+                
+                positions.forEach((pos, index) => {
+                    const types = ['tree', 'pine', 'bush'];
+                    const type = types[index % types.length];
+                    this.addPlant(type, pos[0], pos[1]);
+                });
+            }
+
+            addPlant(type, x, z) {
+                let plant;
+                
+                switch (type) {
+                    case 'tree':
+                        plant = this.createTree();
+                        break;
+                    case 'pine':
+                        plant = this.createPine();
+                        break;
+                    case 'palm':
+                        plant = this.createPalm();
+                        break;
+                    case 'flower':
+                        plant = this.createFlowers();
+                        break;
+                    case 'bush':
+                        plant = this.createBush();
+                        break;
+                    case 'grass':
+                        plant = this.createGrass();
+                        break;
+                    case 'cactus':
+                        plant = this.createCactus();
+                        break;
+                    case 'bamboo':
+                        plant = this.createBamboo();
+                        break;
+                    default:
+                        return;
+                }
+                
+                // Get terrain height at position
+                const terrainHeight = this.getTerrainHeight(x, z);
+                plant.setPosition(x, terrainHeight, z);
+                plant.setScale(this.plantSize, this.plantSize, this.plantSize);
+                plant.userData.plant = true;
+                plant.userData.type = type;
+                
+                this.plants.push(plant);
+                this.scene.add(plant);
+                this.updatePlantCount();
+            }
+
+            createTree() {
+                const group = new Mesh(); // Group to hold trunk and foliage
+                
+                // Trunk
+                const trunkGeometry = new CylinderGeometry(0.3, 0.5, 3);
+                const trunkMaterial = new StandardMaterial({ color: '#8d451a' });
+                const trunk = new Mesh(trunkGeometry);
+                trunk.setPosition(0, 1.5, 0);
+                group.add(trunk);
+                
+                // Foliage
+                const foliageGeometry = new SphereGeometry(2);
+                const foliageMaterial = new StandardMaterial({ color: '#228b22' });
+                const foliage = new Mesh(foliageGeometry);
+                foliage.setPosition(0, 3.5, 0);
+                group.add(foliage);
+                
+                return group;
+            }
+
+            createPine() {
+                const group = new Mesh();
+                
+                // Trunk
+                const trunkGeometry = new CylinderGeometry(0.2, 0.3, 2.5);
+                const trunkMaterial = new StandardMaterial({ color: '#654321' });
+                const trunk = new Mesh(trunkGeometry);
+                trunk.setPosition(0, 1.25, 0);
+                group.add(trunk);
+                
+                // Pine layers
+                for (let i = 0; i < 3; i++) {
+                    const layerGeometry = new CylinderGeometry(1 - i * 0.3, 1.2 - i * 0.3, 0.8);
+                    const layerMaterial = new StandardMaterial({ color: '#006400' });
+                    const layer = new Mesh(layerGeometry);
+                    layer.setPosition(0, 1.5 + i * 0.6, 0);
+                    group.add(layer);
+                }
+                
+                return group;
+            }
+
+            createPalm() {
+                const group = new Mesh();
+                
+                // Trunk
+                const trunkGeometry = new CylinderGeometry(0.2, 0.3, 4);
+                const trunkMaterial = new StandardMaterial({ color: '#cd853f' });
+                const trunk = new Mesh(trunkGeometry);
+                trunk.setPosition(0, 2, 0);
+                group.add(trunk);
+                
+                // Palm leaves
+                for (let i = 0; i < 5; i++) {
+                    const leafGeometry = new BoxGeometry(0.1, 0.05, 3);
+                    const leafMaterial = new StandardMaterial({ color: '#32cd32' });
+                    const leaf = new Mesh(leafGeometry);
+                    const angle = (i * Math.PI * 2) / 5;
+                    leaf.setPosition(Math.cos(angle) * 1.5, 3.5, Math.sin(angle) * 1.5);
+                    leaf.setRotation(0, angle, -0.5);
+                    group.add(leaf);
+                }
+                
+                return group;
+            }
+
+            createFlowers() {
+                const group = new Mesh();
+                
+                // Create flower bed
+                const bedGeometry = new CylinderGeometry(0.8, 0.8, 0.2);
+                const bedMaterial = new StandardMaterial({ color: '#8b4513' });
+                const bed = new Mesh(bedGeometry);
+                bed.setPosition(0, 0.1, 0);
+                group.add(bed);
+                
+                // Add individual flowers
+                const flowerColors = ['#ff69b4', '#ff4500', '#ff1493', '#ffd700', '#9370db'];
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i * Math.PI * 2) / 8;
+                    const radius = 0.5;
+                    const flowerGeometry = new SphereGeometry(0.1);
+                    const flowerMaterial = new StandardMaterial({ 
+                        color: flowerColors[i % flowerColors.length] 
+                    });
+                    const flower = new Mesh(flowerGeometry);
+                    flower.setPosition(
+                        Math.cos(angle) * radius, 
+                        0.4, 
+                        Math.sin(angle) * radius
+                    );
+                    group.add(flower);
+                }
+                
+                return group;
+            }
+
+            createBush() {
+                const geometry = new CylinderGeometry(1, 1.2, 1);
+                const material = new StandardMaterial({ color: '#228b22' });
+                return new Mesh(geometry);
+            }
+
+            createGrass() {
+                const group = new Mesh();
+                
+                // Create grass clumps
+                for (let i = 0; i < 5; i++) {
+                    const grassBladeGeometry = new BoxGeometry(0.02, 0.8, 0.02);
+                    const grassMaterial = new StandardMaterial({ color: '#32cd32' });
+                    const blade = new Mesh(grassBladeGeometry);
+                    
+                    const angle = (i * Math.PI * 2) / 5;
+                    const radius = 0.3;
+                    blade.setPosition(
+                        Math.cos(angle) * radius, 
+                        0.4, 
+                        Math.sin(angle) * radius
+                    );
+                    blade.setRotation(Math.random() * 0.2, angle, 0);
+                    group.add(blade);
+                }
+                
+                return group;
+            }
+
+            createCactus() {
+                const group = new Mesh();
+                
+                // Main cactus body
+                const bodyGeometry = new CylinderGeometry(0.3, 0.4, 2);
+                const bodyMaterial = new StandardMaterial({ color: '#228b22' });
+                const body = new Mesh(bodyGeometry);
+                body.setPosition(0, 1, 0);
+                group.add(body);
+                
+                // Add smaller arms
+                for (let i = 0; i < 3; i++) {
+                    const armGeometry = new CylinderGeometry(0.15, 0.2, 0.8);
+                    const armMaterial = new StandardMaterial({ color: '#228b22' });
+                    const arm = new Mesh(armGeometry);
+                    const angle = (i * Math.PI * 2) / 3;
+                    arm.setPosition(Math.cos(angle) * 0.4, 1.2, Math.sin(angle) * 0.4);
+                    arm.setRotation(0, angle, 0.3);
+                    group.add(arm);
+                }
+                
+                return group;
+            }
+
+            createBamboo() {
+                const group = new Mesh();
+                
+                // Bamboo stalks
+                for (let i = 0; i < 4; i++) {
+                    const stalkGeometry = new CylinderGeometry(0.1, 0.15, 3);
+                    const stalkMaterial = new StandardMaterial({ color: '#9acd32' });
+                    const stalk = new Mesh(stalkGeometry);
+                    stalk.setPosition((i - 1.5) * 0.3, 1.5, Math.sin(i) * 0.2);
+                    group.add(stalk);
+                    
+                    // Leaves
+                    for (let j = 0; j < 2; j++) {
+                        const leafGeometry = new BoxGeometry(0.02, 0.6, 0.2);
+                        const leafMaterial = new StandardMaterial({ color: '#32cd32' });
+                        const leaf = new Mesh(leafGeometry);
+                        const height = 1 + j * 0.8;
+                        const leafAngle = (j % 2 === 0) ? 0.3 : -0.3;
+                        leaf.setPosition((i - 1.5) * 0.3, height, Math.sin(i) * 0.2);
+                        leaf.setRotation(0, i * Math.PI / 2, leafAngle);
+                        group.add(leaf);
+                    }
+                }
+                
+                return group;
+            }
+
+            getTerrainHeight(x, z) {
+                const gridX = Math.round((x / this.terrainSize + 0.5) * this.terrainResolution);
+                const gridZ = Math.round((z / this.terrainSize + 0.5) * this.terrainResolution);
+                
+                if (gridX >= 0 && gridX <= this.terrainResolution && 
+                    gridZ >= 0 && gridZ <= this.terrainResolution) {
+                    return this.heightmap[gridX][gridZ];
+                }
+                return 0;
+            }
+
+            modifyTerrain(x, z, intensity) {
+                const gridX = Math.round((x / this.terrainSize + 0.5) * this.terrainResolution);
+                const gridZ = Math.round((z / this.terrainSize + 0.5) * this.terrainResolution);
+                
+                for (let dx = -this.brushSize; dx <= this.brushSize; dx++) {
+                    for (let dz = -this.brushSize; dz <= this.brushSize; dz++) {
+                        const xIdx = gridX + dx;
+                        const zIdx = gridZ + dz;
+                        
+                        if (xIdx >= 0 && xIdx <= this.terrainResolution && 
+                            zIdx >= 0 && zIdx <= this.terrainResolution) {
+                            
+                            const distance = Math.sqrt(dx * dx + dz * dz);
+                            if (distance <= this.brushSize) {
+                                const falloff = 1 - (distance / this.brushSize);
+                                const modification = intensity * falloff * this.brushIntensity;
+                                
+                                switch (this.selectedTool) {
+                                    case 'raise':
+                                        this.heightmap[xIdx][zIdx] += modification * 0.1;
+                                        break;
+                                    case 'lower':
+                                        this.heightmap[xIdx][zIdx] -= modification * 0.1;
+                                        break;
+                                    case 'smooth':
+                                        this.heightmap[xIdx][zIdx] *= (1 - modification * 0.05);
+                                        break;
+                                    case 'level':
+                                        this.heightmap[xIdx][zIdx] = this.heightmap[xIdx][zIdx] * 0.9;
+                                        break;
+                                }
+                                
+                                this.heightmap[xIdx][zIdx] = Math.max(-2, Math.min(5, this.heightmap[xIdx][zIdx]));
+                            }
+                        }
+                    }
+                }
+                
+                this.updateTerrainMesh();
+            }
+
+            updateTerrainMesh() {
+                // Update the terrain mesh with new heights
+                const terrainMesh = this.terrain[0];
+                const vertices = terrainMesh.geometry.vertices;
+                
+                let vertexIndex = 0;
+                for (let x = 0; x <= this.terrainResolution; x++) {
+                    for (let z = 0; z <= this.terrainResolution; z++) {
+                        vertices[vertexIndex + 1] = this.heightmap[x][z]; // Y coordinate
+                        vertexIndex += 3;
+                    }
+                }
+                
+                terrainMesh.geometry.vertices = vertices;
+                terrainMesh.geometry.computeVertexNormals();
+            }
+
+            setupEventListeners() {
+                // Mouse controls
+                this.canvas.addEventListener('mousedown', (event) => {
+                    this.isPainting = true;
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mouseX = event.clientX - rect.left;
+                    const mouseY = event.clientY - rect.top;
+                    this.updatePaintPosition(mouseX, mouseY);
+                });
+
+                this.canvas.addEventListener('mousemove', (event) => {
+                    if (this.isPainting) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mouseX = event.clientX - rect.left;
+                        const mouseY = event.clientY - rect.top;
+                        this.updatePaintPosition(mouseX, mouseY);
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isPainting = false;
+                });
+
+                // Terrain tool selection
+                document.querySelectorAll('.terrain-tool').forEach(tool => {
+                    tool.addEventListener('click', () => {
+                        document.querySelectorAll('.terrain-tool').forEach(el => el.classList.remove('active'));
+                        tool.classList.add('active');
+                        this.selectedTool = tool.dataset.tool;
+                    });
+                });
+
+                // Plant selection
+                document.querySelectorAll('.plant-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        document.querySelectorAll('.plant-item').forEach(el => el.classList.remove('selected'));
+                        item.classList.add('selected');
+                        this.selectedPlantType = item.dataset.type;
+                    });
+                });
+
+                // Slider controls
+                document.getElementById('brush-size').addEventListener('input', (e) => {
+                    this.brushSize = parseInt(e.target.value);
+                    document.getElementById('brush-size-value').textContent = this.brushSize + 'm';
+                });
+
+                document.getElementById('brush-intensity').addEventListener('input', (e) => {
+                    this.brushIntensity = parseInt(e.target.value) / 100;
+                    document.getElementById('brush-intensity-value').textContent = e.target.value + '%';
+                });
+
+                document.getElementById('plant-size').addEventListener('input', (e) => {
+                    this.plantSize = parseFloat(e.target.value);
+                    document.getElementById('plant-size-value').textContent = this.plantSize.toFixed(1) + 'x';
+                });
+
+                document.getElementById('sun-intensity').addEventListener('input', (e) => {
+                    this.sunLight.intensity = parseInt(e.target.value) / 100;
+                    document.getElementById('sun-intensity-value').textContent = e.target.value + '%';
+                });
+
+                document.getElementById('ambient-light').addEventListener('input', (e) => {
+                    this.ambientLight.intensity = parseInt(e.target.value) / 100;
+                    document.getElementById('ambient-light-value').textContent = e.target.value + '%';
+                });
+
+                document.getElementById('water-level').addEventListener('input', (e) => {
+                    const level = parseFloat(e.target.value);
+                    document.getElementById('water-level-value').textContent = level.toFixed(1) + 'm';
+                    this.updateWaterLevel(level);
+                });
+
+                document.getElementById('time-slider').addEventListener('input', (e) => {
+                    this.timeOfDay = parseInt(e.target.value);
+                    document.getElementById('time-display').textContent = this.formatTime(this.timeOfDay);
+                    this.updateTimeOfDay();
+                });
+
+                // Color controls
+                document.getElementById('sky-color').addEventListener('change', (e) => {
+                    this.scene.setBackground(e.target.value);
+                });
+
+                document.getElementById('ground-color').addEventListener('change', (e) => {
+                    if (this.terrain[0] && this.terrain[0].material) {
+                        this.terrain[0].material.color = e.target.value;
+                    }
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            updatePaintPosition(mouseX, mouseY) {
+                // Convert screen coordinates to world coordinates
+                const worldX = (mouseX / this.canvas.width - 0.5) * this.terrainSize;
+                const worldZ = (mouseY / this.canvas.height - 0.5) * this.terrainSize;
+                
+                this.paintPosition.set(worldX, 0, worldZ);
+                
+                if (this.selectedTool === 'raise' || this.selectedTool === 'lower') {
+                    this.modifyTerrain(worldX, worldZ, 1);
+                } else if (this.selectedTool === 'path') {
+                    this.createPath(worldX, worldZ);
+                } else if (this.selectedTool === 'water') {
+                    this.createWater(worldX, worldZ);
+                } else if (this.selectedPlantType) {
+                    this.addPlant(this.selectedPlantType, worldX, worldZ);
+                }
+            }
+
+            createPath(x, z) {
+                const pathGeometry = new CylinderGeometry(0.5, 0.5, 0.1);
+                const pathMaterial = new StandardMaterial({ color: '#8b4513' });
+                const path = new Mesh(pathGeometry);
+                path.setPosition(x, this.getTerrainHeight(x, z) + 0.05, z);
+                this.scene.add(path);
+            }
+
+            createWater(x, z) {
+                const waterGeometry = new CylinderGeometry(1, 1, 0.2);
+                const waterMaterial = new StandardMaterial({ 
+                    color: '#4682b4',
+                    transparency: 0.6,
+                    opacity: 0.7
+                });
+                const water = new Mesh(waterGeometry);
+                water.setPosition(x, this.getTerrainHeight(x, z) + 0.1, z);
+                this.scene.add(water);
+                this.waterBodies.push(water);
+            }
+
+            updateWaterLevel(level) {
+                this.waterBodies.forEach(water => {
+                    water.setPosition(water.position.x, level, water.position.z);
+                });
+            }
+
+            updateTimeOfDay() {
+                const time = this.timeOfDay;
+                let skyColor, sunIntensity, sunDirection;
+                
+                if (time >= 6 && time <= 18) {
+                    // Day
+                    const dayProgress = (time - 6) / 12;
+                    skyColor = this.interpolateColor('#ff6b6b', '#87ceeb', dayProgress);
+                    sunIntensity = Math.sin(dayProgress * Math.PI);
+                    sunDirection = [Math.sin(dayProgress * Math.PI), -1, 0];
+                } else {
+                    // Night
+                    const nightProgress = time >= 18 ? (time - 18) / 12 : (time + 6) / 12;
+                    skyColor = this.interpolateColor('#483d8b', '#191970', nightProgress);
+                    sunIntensity = 0.1;
+                    sunDirection = [0, -1, 0];
+                }
+                
+                this.scene.setBackground(skyColor);
+                this.sunLight.intensity = sunIntensity;
+                this.sunLight.setDirection(...sunDirection);
+            }
+
+            interpolateColor(color1, color2, factor) {
+                const c1 = this.hexToRgb(color1);
+                const c2 = this.hexToRgb(color2);
+                
+                const r = Math.round(c1.r + (c2.r - c1.r) * factor);
+                const g = Math.round(c1.g + (c2.g - c1.g) * factor);
+                const b = Math.round(c1.b + (c2.b - c1.b) * factor);
+                
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 0, g: 0, b: 0 };
+            }
+
+            formatTime(time) {
+                const hours = Math.floor(time);
+                const minutes = (time - hours) * 60;
+                return `${hours.toString().padStart(2, '0')}:${Math.round(minutes).toString().padStart(2, '0')}`;
+            }
+
+            updatePlantCount() {
+                document.getElementById('plant-count').textContent = this.plants.length.toString();
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+                document.getElementById('terrain-area').textContent = (this.terrainSize * this.terrainSize).toFixed(1);
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+                
+                // Animate plants slightly
+                const time = performance.now() * 0.001;
+                this.plants.forEach((plant, index) => {
+                    plant.setRotation(0, Math.sin(time + index) * 0.1, 0);
+                });
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let landscapeDemo;
+
+        function resetTerrain() {
+            if (landscapeDemo) {
+                landscapeDemo.heightmap = [];
+                landscapeDemo.createTerrain();
+            }
+        }
+
+        function generateGarden() {
+            if (landscapeDemo) {
+                // Clear existing plants
+                landscapeDemo.plants.forEach(plant => landscapeDemo.scene.remove(plant));
+                landscapeDemo.plants = [];
+                
+                // Generate a garden layout
+                const gardenTypes = ['tree', 'pine', 'flower', 'bush', 'grass'];
+                for (let i = 0; i < 20; i++) {
+                    const x = (Math.random() - 0.5) * landscapeDemo.terrainSize * 0.8;
+                    const z = (Math.random() - 0.5) * landscapeDemo.terrainSize * 0.8;
+                    const type = gardenTypes[Math.floor(Math.random() * gardenTypes.length)];
+                    landscapeDemo.addPlant(type, x, z);
+                }
+            }
+        }
+
+        function exportDesign() {
+            if (landscapeDemo) {
+                const data = {
+                    terrain: landscapeDemo.heightmap,
+                    plants: landscapeDemo.plants.map(plant => ({
+                        type: plant.userData.type,
+                        position: plant.position,
+                        scale: plant.scale
+                    })),
+                    timeOfDay: landscapeDemo.timeOfDay
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'landscape-design.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function clearAll() {
+            if (landscapeDemo) {
+                // Remove all plants
+                landscapeDemo.plants.forEach(plant => landscapeDemo.scene.remove(plant));
+                landscapeDemo.plants = [];
+                
+                // Remove water bodies
+                landscapeDemo.waterBodies.forEach(water => landscapeDemo.scene.remove(water));
+                landscapeDemo.waterBodies = [];
+                
+                landscapeDemo.updatePlantCount();
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('landscape-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                landscapeDemo = new LandscapeArchitecture(canvas);
+                console.log('Landscape architecture demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading landscape architecture:', error);
+                document.getElementById('landscape-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

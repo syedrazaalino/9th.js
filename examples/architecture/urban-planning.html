@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Planning - City Development Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #planning-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 360px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #planning-panel h3 {
+            margin: 0 0 12px 0;
+            color: #ff5722;
+            font-size: 18px;
+        }
+        
+        #planning-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 10px 0;
+            color: #ff9800;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .zoning-tool {
+            display: inline-block;
+            margin: 3px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 70px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .zoning-tool.residential { background-color: #4caf50; }
+        .zoning-tool.commercial { background-color: #ff9800; }
+        .zoning-tool.industrial { background-color: #9e9e9e; }
+        .zoning-tool.recreational { background-color: #8bc34a; }
+        .zoning-tool.transportation { background-color: #607d8b; }
+        .zoning-tool.utilities { background-color: #795548; }
+        
+        .zoning-tool:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.2);
+        }
+        
+        .zoning-tool.active {
+            border: 3px solid #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .slider-group {
+            margin: 8px 0;
+        }
+        
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            outline: none;
+        }
+        
+        .button {
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #d84315;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background-color: #607d8b;
+        }
+        
+        .button.secondary:hover {
+            background-color: #455a64;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .stat-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #ccc;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #city-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 10;
+            min-width: 200px;
+        }
+        
+        #city-info h4 {
+            margin: 0 0 10px 0;
+            color: #d32f2f;
+        }
+        
+        .timeline {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 25px;
+            z-index: 10;
+            color: white;
+        }
+        
+        .year-display {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .growth-rate {
+            font-size: 12px;
+            color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div id="planning-panel">
+        <h3>Urban Planning Studio</h3>
+        <p>City development and simulation</p>
+        <p>FPS: <span id="fps">0</span></p>
+        
+        <div class="control-section">
+            <h4>Zoning Tools</h4>
+            <div class="zoning-tool residential active" data-zone="residential">Residential</div>
+            <div class="zoning-tool commercial" data-zone="commercial">Commercial</div>
+            <div class="zoning-tool industrial" data-zone="industrial">Industrial</div>
+            <div class="zoning-tool recreational" data-zone="recreational">Recreation</div>
+            <div class="zoning-tool transportation" data-zone="transportation">Transport</div>
+            <div class="zoning-tool utilities" data-zone="utilities">Utilities</div>
+            <div class="control-group">
+                <label>Brush Size:</label>
+                <div class="slider-group">
+                    <input type="range" id="zone-brush" min="1" max="5" value="2">
+                    <span id="zone-brush-value">2x2</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Building Height</h4>
+            <div class="control-group">
+                <label>Max Height (floors):</label>
+                <div class="slider-group">
+                    <input type="range" id="building-height" min="1" max="50" value="10">
+                    <span id="building-height-value">10</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Density:</label>
+                <div class="slider-group">
+                    <input type="range" id="building-density" min="10" max="100" value="60">
+                    <span id="building-density-value">60%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Infrastructure</h4>
+            <div class="control-group">
+                <label>Road Width:</label>
+                <div class="slider-group">
+                    <input type="range" id="road-width" min="2" max="20" value="8">
+                    <span id="road-width-value">8m</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Green Space:</label>
+                <div class="slider-group">
+                    <input type="range" id="green-space" min="0" max="50" value="15">
+                    <span id="green-space-value">15%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="population">0</div>
+                <div class="stat-label">Population</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="density">0</div>
+                <div class="stat-label">Density/km²</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="buildings">0</div>
+                <div class="stat-label">Buildings</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="efficiency">0</div>
+                <div class="stat-label">Efficiency</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Simulation</h4>
+            <button class="button" onclick="startSimulation()">Start Simulation</button>
+            <button class="button" onclick="pauseSimulation()">Pause</button>
+            <button class="button" onclick="resetCity()">Reset City</button>
+            <button class="button secondary" onclick="generateReport()">Generate Report</button>
+            <button class="button secondary" onclick="exportPlan()">Export Plan</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Click to zone • Scroll to adjust height • Shift+Click to delete
+            </p>
+        </div>
+    </div>
+    
+    <div id="city-info">
+        <h4>City Analytics</h4>
+        <div style="font-size: 12px; color: #333;">
+            <div>Land Use:</div>
+            <div style="margin: 5px 0;">
+                <span style="color: #4caf50;">■</span> Residential: <span id="res-percent">0%</span><br>
+                <span style="color: #ff9800;">■</span> Commercial: <span id="com-percent">0%</span><br>
+                <span style="color: #9e9e9e;">■</span> Industrial: <span id="ind-percent">0%</span><br>
+                <span style="color: #8bc34a;">■</span> Recreation: <span id="rec-percent">0%</span>
+            </div>
+            <div>Traffic Flow: <span id="traffic-flow">Moderate</span></div>
+            <div>Air Quality: <span id="air-quality">Good</span></div>
+        </div>
+    </div>
+    
+    <div class="timeline">
+        <div class="year-display" id="current-year">Year 2025</div>
+        <div class="growth-rate" id="growth-rate">+0% growth</div>
+    </div>
+
+    <canvas id="urban-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class UrbanPlanning {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#87ceeb');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(60, 1, 0.1, 2000);
+                this.camera.setPosition(50, 50, 50);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.cityGrid = 20; // 20x20 grid
+                this.gridSize = 4; // Each cell is 4x4 units
+                this.cityZones = [];
+                this.buildings = [];
+                this.roads = [];
+                this.isSimulating = false;
+                this.simulationYear = 2025;
+                this.selectedZone = 'residential';
+                this.brushSize = 2;
+                this.maxBuildingHeight = 10;
+                this.buildingDensity = 0.6;
+                this.roadWidth = 8;
+                this.greenSpacePercent = 15;
+                
+                // Initialize city zones
+                for (let x = 0; x < this.cityGrid; x++) {
+                    this.cityZones[x] = [];
+                    for (let z = 0; z < this.cityGrid; z++) {
+                        this.cityZones[x][z] = {
+                            type: 'empty',
+                            buildings: 0,
+                            population: 0,
+                            height: 0,
+                            efficiency: 0
+                        };
+                    }
+                }
+                
+                this.initializeLights();
+                this.createBase();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting for city
+                this.ambientLight = new AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Sun light
+                this.sunLight = new DirectionalLight(1.0, '#ffffff');
+                this.sunLight.setDirection(-1, -2, -1);
+                this.scene.add(this.sunLight);
+
+                // City street lights
+                for (let i = 0; i < 4; i++) {
+                    const light = new PointLight(0.3, '#fff8e1');
+                    const angle = (i * Math.PI) / 2;
+                    light.setPosition(
+                        Math.cos(angle) * 30, 
+                        15, 
+                        Math.sin(angle) * 30
+                    );
+                    this.scene.add(light);
+                }
+            }
+
+            createBase() {
+                // Ground plane
+                const groundGeometry = new PlaneGeometry(this.cityGrid * this.gridSize, this.cityGrid * this.gridSize);
+                const groundMaterial = new StandardMaterial({ 
+                    color: '#8d8d8d',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const ground = new Mesh(groundGeometry);
+                ground.setPosition(0, 0, 0);
+                ground.setRotation(-Math.PI / 2, 0, 0);
+                ground.userData.isGround = true;
+                this.scene.add(ground);
+
+                // Add grid lines
+                this.createGridLines();
+            }
+
+            createGridLines() {
+                const gridLines = [];
+                const lineMaterial = new StandardMaterial({ color: '#cccccc' });
+                
+                // Vertical lines
+                for (let i = 0; i <= this.cityGrid; i++) {
+                    const lineGeometry = new BoxGeometry(0.1, 0.1, this.cityGrid * this.gridSize);
+                    const line = new Mesh(lineGeometry);
+                    line.setPosition(
+                        (i - this.cityGrid / 2) * this.gridSize, 
+                        0.05, 
+                        0
+                    );
+                    line.material = lineMaterial;
+                    gridLines.push(line);
+                    this.scene.add(line);
+                }
+                
+                // Horizontal lines
+                for (let i = 0; i <= this.cityGrid; i++) {
+                    const lineGeometry = new BoxGeometry(this.cityGrid * this.gridSize, 0.1, 0.1);
+                    const line = new Mesh(lineGeometry);
+                    line.setPosition(
+                        0, 
+                        0.05, 
+                        (i - this.cityGrid / 2) * this.gridSize
+                    );
+                    line.material = lineMaterial;
+                    gridLines.push(line);
+                    this.scene.add(line);
+                }
+            }
+
+            zoneArea(gridX, gridZ, zoneType, height = 1) {
+                const halfBrush = Math.floor(this.brushSize / 2);
+                
+                for (let dx = -halfBrush; dx <= halfBrush; dx++) {
+                    for (let dz = -halfBrush; dz <= halfBrush; dz++) {
+                        const x = gridX + dx;
+                        const z = gridZ + dz;
+                        
+                        if (x >= 0 && x < this.cityGrid && z >= 0 && z < this.cityGrid) {
+                            this.cityZones[x][z].type = zoneType;
+                            this.cityZones[x][z].height = height;
+                            this.updateZoneStats(x, z);
+                        }
+                    }
+                }
+                
+                this.generateBuildings(gridX, gridZ, zoneType);
+                this.updateCityStatistics();
+            }
+
+            updateZoneStats(gridX, gridZ) {
+                const zone = this.cityZones[gridX][gridZ];
+                
+                switch (zone.type) {
+                    case 'residential':
+                        zone.population = Math.floor(zone.height * 50 * this.buildingDensity);
+                        zone.efficiency = this.calculateResidentialEfficiency(zone);
+                        break;
+                    case 'commercial':
+                        zone.population = Math.floor(zone.height * 30 * this.buildingDensity);
+                        zone.efficiency = this.calculateCommercialEfficiency(zone);
+                        break;
+                    case 'industrial':
+                        zone.population = Math.floor(zone.height * 10 * this.buildingDensity);
+                        zone.efficiency = this.calculateIndustrialEfficiency(zone);
+                        break;
+                    case 'recreational':
+                        zone.population = 0;
+                        zone.efficiency = 80;
+                        break;
+                    case 'transportation':
+                        zone.population = 0;
+                        zone.efficiency = 60;
+                        break;
+                    case 'utilities':
+                        zone.population = 0;
+                        zone.efficiency = 70;
+                        break;
+                }
+            }
+
+            calculateResidentialEfficiency(zone) {
+                let efficiency = 60;
+                efficiency += zone.height * 2; // Height bonus
+                efficiency += this.buildingDensity * 20; // Density bonus
+                
+                // Proximity to parks and transport
+                const parkBonus = 15; // Assume some parks nearby
+                const transportBonus = 10; // Assume good transport
+                
+                efficiency += parkBonus + transportBonus;
+                return Math.min(95, efficiency);
+            }
+
+            calculateCommercialEfficiency(zone) {
+                let efficiency = 70;
+                efficiency += zone.height * 3; // Commercial buildings benefit more from height
+                efficiency += this.buildingDensity * 25; // Higher density for commercial
+                
+                // Good transport connections
+                const transportBonus = 20;
+                efficiency += transportBonus;
+                
+                return Math.min(95, efficiency);
+            }
+
+            calculateIndustrialEfficiency(zone) {
+                let efficiency = 50;
+                efficiency += zone.height * 1; // Less height benefit for industrial
+                efficiency += this.buildingDensity * 15; // Lower density for industrial
+                
+                // Lower bonuses for industrial
+                const accessibilityBonus = 10;
+                efficiency += accessibilityBonus;
+                
+                return Math.min(80, efficiency);
+            }
+
+            generateBuildings(gridX, gridZ, zoneType) {
+                const zone = this.cityZones[gridX][gridZ];
+                
+                // Clear existing buildings in this area
+                this.clearBuildingsInArea(gridX, gridZ);
+                
+                if (zone.type === 'empty') return;
+                
+                const worldX = (gridX - this.cityGrid / 2) * this.gridSize;
+                const worldZ = (gridZ - this.cityGrid / 2) * this.gridSize;
+                
+                if (this.buildingDensity > 0.1) {
+                    const numBuildings = Math.floor(this.buildingDensity * 4);
+                    
+                    for (let i = 0; i < numBuildings; i++) {
+                        const buildingX = worldX + (Math.random() - 0.5) * this.gridSize * 0.8;
+                        const buildingZ = worldZ + (Math.random() - 0.5) * this.gridSize * 0.8;
+                        const floors = Math.max(1, Math.floor(zone.height * Math.random() * 2));
+                        
+                        this.createBuilding(buildingX, buildingZ, floors, zoneType);
+                    }
+                }
+            }
+
+            createBuilding(x, z, floors, type) {
+                let building;
+                let color;
+                let width = this.gridSize * 0.6;
+                let depth = this.gridSize * 0.6;
+                
+                switch (type) {
+                    case 'residential':
+                        color = Math.random() > 0.5 ? '#b0bec5' : '#90a4ae';
+                        building = this.createResidentialBuilding(width, depth, floors, color);
+                        break;
+                    case 'commercial':
+                        color = Math.random() > 0.5 ? '#ffb74d' ? '#ff8a65' : '#ffab40';
+                        building = this.createCommercialBuilding(width, depth, floors, color);
+                        break;
+                    case 'industrial':
+                        color = '#9e9e9e';
+                        building = this.createIndustrialBuilding(width, depth, floors, color);
+                        break;
+                    default:
+                        return;
+                }
+                
+                building.setPosition(x, floors * 1.5, z);
+                building.userData.building = true;
+                building.userData.type = type;
+                building.userData.floors = floors;
+                
+                this.buildings.push(building);
+                this.scene.add(building);
+            }
+
+            createResidentialBuilding(width, depth, floors, color) {
+                const group = new Mesh();
+                
+                // Main building
+                const buildingGeometry = new BoxGeometry(width, floors * 3, depth);
+                const buildingMaterial = new StandardMaterial({ 
+                    color: color,
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+                const building = new Mesh(buildingGeometry);
+                building.setPosition(0, (floors * 3) / 2, 0);
+                group.add(building);
+                
+                // Windows
+                if (floors > 2) {
+                    for (let floor = 0; floor < floors; floor++) {
+                        const windowGeometry = new BoxGeometry(width * 0.8, 0.3, 0.1);
+                        const windowMaterial = new StandardMaterial({ 
+                            color: '#87ceeb',
+                            emissive: '#87ceeb',
+                            emissiveIntensity: 0.2
+                        });
+                        const window = new Mesh(windowGeometry);
+                        window.setPosition(0, floor * 3 + 1.5, depth / 2);
+                        group.add(window);
+                    }
+                }
+                
+                return group;
+            }
+
+            createCommercialBuilding(width, depth, floors, color) {
+                const group = new Mesh();
+                
+                // Main building with modern glass facade
+                const buildingGeometry = new BoxGeometry(width, floors * 3.5, depth);
+                const buildingMaterial = new StandardMaterial({ 
+                    color: color,
+                    roughness: 0.3,
+                    metalness: 0.8
+                });
+                const building = new Mesh(buildingGeometry);
+                building.setPosition(0, (floors * 3.5) / 2, 0);
+                group.add(building);
+                
+                // Glass windows
+                for (let floor = 0; floor < floors; floor++) {
+                    const windowGeometry = new BoxGeometry(width * 0.9, 0.4, 0.05);
+                    const windowMaterial = new StandardMaterial({ 
+                        color: '#e1f5fe',
+                        transparency: 0.7,
+                        opacity: 0.8
+                    });
+                    const window = new Mesh(windowGeometry);
+                    window.setPosition(0, floor * 3.5 + 1.75, depth / 2);
+                    group.add(window);
+                }
+                
+                return group;
+            }
+
+            createIndustrialBuilding(width, depth, floors, color) {
+                const geometry = new BoxGeometry(width * 1.2, floors * 2.5, depth * 1.2);
+                const material = new StandardMaterial({ 
+                    color: color,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                return new Mesh(geometry);
+            }
+
+            clearBuildingsInArea(gridX, gridZ) {
+                this.buildings = this.buildings.filter(building => {
+                    const buildingGridX = Math.round((building.position.x / this.gridSize) + this.cityGrid / 2);
+                    const buildingGridZ = Math.round((building.position.z / this.gridSize) + this.cityGrid / 2);
+                    
+                    if (Math.abs(buildingGridX - gridX) <= this.brushSize && 
+                        Math.abs(buildingGridZ - gridZ) <= this.brushSize) {
+                        this.scene.remove(building);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            simulateGrowth() {
+                if (!this.isSimulating) return;
+                
+                // Simulate city growth over time
+                this.simulationYear += 0.25; // Quarter year increments
+                
+                // Grow buildings randomly
+                for (let x = 0; x < this.cityGrid; x++) {
+                    for (let z = 0; z < this.cityGrid; z++) {
+                        const zone = this.cityZones[x][z];
+                        if (zone.type !== 'empty' && Math.random() < 0.1) {
+                            zone.height = Math.min(this.maxBuildingHeight, zone.height + Math.random());
+                            this.updateZoneStats(x, z);
+                            
+                            if (Math.random() < 0.3) {
+                                this.generateBuildings(x, z, zone.type);
+                            }
+                        }
+                    }
+                }
+                
+                this.updateCityStatistics();
+            }
+
+            updateCityStatistics() {
+                let totalPopulation = 0;
+                let totalBuildings = this.buildings.length;
+                let totalEfficiency = 0;
+                let zoneCounts = { residential: 0, commercial: 0, industrial: 0, recreational: 0 };
+                let zoneAreas = { residential: 0, commercial: 0, industrial: 0, recreational: 0 };
+                let totalCells = 0;
+                
+                for (let x = 0; x < this.cityGrid; x++) {
+                    for (let z = 0; z < this.cityGrid; z++) {
+                        const zone = this.cityZones[x][z];
+                        totalPopulation += zone.population;
+                        totalEfficiency += zone.efficiency;
+                        totalCells++;
+                        
+                        if (zone.type !== 'empty') {
+                            zoneCounts[zone.type]++;
+                            zoneAreas[zone.type]++;
+                        }
+                    }
+                }
+                
+                const avgEfficiency = totalCells > 0 ? totalEfficiency / totalCells : 0;
+                const density = this.cityGrid * this.cityGrid > 0 ? 
+                    Math.round(totalPopulation / (this.cityGrid * this.cityGrid * 16)) : 0; // per km²
+                
+                // Update UI
+                document.getElementById('population').textContent = totalPopulation.toLocaleString();
+                document.getElementById('density').textContent = density.toLocaleString();
+                document.getElementById('buildings').textContent = totalBuildings;
+                document.getElementById('efficiency').textContent = Math.round(avgEfficiency);
+                
+                // Update land use percentages
+                document.getElementById('res-percent').textContent = 
+                    Math.round((zoneAreas.residential / totalCells) * 100) + '%';
+                document.getElementById('com-percent').textContent = 
+                    Math.round((zoneAreas.commercial / totalCells) * 100) + '%';
+                document.getElementById('ind-percent').textContent = 
+                    Math.round((zoneAreas.industrial / totalCells) * 100) + '%';
+                document.getElementById('rec-percent').textContent = 
+                    Math.round((zoneAreas.recreational / totalCells) * 100) + '%';
+                
+                // Update year and growth rate
+                document.getElementById('current-year').textContent = 'Year ' + Math.floor(this.simulationYear);
+                
+                // Calculate growth rate (simplified)
+                const growthRate = Math.round((totalPopulation / 1000) * 0.1);
+                document.getElementById('growth-rate').textContent = '+' + growthRate + '% growth';
+            }
+
+            setupEventListeners() {
+                // Mouse controls
+                this.canvas.addEventListener('mousedown', (event) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mouseX = event.clientX - rect.left;
+                    const mouseY = event.clientY - rect.top;
+                    
+                    const worldX = (mouseX / this.canvas.width - 0.5) * this.cityGrid * this.gridSize;
+                    const worldZ = (mouseY / this.canvas.height - 0.5) * this.cityGrid * this.gridSize;
+                    
+                    const gridX = Math.round(worldX / this.gridSize + this.cityGrid / 2);
+                    const gridZ = Math.round(worldZ / this.gridSize + this.cityGrid / 2);
+                    
+                    if (event.shiftKey) {
+                        // Remove zone
+                        this.zoneArea(gridX, gridZ, 'empty');
+                    } else {
+                        // Apply zone
+                        this.zoneArea(gridX, gridZ, this.selectedZone, this.maxBuildingHeight);
+                    }
+                });
+
+                // Terrain tool selection
+                document.querySelectorAll('.zoning-tool').forEach(tool => {
+                    tool.addEventListener('click', () => {
+                        document.querySelectorAll('.zoning-tool').forEach(el => el.classList.remove('active'));
+                        tool.classList.add('active');
+                        this.selectedZone = tool.dataset.zone;
+                    });
+                });
+
+                // Slider controls
+                document.getElementById('zone-brush').addEventListener('input', (e) => {
+                    this.brushSize = parseInt(e.target.value);
+                    document.getElementById('zone-brush-value').textContent = this.brushSize + 'x' + this.brushSize;
+                });
+
+                document.getElementById('building-height').addEventListener('input', (e) => {
+                    this.maxBuildingHeight = parseInt(e.target.value);
+                    document.getElementById('building-height-value').textContent = this.maxBuildingHeight;
+                });
+
+                document.getElementById('building-density').addEventListener('input', (e) => {
+                    this.buildingDensity = parseInt(e.target.value) / 100;
+                    document.getElementById('building-density-value').textContent = e.target.value + '%';
+                });
+
+                document.getElementById('road-width').addEventListener('input', (e) => {
+                    this.roadWidth = parseInt(e.target.value);
+                    document.getElementById('road-width-value').textContent = e.target.value + 'm';
+                });
+
+                document.getElementById('green-space').addEventListener('input', (e) => {
+                    this.greenSpacePercent = parseInt(e.target.value);
+                    document.getElementById('green-space-value').textContent = e.target.value + '%';
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+                
+                // Run simulation
+                this.simulateGrowth();
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let urbanDemo;
+
+        function startSimulation() {
+            if (urbanDemo) {
+                urbanDemo.isSimulating = true;
+            }
+        }
+
+        function pauseSimulation() {
+            if (urbanDemo) {
+                urbanDemo.isSimulating = false;
+            }
+        }
+
+        function resetCity() {
+            if (urbanDemo) {
+                // Clear all zones and buildings
+                for (let x = 0; x < urbanDemo.cityGrid; x++) {
+                    for (let z = 0; z < urbanDemo.cityGrid; z++) {
+                        urbanDemo.cityZones[x][z] = {
+                            type: 'empty',
+                            buildings: 0,
+                            population: 0,
+                            height: 0,
+                            efficiency: 0
+                        };
+                    }
+                }
+                
+                // Remove all buildings
+                urbanDemo.buildings.forEach(building => urbanDemo.scene.remove(building));
+                urbanDemo.buildings = [];
+                
+                urbanDemo.simulationYear = 2025;
+                urbanDemo.updateCityStatistics();
+            }
+        }
+
+        function generateReport() {
+            if (urbanDemo) {
+                const report = {
+                    year: Math.floor(urbanDemo.simulationYear),
+                    population: document.getElementById('population').textContent,
+                    density: document.getElementById('density').textContent,
+                    buildings: urbanDemo.buildings.length,
+                    efficiency: document.getElementById('efficiency').textContent,
+                    zoning: {
+                        residential: document.getElementById('res-percent').textContent,
+                        commercial: document.getElementById('com-percent').textContent,
+                        industrial: document.getElementById('ind-percent').textContent,
+                        recreational: document.getElementById('rec-percent').textContent
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'urban-plan-report.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function exportPlan() {
+            if (urbanDemo) {
+                const plan = {
+                    zones: urbanDemo.cityZones,
+                    buildings: urbanDemo.buildings.map(building => ({
+                        type: building.userData.type,
+                        position: building.position,
+                        floors: building.userData.floors
+                    })),
+                    settings: {
+                        brushSize: urbanDemo.brushSize,
+                        maxHeight: urbanDemo.maxBuildingHeight,
+                        density: urbanDemo.buildingDensity,
+                        roadWidth: urbanDemo.roadWidth,
+                        greenSpace: urbanDemo.greenSpacePercent
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'urban-plan.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('urban-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                urbanDemo = new UrbanPlanning(canvas);
+                console.log('Urban planning demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading urban planning:', error);
+                document.getElementById('planning-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

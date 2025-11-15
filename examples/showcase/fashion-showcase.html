@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fashion Showcase - 3D Virtual Models</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Playfair Display', 'Georgia', serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 25%, #daa520 50%, #8b4513 75%, #2c1810 100%);
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .fashion-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 25px;
+            color: #2c1810;
+            min-width: 320px;
+            backdrop-filter: blur(20px);
+            border: 3px solid rgba(218, 165, 32, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .fashion-ui h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            color: #8b4513;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-bottom: 3px solid rgba(218, 165, 32, 0.5);
+            padding-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .model-section {
+            margin-bottom: 25px;
+        }
+
+        .model-section h3 {
+            color: #8b4513;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid rgba(218, 165, 32, 0.3);
+            padding-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .outfit-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .outfit-btn {
+            padding: 12px 10px;
+            border: 2px solid #8b4513;
+            border-radius: 12px;
+            background: rgba(218, 165, 32, 0.1);
+            color: #2c1810;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .outfit-btn:hover {
+            background: rgba(218, 165, 32, 0.2);
+            box-shadow: 0 5px 15px rgba(218, 165, 32, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .outfit-btn.active {
+            background: rgba(218, 165, 32, 0.3);
+            box-shadow: 0 8px 25px rgba(218, 165, 32, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .fabric-section {
+            margin-bottom: 20px;
+        }
+
+        .fabric-section h4 {
+            color: #8b4513;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .fabric-categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .fabric-category {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: rgba(221, 221, 221, 0.5);
+            color: #2c1810;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .fabric-category:hover {
+            border-color: #8b4513;
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        .fabric-category.active {
+            border-color: #8b4513;
+            background: rgba(218, 165, 32, 0.3);
+            box-shadow: 0 3px 10px rgba(218, 165, 32, 0.2);
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .fabric-color {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid rgba(139, 69, 19, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .fabric-color:hover {
+            transform: scale(1.15);
+            border-color: #8b4513;
+            box-shadow: 0 5px 15px rgba(218, 165, 32, 0.3);
+        }
+
+        .fabric-color.active {
+            border-color: #8b4513;
+            box-shadow: 0 0 20px rgba(218, 165, 32, 0.5);
+        }
+
+        .pattern-section {
+            margin-bottom: 20px;
+        }
+
+        .pattern-section h4 {
+            color: #8b4513;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .pattern-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .pattern-option {
+            padding: 8px 6px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: rgba(221, 221, 221, 0.5);
+            color: #2c1810;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .pattern-option:hover {
+            border-color: #8b4513;
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        .pattern-option.active {
+            border-color: #8b4513;
+            background: rgba(218, 165, 32, 0.3);
+            box-shadow: 0 3px 10px rgba(218, 165, 32, 0.2);
+        }
+
+        .accessories-section {
+            margin-bottom: 20px;
+        }
+
+        .accessories-section h4 {
+            color: #8b4513;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .accessory-toggles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .accessory-toggle {
+            padding: 10px 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: rgba(221, 221, 221, 0.5);
+            color: #2c1810;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .accessory-toggle:hover {
+            border-color: #8b4513;
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        .accessory-toggle.active {
+            border-color: #8b4513;
+            background: rgba(218, 165, 32, 0.3);
+            box-shadow: 0 3px 10px rgba(218, 165, 32, 0.2);
+        }
+
+        .lighting-setup {
+            background: rgba(218, 165, 32, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 25px;
+            border: 2px solid rgba(218, 165, 32, 0.2);
+        }
+
+        .lighting-setup h3 {
+            color: #8b4513;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .lighting-control {
+            margin-bottom: 15px;
+        }
+
+        .lighting-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #8b4513;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .lighting-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .lighting-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #8b4513;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(139, 69, 19, 0.3);
+        }
+
+        .lighting-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #8b4513;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(139, 69, 19, 0.3);
+        }
+
+        .lighting-value {
+            text-align: right;
+            color: #8b4513;
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .mood-presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .mood-btn {
+            padding: 12px 8px;
+            border: 2px solid #8b4513;
+            border-radius: 10px;
+            background: rgba(218, 165, 32, 0.1);
+            color: #2c1810;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .mood-btn:hover {
+            background: rgba(218, 165, 32, 0.2);
+            box-shadow: 0 5px 15px rgba(218, 165, 32, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .scene-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2c1810;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 2px solid rgba(218, 165, 32, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .runway-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2c1810;
+            padding: 15px 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(218, 165, 32, 0.3);
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+
+        .runway-info h4 {
+            color: #8b4513;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .runway-detail {
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #8b4513;
+        }
+
+        @media (max-width: 768px) {
+            .fashion-ui {
+                width: 280px;
+                left: 10px;
+                top: 10px;
+                padding: 15px;
+            }
+            
+            .outfit-buttons,
+            .fabric-categories,
+            .pattern-options,
+            .accessory-toggles {
+                grid-template-columns: 1fr;
+            }
+            
+            .color-palette {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="fashion-ui">
+        <h1>👗 Fashion Showcase</h1>
+        
+        <div class="model-section">
+            <h3>Outfit Collection</h3>
+            <div class="outfit-buttons">
+                <button class="outfit-btn active" data-outfit="evening">Evening Gown</button>
+                <button class="outfit-btn" data-outfit="business">Business Suit</button>
+                <button class="outfit-btn" data-outfit="casual">Casual Wear</button>
+                <button class="outfit-btn" data-outfit="avant">Avant-garde</button>
+            </div>
+        </div>
+
+        <div class="fabric-section">
+            <h4>Top Fabric</h4>
+            <div class="fabric-categories">
+                <div class="fabric-category active" data-category="silk">Silk</div>
+                <div class="fabric-category" data-category="cotton">Cotton</div>
+                <div class="fabric-category" data-category="wool">Wool</div>
+                <div class="fabric-category" data-category="leather">Leather</div>
+            </div>
+            
+            <div class="color-palette" id="topColors">
+                <div class="fabric-color active" style="background: #FF69B4" data-color="#FF69B4"></div>
+                <div class="fabric-color" style="background: #000000" data-color="#000000"></div>
+                <div class="fabric-color" style="background: #FFFFFF" data-color="#FFFFFF"></div>
+                <div class="fabric-color" style="background: #FF0000" data-color="#FF0000"></div>
+                <div class="fabric-color" style="background: #0000FF" data-color="#0000FF"></div>
+                <div class="fabric-color" style="background: #FFFF00" data-color="#FFFF00"></div>
+            </div>
+        </div>
+
+        <div class="fabric-section">
+            <h4>Bottom Fabric</h4>
+            <div class="fabric-categories">
+                <div class="fabric-category active" data-category="silk">Silk</div>
+                <div class="fabric-category" data-category="cotton">Cotton</div>
+                <div class="fabric-category" data-category="wool">Wool</div>
+                <div class="fabric-category" data-category="leather">Leather</div>
+            </div>
+            
+            <div class="color-palette" id="bottomColors">
+                <div class="fabric-color active" style="background: #000080" data-color="#000080"></div>
+                <div class="fabric-color" style="background: #800080" data-color="#800080"></div>
+                <div class="fabric-color" style="background: #008000" data-color="#008000"></div>
+                <div class="fabric-color" style="background: #800000" data-color="#800000"></div>
+                <div class="fabric-color" style="background: #C0C0C0" data-color="#C0C0C0"></div>
+                <div class="fabric-color" style="background: #808000" data-color="#808000"></div>
+            </div>
+        </div>
+
+        <div class="pattern-section">
+            <h4>Patterns & Textures</h4>
+            <div class="pattern-options">
+                <div class="pattern-option active" data-pattern="solid">Solid</div>
+                <div class="pattern-option" data-pattern="stripes">Stripes</div>
+                <div class="pattern-option" data-pattern="floral">Floral</div>
+                <div class="pattern-option" data-pattern="geometric">Geometric</div>
+                <div class="pattern-option" data-pattern="polka">Polka Dots</div>
+                <div class="pattern-option" data-pattern="herringbone">Herringbone</div>
+            </div>
+        </div>
+
+        <div class="accessories-section">
+            <h4>Accessories</h4>
+            <div class="accessory-toggles">
+                <div class="accessory-toggle active" data-accessory="shoes">Shoes</div>
+                <div class="accessory-toggle" data-accessory="jewelry">Jewelry</div>
+                <div class="accessory-toggle" data-accessory="bag">Handbag</div>
+                <div class="accessory-toggle" data-accessory="hat">Hat</div>
+                <div class="accessory-toggle" data-accessory="scarf">Scarf</div>
+                <div class="accessory-toggle" data-accessory="belt">Belt</div>
+            </div>
+        </div>
+
+        <div class="lighting-setup">
+            <h3>💡 Runway Lighting</h3>
+            
+            <div class="lighting-control">
+                <label>Key Light:</label>
+                <input type="range" class="lighting-slider" id="keyLight" min="0" max="150" value="80">
+                <div class="lighting-value" id="keyValue">80%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Fill Light:</label>
+                <input type="range" class="lighting-slider" id="fillLight" min="0" max="100" value="40">
+                <div class="lighting-value" id="fillValue">40%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Rim Light:</label>
+                <input type="range" class="lighting-slider" id="rimLight" min="0" max="120" value="60">
+                <div class="lighting-value" id="rimValue">60%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Ambient Glow:</label>
+                <input type="range" class="lighting-slider" id="ambientLight" min="0" max="80" value="30">
+                <div class="lighting-value" id="ambientValue">30%</div>
+            </div>
+
+            <div class="mood-presets">
+                <button class="mood-btn" onclick="setMoodPreset('studio')">Studio</button>
+                <button class="mood-btn" onclick="setMoodPreset('golden')">Golden Hour</button>
+                <button class="mood-btn" onclick="setMoodPreset('dramatic')">Dramatic</button>
+                <button class="mood-btn" onclick="setMoodPreset('romantic')">Romantic</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="scene-info">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Polygons: <span id="polygons">3,156</span></div>
+        <div>Materials: <span id="materials">8</span></div>
+        <div>Textures: <span id="textures">6</span></div>
+        <div>Lights: <span id="lights">6</span></div>
+    </div>
+
+    <div class="runway-info">
+        <h4>Model Details</h4>
+        <div class="runway-detail">
+            <span class="detail-label">Outfit:</span> <span id="outfitName">Evening Gown</span>
+        </div>
+        <div class="runway-detail">
+            <span class="detail-label">Fabric:</span> <span id="fabricName">Silk</span>
+        </div>
+        <div class="runway-detail">
+            <span class="detail-label">Pattern:</span> <span id="patternName">Solid</span>
+        </div>
+        <div class="runway-detail">
+            <span class="detail-label">Accessories:</span> <span id="accessoriesName">Shoes, Jewelry</span>
+        </div>
+        <div class="runway-detail">
+            <span class="detail-label">Style:</span> <span id="styleName">Elegant</span>
+        </div>
+    </div>
+
+    <script src="../../dist/umd/9th.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, model, animationId;
+        let ambientLight, keyLight, fillLight, rimLight, topLight, backLight;
+        let topMaterial, bottomMaterial, skinMaterial, hairMaterial, accessoryMaterial;
+        let currentOutfit = 'evening', currentTopFabric = 'silk', currentBottomFabric = 'silk';
+        let currentPattern = 'solid', currentTopColor = '#FF69B4', currentBottomColor = '#000080';
+        let accessories = { shoes: true, jewelry: true, bag: false, hat: false, scarf: false, belt: false };
+        
+        const stats = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: performance.now()
+        };
+
+        // Fabric properties
+        const fabricProperties = {
+            silk: { roughness: 0.1, metalness: 0.0, sheen: 0.8, sheenRoughness: 0.2 },
+            cotton: { roughness: 0.6, metalness: 0.0, sheen: 0.2, sheenRoughness: 0.5 },
+            wool: { roughness: 0.8, metalness: 0.0, sheen: 0.1, sheenRoughness: 0.7 },
+            leather: { roughness: 0.3, metalness: 0.0, sheen: 0.6, sheenRoughness: 0.4 }
+        };
+
+        // Pattern types
+        const patterns = ['solid', 'stripes', 'floral', 'geometric', 'polka', 'herringbone'];
+
+        // Initialize the application
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create scene
+            scene = new Ninth.Scene();
+            scene.background = new Ninth.Color(0xf5f5dc);
+
+            // Create camera
+            camera = new Ninth.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.7, 4);
+            camera.lookAt(0, 1.5, 0);
+
+            // Create renderer
+            renderer = new Ninth.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = Ninth.PCFSoftShadowMap;
+            renderer.toneMapping = Ninth.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputEncoding = Ninth.sRGBEncoding;
+
+            // Setup lighting
+            setupLighting();
+
+            // Create model
+            createModel('evening');
+
+            // Setup runway
+            createRunway();
+
+            // Setup controls
+            setupControls();
+
+            // Start animation loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Ambient light
+            ambientLight = new Ninth.AmbientLight(0xfff8dc, 0.3);
+            scene.add(ambientLight);
+
+            // Key light (main spotlight)
+            keyLight = new Ninth.SpotLight(0xffffff, 0.8, 50, Math.PI / 6, 0.4, 1);
+            keyLight.position.set(0, 8, 3);
+            keyLight.target.position.set(0, 1.5, 0);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 1024;
+            keyLight.shadow.mapSize.height = 1024;
+            scene.add(keyLight);
+            scene.add(keyLight.target);
+
+            // Fill light
+            fillLight = new Ninth.DirectionalLight(0xfffacd, 0.4);
+            fillLight.position.set(-3, 4, 2);
+            scene.add(fillLight);
+
+            // Rim light
+            rimLight = new Ninth.DirectionalLight(0xffffff, 0.6);
+            rimLight.position.set(0, 3, -4);
+            scene.add(rimLight);
+
+            // Top light for dramatic effect
+            topLight = new Ninth.SpotLight(0xfff8dc, 0.5, 30, Math.PI / 8, 0.5, 1);
+            topLight.position.set(0, 10, 0);
+            topLight.target.position.set(0, 2, 0);
+            scene.add(topLight);
+            scene.add(topLight.target);
+
+            // Back light
+            backLight = new Ninth.DirectionalLight(0xffe4b5, 0.3);
+            backLight.position.set(0, 2, 4);
+            scene.add(backLight);
+        }
+
+        function createRunway() {
+            // Runway floor
+            const runwayGeometry = new Ninth.PlaneGeometry(20, 8);
+            const runwayMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const runway = new Ninth.Mesh(runwayGeometry, runwayMaterial);
+            runway.rotation.x = -Math.PI / 2;
+            runway.position.y = 0;
+            runway.receiveShadow = true;
+            scene.add(runway);
+
+            // Runway edges
+            const edgeGeometry = new Ninth.BoxGeometry(20, 0.1, 0.2);
+            const edgeMaterial = new Ninth.MeshStandardMaterial({
+                color: 0xdaa520,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            const leftEdge = new Ninth.Mesh(edgeGeometry, edgeMaterial);
+            leftEdge.position.set(0, 0.05, -4);
+            leftEdge.receiveShadow = true;
+            scene.add(leftEdge);
+
+            const rightEdge = new Ninth.Mesh(edgeGeometry, edgeMaterial);
+            rightEdge.position.set(0, 0.05, 4);
+            rightEdge.receiveShadow = true;
+            scene.add(rightEdge);
+        }
+
+        function createModel(outfit) {
+            // Remove existing model
+            if (model) {
+                scene.remove(model);
+            }
+
+            // Create materials
+            createMaterials();
+
+            // Create model group
+            model = new Ninth.Group();
+
+            // Create human figure
+            createHumanFigure();
+
+            // Create outfit based on type
+            switch (outfit) {
+                case 'evening':
+                    createEveningGown();
+                    break;
+                case 'business':
+                    createBusinessSuit();
+                    break;
+                case 'casual':
+                    createCasualWear();
+                    break;
+                case 'avant':
+                    createAvantGarde();
+                    break;
+            }
+
+            // Add accessories
+            addAccessories();
+
+            // Position model
+            model.position.y = 0;
+            model.castShadow = true;
+            scene.add(model);
+
+            updateStats();
+            updateRunwayInfo();
+        }
+
+        function createMaterials() {
+            // Skin material
+            skinMaterial = new Ninth.MeshStandardMaterial({
+                color: 0xffdbac,
+                roughness: 0.5,
+                metalness: 0.0
+            });
+
+            // Hair material
+            hairMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+
+            // Top fabric material
+            const topFabricProps = fabricProperties[currentTopFabric];
+            topMaterial = new Ninth.MeshPhysicalMaterial({
+                color: parseInt(currentTopColor.replace('#', '0x')),
+                roughness: topFabricProps.roughness,
+                metalness: topFabricProps.metalness,
+                sheen: topFabricProps.sheen,
+                sheenRoughness: topFabricProps.sheenRoughness
+            });
+
+            // Bottom fabric material
+            const bottomFabricProps = fabricProperties[currentBottomFabric];
+            bottomMaterial = new Ninth.MeshPhysicalMaterial({
+                color: parseInt(currentBottomColor.replace('#', '0x')),
+                roughness: bottomFabricProps.roughness,
+                metalness: bottomFabricProps.metalness,
+                sheen: bottomFabricProps.sheen,
+                sheenRoughness: bottomFabricProps.sheenRoughness
+            });
+
+            // Accessory material
+            accessoryMaterial = new Ninth.MeshStandardMaterial({
+                color: 0xc0c0c0,
+                roughness: 0.2,
+                metalness: 0.9
+            });
+        }
+
+        function createHumanFigure() {
+            // Head
+            const headGeometry = new Ninth.SphereGeometry(0.18, 16, 12);
+            const head = new Ninth.Mesh(headGeometry, skinMaterial);
+            head.position.y = 1.7;
+            head.castShadow = true;
+            model.add(head);
+
+            // Hair
+            const hairGeometry = new Ninth.SphereGeometry(0.2, 16, 12);
+            const hair = new Ninth.Mesh(hairGeometry, hairMaterial);
+            hair.position.y = 1.8;
+            hair.castShadow = true;
+            model.add(hair);
+
+            // Torso
+            const torsoGeometry = new Ninth.CylinderGeometry(0.15, 0.12, 0.4, 8);
+            const torso = new Ninth.Mesh(torsoGeometry, skinMaterial);
+            torso.position.y = 1.4;
+            torso.castShadow = true;
+            model.add(torso);
+
+            // Arms
+            const armGeometry = new Ninth.CylinderGeometry(0.05, 0.05, 0.5, 8);
+            
+            const leftArm = new Ninth.Mesh(armGeometry, skinMaterial);
+            leftArm.position.set(-0.2, 1.4, 0);
+            leftArm.rotation.z = Math.PI / 6;
+            leftArm.castShadow = true;
+            model.add(leftArm);
+
+            const rightArm = new Ninth.Mesh(armGeometry, skinMaterial);
+            rightArm.position.set(0.2, 1.4, 0);
+            rightArm.rotation.z = -Math.PI / 6;
+            rightArm.castShadow = true;
+            model.add(rightArm);
+
+            // Legs
+            const legGeometry = new Ninth.CylinderGeometry(0.06, 0.06, 0.8, 8);
+            
+            const leftLeg = new Ninth.Mesh(legGeometry, skinMaterial);
+            leftLeg.position.set(-0.08, 0.6, 0);
+            leftLeg.castShadow = true;
+            model.add(leftLeg);
+
+            const rightLeg = new Ninth.Mesh(legGeometry, skinMaterial);
+            rightLeg.position.set(0.08, 0.6, 0);
+            rightLeg.castShadow = true;
+            model.add(rightLeg);
+
+            // Feet
+            const footGeometry = new Ninth.BoxGeometry(0.08, 0.04, 0.25);
+            
+            const leftFoot = new Ninth.Mesh(footGeometry, skinMaterial);
+            leftFoot.position.set(-0.08, 0.2, 0.1);
+            leftFoot.castShadow = true;
+            model.add(leftFoot);
+
+            const rightFoot = new Ninth.Mesh(footGeometry, skinMaterial);
+            rightFoot.position.set(0.08, 0.2, 0.1);
+            rightFoot.castShadow = true;
+            model.add(rightFoot);
+        }
+
+        function createEveningGown() {
+            // Dress top
+            const topGeometry = new Ninth.BoxGeometry(0.25, 0.3, 0.1);
+            const dressTop = new Ninth.Mesh(topGeometry, topMaterial);
+            dressTop.position.y = 1.55;
+            dressTop.castShadow = true;
+            model.add(dressTop);
+
+            // Dress skirt (flowing)
+            const skirtGeometry = new Ninth.CylinderGeometry(0.4, 0.1, 1.2, 16);
+            const dressSkirt = new Ninth.Mesh(skirtGeometry, topMaterial);
+            dressSkirt.position.y = 0.9;
+            dressSkirt.castShadow = true;
+            model.add(dressSkirt);
+
+            // Add fabric texture
+            applyPattern(dressSkirt, 'solid');
+        }
+
+        function createBusinessSuit() {
+            // Jacket
+            const jacketGeometry = new Ninth.BoxGeometry(0.4, 0.6, 0.3);
+            const jacket = new Ninth.Mesh(jacketGeometry, bottomMaterial);
+            jacket.position.y = 1.4;
+            jacket.castShadow = true;
+            model.add(jacket);
+
+            // Pants
+            const pantsGeometry = new Ninth.BoxGeometry(0.15, 0.7, 0.3);
+            
+            const leftPants = new Ninth.Mesh(pantsGeometry, bottomMaterial);
+            leftPants.position.set(-0.08, 0.55, 0);
+            leftPants.castShadow = true;
+            model.add(leftPants);
+
+            const rightPants = new Ninth.Mesh(pantsGeometry, bottomMaterial);
+            rightPants.position.set(0.08, 0.55, 0);
+            rightPants.castShadow = true;
+            model.add(rightPants);
+
+            // Shirt
+            const shirtGeometry = new Ninth.BoxGeometry(0.25, 0.5, 0.1);
+            const shirt = new Ninth.Mesh(shirtGeometry, topMaterial);
+            shirt.position.y = 1.4;
+            shirt.castShadow = true;
+            model.add(shirt);
+
+            applyPattern(jacket, 'solid');
+        }
+
+        function createCasualWear() {
+            // T-shirt
+            const shirtGeometry = new Ninth.BoxGeometry(0.35, 0.4, 0.15);
+            const shirt = new Ninth.Mesh(shirtGeometry, topMaterial);
+            shirt.position.y = 1.5;
+            shirt.castShadow = true;
+            model.add(shirt);
+
+            // Jeans
+            const jeansGeometry = new Ninth.BoxGeometry(0.2, 0.75, 0.25);
+            
+            const leftJeans = new Ninth.Mesh(jeansGeometry, bottomMaterial);
+            leftJeans.position.set(-0.08, 0.55, 0);
+            leftJeans.castShadow = true;
+            model.add(leftJeans);
+
+            const rightJeans = new Ninth.Mesh(jeansGeometry, bottomMaterial);
+            rightJeans.position.set(0.08, 0.55, 0);
+            rightJeans.castShadow = true;
+            model.add(rightJeans);
+
+            applyPattern(shirt, 'stripes');
+        }
+
+        function createAvantGarde() {
+            // Abstract top
+            const topGeometry = new Ninth.BoxGeometry(0.3, 0.25, 0.2);
+            const avantTop = new Ninth.Mesh(topGeometry, topMaterial);
+            avantTop.position.y = 1.6;
+            avantTop.rotation.z = 0.2;
+            avantTop.castShadow = true;
+            model.add(avantTop);
+
+            // Abstract bottom
+            const bottomGeometry = new Ninth.BoxGeometry(0.3, 0.8, 0.15);
+            const avantBottom = new Ninth.Mesh(bottomGeometry, bottomMaterial);
+            avantBottom.position.y = 0.9;
+            avantBottom.rotation.x = 0.1;
+            avantBottom.castShadow = true;
+            model.add(avantBottom);
+
+            applyPattern(avantTop, 'geometric');
+        }
+
+        function applyPattern(mesh, patternType) {
+            // Simple pattern implementation using geometry modifications
+            if (patternType === 'stripes') {
+                // Add stripes by modifying geometry
+                mesh.rotation.z = 0.1;
+            } else if (patternType === 'floral') {
+                // Add floral elements
+                const flowerGeometry = new Ninth.SphereGeometry(0.02, 6, 4);
+                const flowerMaterial = topMaterial.clone();
+                flowerMaterial.color.setHex(0xff69b4);
+                
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i / 5) * Math.PI * 2;
+                    const flower = new Ninth.Mesh(flowerGeometry, flowerMaterial);
+                    flower.position.set(
+                        Math.cos(angle) * 0.1,
+                        mesh.position.y + (Math.random() - 0.5) * 0.3,
+                        Math.sin(angle) * 0.1
+                    );
+                    scene.add(flower);
+                }
+            }
+            // Add more pattern implementations as needed
+        }
+
+        function addAccessories() {
+            // Shoes
+            if (accessories.shoes) {
+                const shoeGeometry = new Ninth.BoxGeometry(0.1, 0.05, 0.3);
+                const shoeMaterial = accessoryMaterial.clone();
+                shoeMaterial.color.setHex(0x000000);
+                
+                const leftShoe = new Ninth.Mesh(shoeGeometry, shoeMaterial);
+                leftShoe.position.set(-0.08, 0.22, 0.1);
+                leftShoe.castShadow = true;
+                model.add(leftShoe);
+
+                const rightShoe = new Ninth.Mesh(shoeGeometry, shoeMaterial);
+                rightShoe.position.set(0.08, 0.22, 0.1);
+                rightShoe.castShadow = true;
+                model.add(rightShoe);
+            }
+
+            // Jewelry
+            if (accessories.jewelry) {
+                // Necklace
+                const necklaceGeometry = new Ninth.TorusGeometry(0.12, 0.01, 8, 16);
+                const necklace = new Ninth.Mesh(necklaceGeometry, accessoryMaterial);
+                necklace.position.y = 1.55;
+                necklace.castShadow = true;
+                model.add(necklace);
+
+                // Earrings
+                const earringGeometry = new Ninth.SphereGeometry(0.015, 6, 4);
+                const leftEarring = new Ninth.Mesh(earringGeometry, accessoryMaterial);
+                leftEarring.position.set(-0.12, 1.68, 0.05);
+                leftEarring.castShadow = true;
+                model.add(leftEarring);
+
+                const rightEarring = new Ninth.Mesh(earringGeometry, accessoryMaterial);
+                rightEarring.position.set(0.12, 1.68, 0.05);
+                rightEarring.castShadow = true;
+                model.add(rightEarring);
+            }
+
+            // Add other accessories as needed...
+        }
+
+        function setupControls() {
+            // Outfit buttons
+            document.querySelectorAll('.outfit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.outfit-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentOutfit = this.dataset.outfit;
+                    createModel(currentOutfit);
+                });
+            });
+
+            // Fabric categories
+            document.querySelectorAll('.fabric-category').forEach((btn, index) => {
+                btn.addEventListener('click', function() {
+                    // Handle top and bottom fabric separately
+                    const container = this.closest('.fabric-section');
+                    const isTop = container.querySelector('h4').textContent.includes('Top');
+                    
+                    container.querySelectorAll('.fabric-category').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    if (isTop) {
+                        currentTopFabric = this.dataset.category;
+                    } else {
+                        currentBottomFabric = this.dataset.category;
+                    }
+                    
+                    createMaterials();
+                    createModel(currentOutfit);
+                });
+            });
+
+            // Color selection
+            document.querySelectorAll('.fabric-color').forEach(color => {
+                color.addEventListener('click', function() {
+                    const container = this.closest('.fabric-section');
+                    const isTop = container.querySelector('h4').textContent.includes('Top');
+                    
+                    container.querySelectorAll('.fabric-color').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    if (isTop) {
+                        currentTopColor = this.dataset.color;
+                    } else {
+                        currentBottomColor = this.dataset.color;
+                    }
+                    
+                    createMaterials();
+                    createModel(currentOutfit);
+                });
+            });
+
+            // Pattern options
+            document.querySelectorAll('.pattern-option').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.pattern-option').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPattern = this.dataset.pattern;
+                    createModel(currentOutfit);
+                });
+            });
+
+            // Accessory toggles
+            document.querySelectorAll('.accessory-toggle').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const accessoryType = this.dataset.accessory;
+                    accessories[accessoryType] = this.classList.contains('active');
+                    createModel(currentOutfit);
+                });
+            });
+
+            // Lighting controls
+            const lightControls = [
+                { id: 'keyLight', obj: keyLight, valueId: 'keyValue', suffix: '%' },
+                { id: 'fillLight', obj: fillLight, valueId: 'fillValue', suffix: '%' },
+                { id: 'rimLight', obj: rimLight, valueId: 'rimValue', suffix: '%' },
+                { id: 'ambientLight', obj: ambientLight, valueId: 'ambientValue', suffix: '%' }
+            ];
+
+            lightControls.forEach(control => {
+                const element = document.getElementById(control.id);
+                const valueElement = document.getElementById(control.valueId);
+                
+                element.addEventListener('input', function() {
+                    const value = parseFloat(this.value);
+                    control.obj.intensity = value / 100;
+                    valueElement.textContent = value + control.suffix;
+                });
+            });
+        }
+
+        function updateRunwayInfo() {
+            const outfitNames = {
+                evening: 'Evening Gown',
+                business: 'Business Suit',
+                casual: 'Casual Wear',
+                avant: 'Avant-garde'
+            };
+
+            const activeAccessories = Object.keys(accessories).filter(key => accessories[key]);
+            const accessoriesText = activeAccessories.length > 0 ? 
+                activeAccessories.map(acc => acc.charAt(0).toUpperCase() + acc.slice(1)).join(', ') : 
+                'None';
+
+            document.getElementById('outfitName').textContent = outfitNames[currentOutfit];
+            document.getElementById('fabricName').textContent = 
+                currentTopFabric.charAt(0).toUpperCase() + currentTopFabric.slice(1) + ' & ' +
+                currentBottomFabric.charAt(0).toUpperCase() + currentBottomFabric.slice(1);
+            document.getElementById('patternName').textContent = 
+                currentPattern.charAt(0).toUpperCase() + currentPattern.slice(1);
+            document.getElementById('accessoriesName').textContent = accessoriesText;
+            document.getElementById('styleName').textContent = 
+                currentOutfit === 'evening' ? 'Elegant' :
+                currentOutfit === 'business' ? 'Professional' :
+                currentOutfit === 'casual' ? 'Relaxed' : 'Experimental';
+        }
+
+        function setMoodPreset(preset) {
+            const presets = {
+                studio: { key: 80, fill: 40, rim: 60, ambient: 30 },
+                golden: { key: 100, fill: 50, rim: 80, ambient: 40 },
+                dramatic: { key: 120, fill: 20, rim: 100, ambient: 20 },
+                romantic: { key: 60, fill: 70, rim: 40, ambient: 50 }
+            };
+
+            const p = presets[preset];
+            if (p) {
+                document.getElementById('keyLight').value = p.key;
+                document.getElementById('fillLight').value = p.fill;
+                document.getElementById('rimLight').value = p.rim;
+                document.getElementById('ambientLight').value = p.ambient;
+                
+                keyLight.intensity = p.key / 100;
+                fillLight.intensity = p.fill / 100;
+                rimLight.intensity = p.rim / 100;
+                ambientLight.intensity = p.ambient / 100;
+                
+                document.getElementById('keyValue').textContent = p.key + '%';
+                document.getElementById('fillValue').textContent = p.fill + '%';
+                document.getElementById('rimValue').textContent = p.rim + '%';
+                document.getElementById('ambientValue').textContent = p.ambient + '%';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('materials').textContent = '8';
+            document.getElementById('textures').textContent = '6';
+            document.getElementById('lights').textContent = '6';
+            document.getElementById('polygons').textContent = '3,156';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Update FPS counter
+            const now = performance.now();
+            stats.frameCount++;
+            
+            if (now - stats.lastTime >= 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (now - stats.lastTime));
+                document.getElementById('fps').textContent = stats.fps;
+                stats.frameCount = 0;
+                stats.lastTime = now;
+            }
+
+            // Gentle swaying animation
+            if (model) {
+                model.rotation.y += 0.001;
+                const sway = Math.sin(Date.now() * 0.001) * 0.02;
+                model.rotation.z = sway;
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

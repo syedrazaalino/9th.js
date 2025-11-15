@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Dataset Explorer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #0a0a1a; font-family: 'Segoe UI', sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #data-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 20px; border-radius: 12px;
+            color: #fff; min-width: 280px; border: 1px solid #333;
+        }
+        #data-controls h3 { color: #4fc3f7; margin-bottom: 15px; text-align: center; }
+        #data-controls select, #data-controls input {
+            width: 100%; padding: 8px; margin: 8px 0;
+            background: rgba(255,255,255,0.1); border: 1px solid #333; color: #fff;
+        }
+        #data-controls button {
+            width: 100%; padding: 10px; margin: 5px 0;
+            background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+            border: none; border-radius: 6px; color: white; cursor: pointer;
+        }
+        #stats-panel {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; border: 1px solid #333; max-width: 250px;
+        }
+        #insights-panel {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #4fc3f7; font-size: 11px; border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="data-controls">
+        <h3>📊 Dataset Explorer</h3>
+        <label>Dataset:</label>
+        <select id="dataset-select">
+            <option value="sales">Sales Data</option>
+            <option value="population">Population Demographics</option>
+            <option value="climate">Climate Data</option>
+            <option value="financial">Stock Prices</option>
+            <option value="social">Social Media Analytics</option>
+            <option value="healthcare">Healthcare Metrics</option>
+        </select>
+        
+        <label>Visualization Type:</label>
+        <select id="viz-type">
+            <option value="scatter">3D Scatter Plot</option>
+            <option value="bar">3D Bar Chart</option>
+            <option value="surface">3D Surface</option>
+            <option value="network">Network Graph</option>
+            <option value="heatmap">3D Heatmap</option>
+        </select>
+        
+        <label>X-Axis:</label>
+        <select id="x-axis"></select>
+        
+        <label>Y-Axis:</label>
+        <select id="y-axis"></select>
+        
+        <label>Z-Axis:</label>
+        <select id="z-axis"></select>
+        
+        <label>Color By:</label>
+        <select id="color-by"></select>
+        
+        <button id="load-dataset">📂 Load Dataset</button>
+        <button id="analyze-data">🔍 Analyze</button>
+        <button id="export-insights">💾 Export</button>
+        <button id="reset-view">🔄 Reset View</button>
+    </div>
+    
+    <div id="stats-panel">
+        <div><strong>Dataset Statistics</strong></div>
+        <div>Records: <span id="record-count">0</span></div>
+        <div>Dimensions: <span id="dimensions">0</span></div>
+        <div>Range X: <span id="range-x">0</span></div>
+        <div>Range Y: <span id="range-y">0</span></div>
+        <div>Range Z: <span id="range-z">0</span></div>
+        <div>Mean: <span id="mean-value">0</span></div>
+        <div>Std Dev: <span id="std-value">0</span></div>
+        <div>Correlation: <span id="correlation">0.0</span></div>
+    </div>
+    
+    <div id="insights-panel">
+        <div><strong>AI Insights</strong></div>
+        <div id="insights-text">Select a dataset to begin analysis...</div>
+        <div style="margin-top: 10px; font-size: 10px; color: #666;">
+            Data points: <span id="visible-points">0</span> / <span id="total-points">0</span>
+        </div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class DatasetExplorer3D {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                this.datasets = {};
+                this.currentDataset = null;
+                this.dataObjects = [];
+                this.selectedObjects = new Set();
+                this.isDragging = false;
+                this.mouse = new Engine.Vector2();
+                
+                this.setupLighting();
+                this.setupCamera();
+                this.setupControls();
+                this.generateDatasets();
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                const ambientLight = new Engine.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const pointLight = new Engine.PointLight(0x4fc3f7, 1, 100);
+                pointLight.position.set(20, 20, 20);
+                this.scene.add(pointLight);
+                
+                const fillLight = new Engine.PointLight(0xff6b6b, 0.5, 50);
+                fillLight.position.set(-20, -20, -20);
+                this.scene.add(fillLight);
+            }
+            
+            setupCamera() {
+                this.camera.position.set(30, 30, 30);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isDragging = true;
+                    this.mouse.set(e.clientX, e.clientY);
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.isDragging) {
+                        const deltaX = e.clientX - this.mouse.x;
+                        const deltaY = e.clientY - this.mouse.y;
+                        
+                        this.camera.position.x += deltaX * 0.1;
+                        this.camera.position.y -= deltaY * 0.1;
+                        
+                        this.mouse.set(e.clientX, e.clientY);
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const factor = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(factor);
+                });
+            }
+            
+            setupControls() {
+                document.getElementById('dataset-select').addEventListener('change', (e) => {
+                    this.loadDataset(e.target.value);
+                });
+                
+                document.getElementById('viz-type').addEventListener('change', (e) => {
+                    this.changeVisualizationType(e.target.value);
+                });
+                
+                document.getElementById('load-dataset').addEventListener('click', () => {
+                    this.loadCurrentDataset();
+                });
+                
+                document.getElementById('analyze-data').addEventListener('click', () => {
+                    this.analyzeData();
+                });
+                
+                document.getElementById('export-insights').addEventListener('click', () => {
+                    this.exportInsights();
+                });
+                
+                document.getElementById('reset-view').addEventListener('click', () => {
+                    this.resetView();
+                });
+                
+                ['x-axis', 'y-axis', 'z-axis', 'color-by'].forEach(selectId => {
+                    document.getElementById(selectId).addEventListener('change', () => {
+                        this.updateVisualization();
+                    });
+                });
+            }
+            
+            generateDatasets() {
+                // Sales Data
+                this.datasets.sales = this.generateSalesData();
+                
+                // Population Demographics
+                this.datasets.population = this.generatePopulationData();
+                
+                // Climate Data
+                this.datasets.climate = this.generateClimateData();
+                
+                // Financial Data
+                this.datasets.financial = this.generateFinancialData();
+                
+                // Social Media Data
+                this.datasets.social = this.generateSocialData();
+                
+                // Healthcare Data
+                this.datasets.healthcare = this.generateHealthcareData();
+            }
+            
+            generateSalesData() {
+                const data = [];
+                const regions = ['North', 'South', 'East', 'West', 'Central'];
+                const products = ['Product A', 'Product B', 'Product C', 'Product D'];
+                
+                for (let i = 0; i < 1000; i++) {
+                    data.push({
+                        region: regions[Math.floor(Math.random() * regions.length)],
+                        product: products[Math.floor(Math.random() * products.length)],
+                        revenue: Math.random() * 1000000 + 100000,
+                        units: Math.random() * 10000 + 1000,
+                        profit: Math.random() * 200000 + 50000,
+                        quarter: Math.floor(Math.random() * 4) + 1,
+                        satisfaction: Math.random() * 2 + 3
+                    });
+                }
+                
+                return data;
+            }
+            
+            generatePopulationData() {
+                const data = [];
+                const countries = ['USA', 'China', 'India', 'Brazil', 'Russia', 'Japan', 'Germany', 'UK'];
+                
+                for (let i = 0; i < 500; i++) {
+                    data.push({
+                        country: countries[Math.floor(Math.random() * countries.length)],
+                        population: Math.random() * 1000000000 + 50000000,
+                        urban: Math.random() * 100,
+                        birth_rate: Math.random() * 30 + 5,
+                        life_expectancy: Math.random() * 40 + 50,
+                        education: Math.random() * 15 + 5,
+                        gdp_per_capita: Math.random() * 80000 + 10000
+                    });
+                }
+                
+                return data;
+            }
+            
+            generateClimateData() {
+                const data = [];
+                const cities = ['New York', 'London', 'Tokyo', 'Sydney', 'Cairo', 'Moscow'];
+                
+                for (let i = 0; i < 365; i++) {
+                    data.push({
+                        city: cities[Math.floor(Math.random() * cities.length)],
+                        temperature: Math.random() * 40 - 10,
+                        humidity: Math.random() * 100,
+                        pressure: Math.random() * 50 + 1000,
+                        wind_speed: Math.random() * 30,
+                        rainfall: Math.random() * 100,
+                        uv_index: Math.random() * 11,
+                        air_quality: Math.random() * 500
+                    });
+                }
+                
+                return data;
+            }
+            
+            generateFinancialData() {
+                const data = [];
+                const symbols = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META'];
+                
+                for (let i = 0; i < 200; i++) {
+                    data.push({
+                        symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                        price: Math.random() * 500 + 50,
+                        volume: Math.random() * 10000000,
+                        market_cap: Math.random() * 2000000000000,
+                        pe_ratio: Math.random() * 50 + 5,
+                        dividend: Math.random() * 10,
+                        beta: Math.random() * 3,
+                        volatility: Math.random() * 0.5 + 0.1
+                    });
+                }
+                
+                return data;
+            }
+            
+            generateSocialData() {
+                const data = [];
+                const platforms = ['Twitter', 'Facebook', 'Instagram', 'LinkedIn', 'TikTok'];
+                
+                for (let i = 0; i < 800; i++) {
+                    data.push({
+                        platform: platforms[Math.floor(Math.random() * platforms.length)],
+                        followers: Math.random() * 10000000,
+                        engagement: Math.random() * 0.2,
+                        posts_per_day: Math.random() * 10,
+                        reach: Math.random() * 5000000,
+                        impressions: Math.random() * 20000000,
+                        clicks: Math.random() * 1000000,
+                        conversions: Math.random() * 50000
+                    });
+                }
+                
+                return data;
+            }
+            
+            generateHealthcareData() {
+                const data = [];
+                const conditions = ['Diabetes', 'Hypertension', 'Heart Disease', 'Cancer', 'Asthma'];
+                
+                for (let i = 0; i < 300; i++) {
+                    data.push({
+                        condition: conditions[Math.floor(Math.random() * conditions.length)],
+                        patients: Math.random() * 100000 + 10000,
+                        cost_per_patient: Math.random() * 50000 + 5000,
+                        recovery_rate: Math.random() * 0.5 + 0.3,
+                        readmission_rate: Math.random() * 0.3,
+                        satisfaction: Math.random() * 2 + 3,
+                        wait_time: Math.random() * 120 + 15,
+                        beds_available: Math.random() * 200 + 50
+                    });
+                }
+                
+                return data;
+            }
+            
+            loadDataset(datasetName) {
+                this.currentDataset = this.datasets[datasetName];
+                this.populateAxisSelectors();
+            }
+            
+            loadCurrentDataset() {
+                const datasetName = document.getElementById('dataset-select').value;
+                this.loadDataset(datasetName);
+                this.updateVisualization();
+            }
+            
+            populateAxisSelectors() {
+                if (!this.currentDataset) return;
+                
+                const sample = this.currentDataset[0];
+                const fields = Object.keys(sample);
+                
+                const selectors = ['x-axis', 'y-axis', 'z-axis', 'color-by'];
+                
+                selectors.forEach(selectId => {
+                    const select = document.getElementById(selectId);
+                    select.innerHTML = '';
+                    
+                    fields.forEach(field => {
+                        const option = document.createElement('option');
+                        option.value = field;
+                        option.textContent = field;
+                        select.appendChild(option);
+                    });
+                });
+                
+                // Set defaults
+                document.getElementById('x-axis').value = fields[0];
+                document.getElementById('y-axis').value = fields[1];
+                document.getElementById('z-axis').value = fields[2];
+                document.getElementById('color-by').value = fields[3];
+            }
+            
+            updateVisualization() {
+                if (!this.currentDataset) return;
+                
+                this.clearVisualization();
+                
+                const xField = document.getElementById('x-axis').value;
+                const yField = document.getElementById('y-axis').value;
+                const zField = document.getElementById('z-axis').value;
+                const colorField = document.getElementById('color-by').value;
+                
+                const vizType = document.getElementById('viz-type').value;
+                
+                switch (vizType) {
+                    case 'scatter':
+                        this.createScatterPlot(xField, yField, zField, colorField);
+                        break;
+                    case 'bar':
+                        this.createBarChart(xField, yField, zField, colorField);
+                        break;
+                    case 'surface':
+                        this.createSurface(xField, yField, zField);
+                        break;
+                    case 'network':
+                        this.createNetworkGraph();
+                        break;
+                    case 'heatmap':
+                        this.createHeatmap(xField, yField, zField);
+                        break;
+                }
+                
+                this.updateStatistics();
+            }
+            
+            createScatterPlot(xField, yField, zField, colorField) {
+                const maxPoints = Math.min(this.currentDataset.length, 1000);
+                
+                for (let i = 0; i < maxPoints; i++) {
+                    const data = this.currentDataset[i];
+                    
+                    const geometry = new Engine.SphereGeometry(0.5, 8, 6);
+                    const color = this.getColorFromField(data[colorField]);
+                    
+                    const material = new Engine.MeshLambertMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const sphere = new Engine.Mesh(geometry, material);
+                    
+                    // Position based on data values
+                    const x = this.normalizeValue(data[xField], xField) * 40 - 20;
+                    const y = this.normalizeValue(data[yField], yField) * 40 - 20;
+                    const z = this.normalizeValue(data[zField], zField) * 20 - 10;
+                    
+                    sphere.position.set(x, y, z);
+                    sphere.userData = { originalData: data, index: i };
+                    
+                    this.dataObjects.push(sphere);
+                    this.scene.add(sphere);
+                }
+            }
+            
+            createBarChart(xField, yField, zField, colorField) {
+                const groupedData = this.groupData(this.currentDataset, xField, yField);
+                let index = 0;
+                
+                Object.entries(groupedData).forEach(([key, values]) => {
+                    const avgValue = values.reduce((sum, v) => sum + v[yField], 0) / values.length;
+                    const height = this.normalizeValue(avgValue, yField) * 30 + 2;
+                    
+                    const geometry = new Engine.BoxGeometry(2, height, 2);
+                    const color = this.getColorFromField(avgValue, colorField);
+                    
+                    const material = new Engine.MeshLambertMaterial({ color: color });
+                    const bar = new Engine.Mesh(geometry, material);
+                    
+                    const x = (index % 10) * 4 - 20;
+                    const z = Math.floor(index / 10) * 4 - 20;
+                    bar.position.set(x, height / 2, z);
+                    
+                    bar.userData = { 
+                        label: key, 
+                        value: avgValue,
+                        count: values.length 
+                    };
+                    
+                    this.dataObjects.push(bar);
+                    this.scene.add(bar);
+                    index++;
+                });
+            }
+            
+            createSurface(xField, yField, zField) {
+                const gridSize = 20;
+                const dataMap = new Map();
+                
+                // Group data by x and y
+                this.currentDataset.forEach(data => {
+                    const x = Math.floor(this.normalizeValue(data[xField], xField) * gridSize);
+                    const y = Math.floor(this.normalizeValue(data[yField], yField) * gridSize);
+                    const key = `${x},${y}`;
+                    
+                    if (!dataMap.has(key)) {
+                        dataMap.set(key, []);
+                    }
+                    dataMap.get(key).push(data[zField]);
+                });
+                
+                // Create surface
+                for (let x = 0; x < gridSize; x++) {
+                    for (let z = 0; z < gridSize; z++) {
+                        const key = `${x},${z}`;
+                        const values = dataMap.get(key);
+                        
+                        if (values && values.length > 0) {
+                            const avgValue = values.reduce((sum, v) => sum + v, 0) / values.length;
+                            const height = this.normalizeValue(avgValue, zField) * 20;
+                            
+                            const geometry = new Engine.PlaneGeometry(1, 1);
+                            const color = this.getColorFromField(avgValue, zField);
+                            
+                            const material = new Engine.MeshLambertMaterial({
+                                color: color,
+                                transparent: true,
+                                opacity: 0.7
+                            });
+                            
+                            const tile = new Engine.Mesh(geometry, material);
+                            tile.position.set(x - gridSize/2, height/2, z - gridSize/2);
+                            tile.rotation.x = -Math.PI / 2;
+                            tile.scale.y = height;
+                            
+                            this.dataObjects.push(tile);
+                            this.scene.add(tile);
+                        }
+                    }
+                }
+            }
+            
+            createNetworkGraph() {
+                // Simple network visualization
+                const nodes = new Map();
+                const edges = [];
+                
+                this.currentDataset.slice(0, 50).forEach((data, index) => {
+                    const id = index;
+                    const x = (index % 10) * 6 - 30;
+                    const y = Math.floor(index / 10) * 6 - 15;
+                    const z = Math.sin(index * 0.5) * 10;
+                    
+                    nodes.set(id, {
+                        position: new Engine.Vector3(x, y, z),
+                        data: data
+                    });
+                    
+                    // Create random connections
+                    if (Math.random() < 0.3) {
+                        const targetId = Math.floor(Math.random() * index);
+                        edges.push([id, targetId]);
+                    }
+                });
+                
+                // Create nodes
+                nodes.forEach((node, id) => {
+                    const geometry = new Engine.SphereGeometry(1, 12, 8);
+                    const material = new Engine.MeshLambertMaterial({
+                        color: this.getColorFromField(Object.values(node.data)[0])
+                    });
+                    
+                    const sphere = new Engine.Mesh(geometry, material);
+                    sphere.position.copy(node.position);
+                    
+                    this.dataObjects.push(sphere);
+                    this.scene.add(sphere);
+                });
+                
+                // Create edges
+                edges.forEach(([from, to]) => {
+                    const startPos = nodes.get(from).position;
+                    const endPos = nodes.get(to).position;
+                    
+                    const geometry = new Engine.BufferGeometry().setFromPoints([startPos, endPos]);
+                    const material = new Engine.LineBasicMaterial({
+                        color: 0x666666,
+                        transparent: true,
+                        opacity: 0.5
+                    });
+                    
+                    const line = new Engine.Line(geometry, material);
+                    this.dataObjects.push(line);
+                    this.scene.add(line);
+                });
+            }
+            
+            createHeatmap(xField, yField, zField) {
+                const resolution = 25;
+                const grid = new Array(resolution).fill(0).map(() => new Array(resolution).fill(0));
+                
+                this.currentDataset.forEach(data => {
+                    const x = Math.floor(this.normalizeValue(data[xField], xField) * resolution);
+                    const y = Math.floor(this.normalizeValue(data[yField], yField) * resolution);
+                    
+                    if (x >= 0 && x < resolution && y >= 0 && y < resolution) {
+                        grid[y][x] += data[zField];
+                    }
+                });
+                
+                for (let y = 0; y < resolution; y++) {
+                    for (let x = 0; x < resolution; x++) {
+                        const value = grid[y][x];
+                        if (value > 0) {
+                            const height = this.normalizeValue(value, zField) * 10;
+                            const geometry = new Engine.BoxGeometry(1, height, 1);
+                            const color = this.getColorFromField(value, zField);
+                            
+                            const material = new Engine.MeshLambertMaterial({
+                                color: color,
+                                transparent: true,
+                                opacity: 0.8
+                            });
+                            
+                            const bar = new Engine.Mesh(geometry, material);
+                            bar.position.set(x - resolution/2, height/2, y - resolution/2);
+                            
+                            this.dataObjects.push(bar);
+                            this.scene.add(bar);
+                        }
+                    }
+                }
+            }
+            
+            normalizeValue(value, field) {
+                // Simple normalization based on field type
+                if (typeof value === 'string') {
+                    // Convert string to number (hash)
+                    return (value.charCodeAt(0) + value.charCodeAt(value.length - 1)) % 100 / 100;
+                }
+                
+                // Handle different ranges
+                if (field.includes('rate') || field.includes('percent')) {
+                    return value / 100;
+                } else if (field.includes('price') || field.includes('revenue') || field.includes('cost')) {
+                    return value / 1000000;
+                } else if (field.includes('population')) {
+                    return value / 1000000000;
+                } else if (field.includes('time') || field.includes('wait')) {
+                    return value / 120; // Max 120 minutes
+                } else {
+                    return Math.min(value / 1000, 1); // General case
+                }
+            }
+            
+            getColorFromField(value, field) {
+                const normalized = this.normalizeValue(value, field || 'default');
+                
+                // Color gradient from blue to red
+                const r = normalized;
+                const g = 0.5 * (1 - Math.abs(normalized - 0.5) * 2);
+                const b = 1 - normalized;
+                
+                return new Engine.Color(r, g, b);
+            }
+            
+            groupData(data, groupField, valueField) {
+                const grouped = {};
+                
+                data.forEach(item => {
+                    const key = item[groupField];
+                    if (!grouped[key]) {
+                        grouped[key] = [];
+                    }
+                    grouped[key].push(item);
+                });
+                
+                return grouped;
+            }
+            
+            clearVisualization() {
+                this.dataObjects.forEach(obj => {
+                    if (this.scene.children.includes(obj)) {
+                        this.scene.remove(obj);
+                    }
+                });
+                this.dataObjects = [];
+                this.selectedObjects.clear();
+            }
+            
+            updateStatistics() {
+                if (!this.currentDataset) return;
+                
+                const xField = document.getElementById('x-axis').value;
+                const yField = document.getElementById('y-axis').value;
+                const zField = document.getElementById('z-axis').value;
+                
+                const xValues = this.currentDataset.map(d => this.normalizeValue(d[xField], xField));
+                const yValues = this.currentDataset.map(d => this.normalizeValue(d[yField], yField));
+                const zValues = this.currentDataset.map(d => this.normalizeValue(d[zField], zField));
+                
+                document.getElementById('record-count').textContent = this.currentDataset.length;
+                document.getElementById('dimensions').textContent = Object.keys(this.currentDataset[0]).length;
+                document.getElementById('range-x').textContent = `${Math.min(...xValues).toFixed(2)} - ${Math.max(...xValues).toFixed(2)}`;
+                document.getElementById('range-y').textContent = `${Math.min(...yValues).toFixed(2)} - ${Math.max(...yValues).toFixed(2)}`;
+                document.getElementById('range-z').textContent = `${Math.min(...zValues).toFixed(2)} - ${Math.max(...zValues).toFixed(2)}`;
+                
+                const mean = (xValues.reduce((a, b) => a + b, 0) / xValues.length);
+                document.getElementById('mean-value').textContent = mean.toFixed(3);
+                
+                const std = Math.sqrt(xValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / xValues.length);
+                document.getElementById('std-value').textContent = std.toFixed(3);
+                
+                // Simple correlation
+                const correlation = this.calculateCorrelation(xValues, yValues);
+                document.getElementById('correlation').textContent = correlation.toFixed(2);
+                
+                document.getElementById('total-points').textContent = this.dataObjects.length;
+                document.getElementById('visible-points').textContent = this.dataObjects.length;
+            }
+            
+            calculateCorrelation(x, y) {
+                const n = x.length;
+                const meanX = x.reduce((a, b) => a + b) / n;
+                const meanY = y.reduce((a, b) => a + b) / n;
+                
+                let numerator = 0;
+                let denomX = 0;
+                let denomY = 0;
+                
+                for (let i = 0; i < n; i++) {
+                    const dx = x[i] - meanX;
+                    const dy = y[i] - meanY;
+                    numerator += dx * dy;
+                    denomX += dx * dx;
+                    denomY += dy * dy;
+                }
+                
+                return numerator / Math.sqrt(denomX * denomY);
+            }
+            
+            analyzeData() {
+                if (!this.currentDataset) return;
+                
+                const insights = [];
+                
+                // Pattern detection
+                const fieldNames = Object.keys(this.currentDataset[0]);
+                const numericFields = fieldNames.filter(field => 
+                    typeof this.currentDataset[0][field] === 'number'
+                );
+                
+                if (numericFields.length >= 2) {
+                    const xField = numericFields[0];
+                    const yField = numericFields[1];
+                    
+                    const correlation = this.calculateCorrelation(
+                        this.currentDataset.map(d => d[xField]),
+                        this.currentDataset.map(d => d[yField])
+                    );
+                    
+                    if (Math.abs(correlation) > 0.7) {
+                        insights.push(`Strong correlation (${correlation.toFixed(2)}) detected between ${xField} and ${yField}`);
+                    } else if (Math.abs(correlation) > 0.3) {
+                        insights.push(`Moderate correlation (${correlation.toFixed(2)}) between ${xField} and ${yField}`);
+                    }
+                }
+                
+                // Outlier detection
+                const values = this.currentDataset.map(d => 
+                    Object.values(d).find(v => typeof v === 'number')
+                ).filter(v => v !== undefined);
+                
+                const mean = values.reduce((a, b) => a + b) / values.length;
+                const std = Math.sqrt(values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length);
+                
+                const outliers = values.filter(val => Math.abs(val - mean) > 2 * std);
+                if (outliers.length > 0) {
+                    insights.push(`${outliers.length} potential outliers detected in the dataset`);
+                }
+                
+                // Distribution analysis
+                const uniqueValues = new Set(this.currentDataset.map(d => d[fieldNames[0]])).size;
+                if (uniqueValues < this.currentDataset.length * 0.1) {
+                    insights.push('Dataset shows clustered distribution patterns');
+                } else {
+                    insights.push('Dataset exhibits relatively uniform distribution');
+                }
+                
+                document.getElementById('insights-text').innerHTML = insights.join('<br>') || 'No significant patterns detected';
+            }
+            
+            exportInsights() {
+                const data = {
+                    dataset: document.getElementById('dataset-select').value,
+                    visualization: document.getElementById('viz-type').value,
+                    timestamp: Date.now(),
+                    statistics: {
+                        records: this.currentDataset?.length || 0,
+                        dimensions: this.currentDataset ? Object.keys(this.currentDataset[0]).length : 0
+                    }
+                };
+                
+                console.log('Dataset insights exported:', data);
+                alert('Insights exported successfully! 📊');
+            }
+            
+            resetView() {
+                this.camera.position.set(30, 30, 30);
+                this.camera.lookAt(0, 0, 0);
+                this.updateStatistics();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Gentle rotation for better 3D perception
+                if (!this.isDragging) {
+                    this.camera.position.x += Math.sin(Date.now() * 0.0005) * 0.1;
+                    this.camera.lookAt(0, 0, 0);
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            new DatasetExplorer3D();
+        });
+        
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

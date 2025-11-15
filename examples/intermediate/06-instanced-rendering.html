@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Instancing Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>GPU Instancing Demo</strong><br>
+        GPU-accelerated instanced rendering<br>
+        - Thousands of instances<br>
+        - Per-instance transforms<br>
+        - Efficient batch rendering<br>
+        - Performance optimization
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setInstancingMode('grid')" class="active">Grid</button>
+            <button onclick="setInstancingMode('forest')">Forest</button>
+            <button onclick="setInstancingMode('galaxy')">Galaxy</button>
+            <button onclick="setInstancingMode('particles')">Particles</button>
+        </div>
+        <div class="control-group">
+            <label>Instance Count: <span id="count-val">10000</span></label>
+            <input type="range" id="instance-count" min="100" max="50000" step="100" value="10000">
+        </div>
+        <div class="control-group">
+            <label>Instance Size: <span id="size-val">1.0</span></label>
+            <input type="range" id="instance-size" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <button onclick="toggleWireframe()">Toggle Wireframe</button>
+            <button onclick="toggleAnimations()">Toggle Animation</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+        scene.fog = new THREE.Fog(0x111111, 10, 100);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 20, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Instanced Rendering Manager
+        class InstancedRenderer {
+            constructor() {
+                this.instances = null;
+                this.maxInstances = 50000;
+                this.currentInstances = 10000;
+                this.instanceSize = 1.0;
+                this.isAnimated = true;
+                this.currentMode = 'grid';
+                this.wireframe = false;
+
+                this.setupInstancing();
+            }
+
+            setupInstancing() {
+                // Create base geometry
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+                // Create instanced mesh
+                this.instances = new THREE.InstancedMesh(
+                    geometry,
+                    new THREE.MeshStandardMaterial({ 
+                        color: 0x4a90e2,
+                        roughness: 0.3,
+                        metalness: 0.7
+                    }),
+                    this.maxInstances
+                );
+                
+                this.instances.castShadow = true;
+                this.instances.receiveShadow = true;
+                scene.add(this.instances);
+
+                // Initialize instances
+                this.initializeInstances();
+            }
+
+            initializeInstances() {
+                const matrix = new THREE.Matrix4();
+                const position = new THREE.Vector3();
+                const quaternion = new THREE.Quaternion();
+                const scale = new THREE.Vector3();
+
+                for (let i = 0; i < this.currentInstances; i++) {
+                    this.updateInstanceTransform(i, matrix, position, quaternion, scale);
+                    this.instances.setMatrixAt(i, matrix);
+                }
+
+                this.instances.instanceMatrix.needsUpdate = true;
+            }
+
+            updateInstanceTransform(index, matrix, position, quaternion, scale) {
+                const time = performance.now() * 0.001;
+                const i = index;
+
+                switch(this.currentMode) {
+                    case 'grid':
+                        const gridSize = Math.ceil(Math.sqrt(this.currentInstances));
+                        const x = (i % gridSize) - gridSize / 2;
+                        const z = Math.floor(i / gridSize) - gridSize / 2;
+                        position.set(x * 2, 0, z * 2);
+                        quaternion.set(0, 0, 0, 1);
+                        scale.set(this.instanceSize, this.instanceSize, this.instanceSize);
+                        break;
+
+                    case 'forest':
+                        position.set(
+                            (Math.random() - 0.5) * 100,
+                            0,
+                            (Math.random() - 0.5) * 100
+                        );
+                        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2);
+                        scale.set(
+                            this.instanceSize * (0.5 + Math.random()),
+                            this.instanceSize * (2 + Math.random() * 3),
+                            this.instanceSize * (0.5 + Math.random())
+                        );
+                        break;
+
+                    case 'galaxy':
+                        const radius = Math.random() * 50 + 10;
+                        const angle = Math.random() * Math.PI * 2;
+                        position.set(
+                            Math.cos(angle) * radius,
+                            (Math.random() - 0.5) * 20,
+                            Math.sin(angle) * radius
+                        );
+                        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+                        scale.set(this.instanceSize * 0.5, this.instanceSize * 0.5, this.instanceSize * 0.5);
+                        break;
+
+                    case 'particles':
+                        position.set(
+                            (Math.random() - 0.5) * 200,
+                            (Math.random() - 0.5) * 200,
+                            (Math.random() - 0.5) * 200
+                        );
+                        quaternion.set(0, 0, 0, 1);
+                        scale.set(this.instanceSize * 0.1, this.instanceSize * 0.1, this.instanceSize * 0.1);
+                        break;
+                }
+
+                if (this.isAnimated) {
+                    // Add animation based on mode
+                    switch(this.currentMode) {
+                        case 'grid':
+                            position.y = Math.sin(time + index * 0.1) * 2;
+                            quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), time + index * 0.01);
+                            break;
+                        case 'galaxy':
+                            const baseAngle = Math.atan2(position.z, position.x);
+                            const rotationSpeed = 0.1;
+                            quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), baseAngle + time * rotationSpeed);
+                            break;
+                        case 'particles':
+                            position.y += Math.sin(time * 2 + index * 0.1) * 0.5;
+                            break;
+                    }
+                }
+
+                matrix.compose(position, quaternion, scale);
+            }
+
+            setInstanceCount(count) {
+                this.currentInstances = Math.min(count, this.maxInstances);
+                this.instances.count = this.currentInstances;
+                this.initializeInstances();
+            }
+
+            setInstanceSize(size) {
+                this.instanceSize = size;
+                this.initializeInstances();
+            }
+
+            setMode(mode) {
+                this.currentMode = mode;
+                this.initializeInstances();
+            }
+
+            toggleWireframe() {
+                this.wireframe = !this.wireframe;
+                this.instances.material.wireframe = this.wireframe;
+            }
+
+            toggleAnimations() {
+                this.isAnimated = !this.isAnimated;
+            }
+
+            update() {
+                if (!this.isAnimated) return;
+
+                const matrix = new THREE.Matrix4();
+                const position = new THREE.Vector3();
+                const quaternion = new THREE.Quaternion();
+                const scale = new THREE.Vector3();
+
+                for (let i = 0; i < this.currentInstances; i++) {
+                    this.updateInstanceTransform(i, matrix, position, quaternion, scale);
+                    this.instances.setMatrixAt(i, matrix);
+                }
+
+                this.instances.instanceMatrix.needsUpdate = true;
+            }
+        }
+
+        // Create instanced renderer
+        const instancedRenderer = new InstancedRenderer();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Global functions
+        window.setInstancingMode = (mode) => {
+            instancedRenderer.setMode(mode);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.toggleWireframe = () => {
+            instancedRenderer.toggleWireframe();
+        };
+
+        window.toggleAnimations = () => {
+            instancedRenderer.toggleAnimations();
+        };
+
+        // Control bindings
+        const countSlider = document.getElementById('instance-count');
+        const countDisplay = document.getElementById('count-val');
+        countSlider.addEventListener('input', (e) => {
+            const count = parseInt(e.target.value);
+            instancedRenderer.setInstanceCount(count);
+            countDisplay.textContent = count;
+        });
+
+        const sizeSlider = document.getElementById('instance-size');
+        const sizeDisplay = document.getElementById('size-val');
+        sizeSlider.addEventListener('input', (e) => {
+            const size = parseFloat(e.target.value);
+            instancedRenderer.setInstanceSize(size);
+            sizeDisplay.textContent = size.toFixed(1);
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            instancedRenderer.update();
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

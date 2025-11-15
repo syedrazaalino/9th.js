@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/core/esm",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true
+  },
+  "include": [
+    "src/core/**/*",
+    "src/geometry/**/*"
+  ],
+  "exclude": [
+    "src/experimental/**/*",
+    "src/physics/**/*",
+    "src/particles/**/*",
+    "src/advanced/**/*",
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.js",
+    "**/__tests__/**/*"
+  ]
+}

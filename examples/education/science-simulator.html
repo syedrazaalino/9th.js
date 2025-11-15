@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Science Simulator - Scientific Experiments</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .demo-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+        
+        .learning-objectives {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin: 12px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .control-group button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .control-group button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .control-group button.danger {
+            background: #e74c3c;
+        }
+        
+        .control-group button.danger:hover {
+            background: #c0392b;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .experiment-info {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .measurement-display {
+            background: rgba(46, 204, 113, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .safety-warning {
+            background: rgba(231, 76, 60, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #e74c3c;
+            font-size: 12px;
+        }
+        
+        .data-log {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .parameter-control {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+        
+        .emergency-button {
+            background: #e74c3c;
+            color: white;
+            border: 2px solid #fff;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .emergency-button:hover {
+            background: #c0392b;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-green { background-color: #2ecc71; }
+        .status-yellow { background-color: #f1c40f; }
+        .status-red { background-color: #e74c3c; }
+        
+        .wavelength-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .experiment-timer {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(52, 152, 219, 0.3) !important;
+            border: 1px solid #3498db;
+        }
+        
+        .measurement-button {
+            background: rgba(52, 152, 219, 0.3);
+            color: white;
+            border: 1px solid rgba(52, 152, 219, 0.5);
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .measurement-button:hover {
+            background: rgba(52, 152, 219, 0.5);
+        }
+        
+        .measurement-button.active {
+            background: #3498db;
+            border-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Science Simulator</h1>
+            
+            <div class="demo-section" onclick="selectDemo('optics')">
+                <div class="demo-title">Optics Laboratory</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand light behavior<br>
+                    • Explore refraction and reflection<br>
+                    • Study interference patterns
+                </div>
+                
+                <div class="control-panel">
+                    <div class="parameter-control">
+                        <label>Light Source:</label>
+                        <select id="light-source" onchange="updateLightSource()">
+                            <option value="white">White Light</option>
+                            <option value="red">Red Light (650nm)</option>
+                            <option value="green">Green Light (532nm)</option>
+                            <option value="blue">Blue Light (450nm)</option>
+                            <option value="laser">Laser Pointer</option>
+                        </select>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Wavelength:</label>
+                        <input type="range" id="wavelength" min="380" max="750" value="550" class="wavelength-slider" onchange="updateWavelength()">
+                        <span id="wavelength-value">550nm</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Intensity:</label>
+                        <input type="range" id="intensity" min="0" max="100" value="50" onchange="updateIntensity()">
+                        <span id="intensity-value">50%</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="addLens()">Add Lens</button>
+                    <button onclick="addPrism()">Add Prism</button>
+                    <button onclick="addMirror()">Add Mirror</button>
+                    <button onclick="addSlit()">Add Double Slit</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="measureRefraction()">Measure Refraction</button>
+                    <button class="secondary" onclick="measureInterference()">Measure Interference</button>
+                    <button class="danger" onclick="clearOptics()">Clear Setup</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="measurement-display" id="optics-measurements">
+                        Angle: 0° | Refractive Index: 1.5 | Intensity: 50%
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('thermodynamics')">
+                <div class="demo-title">Thermodynamics Lab</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Study heat transfer<br>
+                    • Explore phase changes<br>
+                    • Understand entropy
+                </div>
+                
+                <div class="control-panel">
+                    <div class="parameter-control">
+                        <label>Temperature (K):</label>
+                        <input type="range" id="temp-control" min="200" max="600" value="300" onchange="updateTemperature()">
+                        <span id="temp-value">300K</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Pressure (atm):</label>
+                        <input type="range" id="pressure-control" min="0.1" max="10" step="0.1" value="1" onchange="updatePressure()">
+                        <span id="pressure-value">1.0</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Material:</label>
+                        <select id="material-select" onchange="updateMaterial()">
+                            <option value="water">Water</option>
+                            <option value="air">Air</option>
+                            <option value="copper">Copper</option>
+                            <option value="glass">Glass</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="heatSystem()">Add Heat</button>
+                    <button onclick="coolSystem()">Remove Heat</button>
+                    <button onclick="compressSystem()">Compress</button>
+                    <button onclick="expandSystem()">Expand</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="measurePhase()">Check Phase</button>
+                    <button class="secondary" onclick="calculateEntropy()">Calculate Entropy</button>
+                    <button onclick="resetSystem()">Reset System</button>
+                </div>
+                
+                <div class="safety-warning">
+                    <span class="status-indicator status-green"></span>
+                    Safety Status: Normal Operation
+                </div>
+                
+                <div class="experiment-timer" id="thermo-timer">
+                    Time: 00:00 | Energy: 0 J
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('electromagnetism')">
+                <div class="demo-title">Electromagnetism Lab</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore electric fields<br>
+                    • Study magnetic forces<br>
+                    • Understand electromagnetic induction
+                </div>
+                
+                <div class="control-panel">
+                    <div class="parameter-control">
+                        <label>Electric Field (V/m):</label>
+                        <input type="range" id="electric-field" min="0" max="1000" value="100" onchange="updateElectricField()">
+                        <span id="ef-value">100</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Magnetic Field (T):</label>
+                        <input type="range" id="magnetic-field" min="0" max="2" step="0.1" value="0.5" onchange="updateMagneticField()">
+                        <span id="bf-value">0.5</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Frequency (Hz):</label>
+                        <input type="range" id="frequency" min="1" max="1000" value="50" onchange="updateFrequency()">
+                        <span id="freq-value">50</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="addCharge()">Add Point Charge</button>
+                    <button onclick="addCurrent()">Add Current Loop</button>
+                    <button onclick="toggleField()">Toggle Fields</button>
+                    <button onclick="measureForce()">Measure Force</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="simulateInduction()">Induction Demo</button>
+                    <button class="secondary" onclick="showFieldLines()">Show Field Lines</button>
+                    <button class="danger" onclick="clearFields()">Clear Fields</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="measurement-display" id="em-measurements">
+                        F = 0 N | E = 0 V/m | B = 0 T
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('mechanics')">
+                <div class="demo-title">Classical Mechanics Lab</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Study motion and forces<br>
+                    • Explore energy conservation<br>
+                    • Understand oscillations
+                </div>
+                
+                <div class="control-panel">
+                    <div class="parameter-control">
+                        <label>Mass (kg):</label>
+                        <input type="range" id="mass-control" min="0.1" max="10" step="0.1" value="1" onchange="updateMass()">
+                        <span id="mass-value">1.0</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Force (N):</label>
+                        <input type="range" id="force-control" min="0" max="50" value="10" onchange="updateForce()">
+                        <span id="force-value">10</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Damping:</label>
+                        <input type="range" id="damping" min="0" max="1" step="0.1" value="0.2" onchange="updateDamping()">
+                        <span id="damping-value">0.2</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="launchProjectile()">Launch Projectile</button>
+                    <button onclick="startOscillation()">Start Oscillation</button>
+                    <button onclick="simulateCollision()">Simulate Collision</button>
+                    <button onclick="measureEnergy()">Measure Energy</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="applyForce()">Apply Force</button>
+                    <button class="secondary" onclick="changeGravity()">Change Gravity</button>
+                    <button onclick="resetMechanics()">Reset Lab</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="measurement-display" id="mech-measurements">
+                        v = 0 m/s | a = 0 m/s² | KE = 0 J
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('quantum')">
+                <div class="demo-title">Quantum Physics Lab</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore quantum phenomena<br>
+                    • Study wave-particle duality<br>
+                    • Understand uncertainty principle
+                </div>
+                
+                <div class="control-panel">
+                    <div class="parameter-control">
+                        <label>Particle Energy (eV):</label>
+                        <input type="range" id="energy-level" min="0.1" max="10" step="0.1" value="1" onchange="updateEnergyLevel()">
+                        <span id="energy-value">1.0</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Position Uncertainty (nm):</label>
+                        <input type="range" id="position-uncertainty" min="0.1" max="10" step="0.1" value="1" onchange="updateUncertainty()">
+                        <span id="uncertainty-value">1.0</span>
+                    </div>
+                    
+                    <div class="parameter-control">
+                        <label>Experiment Type:</label>
+                        <select id="quantum-experiment" onchange="setupQuantumExperiment()">
+                            <option value="double-slit">Double Slit</option>
+                            <option value="tunneling">Quantum Tunneling</option>
+                            <option value="hydrogen">Hydrogen Atom</option>
+                            <option value="superposition">Superposition</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="fireElectron()">Fire Electron</button>
+                    <button onclick="measurePosition()">Measure Position</button>
+                    <button onclick="measureMomentum()">Measure Momentum</button>
+                    <button onclick="observeWave()">Observe Interference</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="collapsWavefunction()">Collapse Wavefunction</button>
+                    <button class="secondary" onclick="entangleParticles()">Entangle Particles</button>
+                    <button onclick="resetQuantum()">Reset Experiment</button>
+                </div>
+                
+                <div class="data-log" id="quantum-log">
+                    Quantum State: |ψ⟩<br>
+                    Observer Effect: Active<br>
+                    Entanglement: None
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a lab to begin</h3>
+                <div id="demo-description">
+                    Conduct virtual experiments in controlled laboratory environments!
+                </div>
+                <div id="experiment-display"></div>
+                <div id="measurement-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Experiment objects and data
+        let opticsObjects = {};
+        let thermodynamicsObjects = {};
+        let electromagnetismObjects = {};
+        let mechanicsObjects = {};
+        let quantumObjects = {};
+        
+        // Simulation variables
+        let simulationTime = 0;
+        let isRunning = false;
+        let energy = 0;
+        let temperature = 300;
+        let pressure = 1;
+        
+        init();
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 20);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0x3498db, 0.6, 50);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+            
+            // Create laboratory environment
+            createLabEnvironment();
+            
+            // Start render loop
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createLabEnvironment() {
+            // Create lab bench
+            const benchGeometry = new THREE.BoxGeometry(30, 1, 15);
+            const benchMaterial = new THREE.MeshPhongMaterial({ color: 0x2c3e50 });
+            const bench = new THREE.Mesh(benchGeometry, benchMaterial);
+            bench.position.y = -5;
+            bench.receiveShadow = true;
+            scene.add(bench);
+            
+            // Create lab walls
+            const wallGeometry = new THREE.PlaneGeometry(30, 15);
+            const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x34495e, side: THREE.DoubleSide });
+            
+            const backWall = new THREE.Mesh(wallGeometry, wallMaterial);
+            backWall.position.set(0, 2.5, -7.5);
+            scene.add(backWall);
+            
+            // Create fume hood
+            const hoodGeometry = new THREE.BoxGeometry(8, 6, 4);
+            const hoodMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x3498db, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const hood = new THREE.Mesh(hoodGeometry, hoodMaterial);
+            hood.position.set(0, 2, 5);
+            scene.add(hood);
+            
+            // Add lab equipment stands
+            const standGeometry = new THREE.CylinderGeometry(0.2, 0.3, 8);
+            const standMaterial = new THREE.MeshPhongMaterial({ color: 0x7f8c8d });
+            
+            for (let i = 0; i < 4; i++) {
+                const stand = new THREE.Mesh(standGeometry, standMaterial);
+                stand.position.set(-10 + i * 6, -1, -3);
+                scene.add(stand);
+            }
+        }
+        
+        function selectDemo(labName) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = labName;
+            
+            switch(labName) {
+                case 'optics':
+                    setupOpticsLab();
+                    break;
+                case 'thermodynamics':
+                    setupThermodynamicsLab();
+                    break;
+                case 'electromagnetism':
+                    setupElectromagnetismLab();
+                    break;
+                case 'mechanics':
+                    setupMechanicsLab();
+                    break;
+                case 'quantum':
+                    setupQuantumLab();
+                    break;
+            }
+        }
+        
+        function setupOpticsLab() {
+            updateInfoPanel('Optics Laboratory', 
+                'Explore light behavior through lenses, prisms, and slits.', 
+                'Light: Wave-Particle Duality', 'Speed of light: 3×10⁸ m/s');
+            
+            clearScene();
+            createLabEnvironment();
+            setupOpticsEquipment();
+        }
+        
+        function setupThermodynamicsLab() {
+            updateInfoPanel('Thermodynamics Laboratory', 
+                'Study heat transfer and phase changes.', 
+                'Laws of Thermodynamics', 'Absolute zero: -273.15°C');
+            
+            clearScene();
+            createLabEnvironment();
+            setupThermodynamicsEquipment();
+        }
+        
+        function setupElectromagnetismLab() {
+            updateInfoPanel('Electromagnetism Laboratory', 
+                'Investigate electric and magnetic phenomena.', 
+                'Maxwell\'s Equations', 'Speed of light: 3×10⁸ m/s');
+            
+            clearScene();
+            createLabEnvironment();
+            setupElectromagnetismEquipment();
+        }
+        
+        function setupMechanicsLab() {
+            updateInfoPanel('Classical Mechanics Laboratory', 
+                'Study motion, forces, and energy conservation.', 
+                'F = ma', 'Gravitational acceleration: 9.81 m/s²');
+            
+            clearScene();
+            createLabEnvironment();
+            setupMechanicsEquipment();
+        }
+        
+        function setupQuantumLab() {
+            updateInfoPanel('Quantum Physics Laboratory', 
+                'Explore quantum phenomena and wave-particle duality.', 
+                'ħω = E', 'Planck constant: 6.626×10⁻³⁴ J⋅s');
+            
+            clearScene();
+            createLabEnvironment();
+            setupQuantumEquipment();
+        }
+        
+        // Optics Lab Functions
+        
+        function setupOpticsEquipment() {
+            // Create light source
+            const lightGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const lightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const lightSource = new THREE.Mesh(lightGeometry, lightMaterial);
+            lightSource.position.set(-10, 2, 0);
+            lightSource.userData = { type: 'light-source' };
+            scene.add(lightSource);
+            opticsObjects.lightSource = lightSource;
+            
+            // Create screen
+            const screenGeometry = new THREE.PlaneGeometry(6, 4);
+            const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(10, 2, 0);
+            scene.add(screen);
+            opticsObjects.screen = screen;
+            
+            // Create measurement grid on screen
+            const gridGeometry = new THREE.PlaneGeometry(6, 4, 12, 8);
+            const gridMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x3498db, 
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const grid = new THREE.Mesh(gridGeometry, gridMaterial);
+            grid.position.copy(screen.position);
+            scene.add(grid);
+            opticsObjects.grid = grid;
+        }
+        
+        function updateLightSource() {
+            const source = document.getElementById('light-source').value;
+            const wavelength = parseInt(document.getElementById('wavelength').value);
+            
+            let color = 0xffffff;
+            switch(source) {
+                case 'red': color = 0xff0000; break;
+                case 'green': color = 0x00ff00; break;
+                case 'blue': color = 0x0000ff; break;
+                case 'laser': color = 0xff0000; break;
+            }
+            
+            if (opticsObjects.lightSource) {
+                opticsObjects.lightSource.material.color.setHex(color);
+                opticsObjects.lightSource.material.emissive.setHex(color);
+                opticsObjects.lightSource.material.emissiveIntensity = 0.5;
+            }
+        }
+        
+        function updateWavelength() {
+            const wavelength = document.getElementById('wavelength').value;
+            document.getElementById('wavelength-value').textContent = wavelength + 'nm';
+            
+            // Update light color based on wavelength
+            const wavelengthNum = parseInt(wavelength);
+            let color;
+            if (wavelengthNum < 450) color = 0x0000ff;
+            else if (wavelengthNum < 495) color = 0x00ffff;
+            else if (wavelengthNum < 570) color = 0x00ff00;
+            else if (wavelengthNum < 590) color = 0xffff00;
+            else if (wavelengthNum < 620) color = 0xff8000;
+            else color = 0xff0000;
+            
+            if (opticsObjects.lightSource) {
+                opticsObjects.lightSource.material.color.setHex(color);
+                opticsObjects.lightSource.material.emissive.setHex(color);
+            }
+        }
+        
+        function updateIntensity() {
+            const intensity = document.getElementById('intensity').value;
+            document.getElementById('intensity-value').textContent = intensity + '%';
+            
+            if (opticsObjects.lightSource) {
+                opticsObjects.lightSource.material.emissiveIntensity = intensity / 100;
+            }
+        }
+        
+        function addLens() {
+            const lensGeometry = new THREE.CylinderGeometry(1, 1, 0.5, 32);
+            const lensMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x87ceeb, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const lens = new THREE.Mesh(lensGeometry, lensMaterial);
+            lens.position.set(0, 2, 0);
+            lens.rotation.x = Math.PI / 2;
+            lens.userData = { type: 'lens', focalLength: 5 };
+            scene.add(lens);
+            
+            if (!opticsObjects.lenses) opticsObjects.lenses = [];
+            opticsObjects.lenses.push(lens);
+        }
+        
+        function addPrism() {
+            const prismGeometry = new THREE.ConeGeometry(1, 2, 3);
+            const prismMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.7 
+            });
+            const prism = new THREE.Mesh(prismGeometry, prismMaterial);
+            prism.position.set(0, 2, 0);
+            prism.userData = { type: 'prism' };
+            scene.add(prism);
+            
+            if (!opticsObjects.prisms) opticsObjects.prisms = [];
+            opticsObjects.prisms.push(prism);
+        }
+        
+        function addMirror() {
+            const mirrorGeometry = new THREE.PlaneGeometry(3, 2);
+            const mirrorMaterial = new THREE.MeshBasicMaterial({ color: 0x888888, mirror: true });
+            const mirror = new THREE.Mesh(mirrorGeometry, mirrorMaterial);
+            mirror.position.set(5, 2, 0);
+            mirror.userData = { type: 'mirror' };
+            scene.add(mirror);
+            
+            if (!opticsObjects.mirrors) opticsObjects.mirrors = [];
+            opticsObjects.mirrors.push(mirror);
+        }
+        
+        function addSlit() {
+            // Create double slit barrier
+            const barrierGeometry = new THREE.BoxGeometry(0.1, 3, 2);
+            const barrierMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const barrier = new THREE.Mesh(barrierGeometry, barrierMaterial);
+            barrier.position.set(2, 2, 0);
+            scene.add(barrier);
+            
+            // Create slits
+            for (let i = 0; i < 2; i++) {
+                const slitGeometry = new THREE.BoxGeometry(0.1, 0.1, 2);
+                const slitMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const slit = new THREE.Mesh(slitGeometry, slitMaterial);
+                slit.position.set(2.05, 2 + (i - 0.5) * 0.5, 0);
+                scene.add(slit);
+            }
+            
+            if (!opticsObjects.slits) opticsObjects.slits = [];
+            opticsObjects.slits.push(barrier);
+        }
+        
+        function measureRefraction() {
+            // Calculate refraction based on Snell's law
+            const wavelength = parseInt(document.getElementById('wavelength').value);
+            const angle = Math.random() * 60; // Random angle
+            const n1 = 1.0; // Air
+            const n2 = 1.5; // Glass approximation
+            
+            const refractedAngle = Math.asin(n1 * Math.sin(angle * Math.PI / 180) / n2) * 180 / Math.PI;
+            
+            document.getElementById('optics-measurements').textContent = 
+                `Angle: ${angle.toFixed(1)}° | Refracted: ${refractedAngle.toFixed(1)}° | n₂ = ${n2}`;
+        }
+        
+        function measureInterference() {
+            // Calculate interference pattern
+            const wavelength = parseInt(document.getElementById('wavelength').value) * 1e-9;
+            const slitSeparation = 1e-3; // 1mm
+            const distance = 5; // 5m to screen
+            
+            const fringeSpacing = wavelength * distance / slitSeparation;
+            
+            document.getElementById('optics-measurements').textContent = 
+                `Fringe spacing: ${(fringeSpacing * 1000).toFixed(2)}mm | Max: 7 fringes`;
+        }
+        
+        function clearOptics() {
+            // Remove optics objects
+            ['lenses', 'prisms', 'mirrors', 'slits'].forEach(type => {
+                if (opticsObjects[type]) {
+                    opticsObjects[type].forEach(obj => scene.remove(obj));
+                    opticsObjects[type] = [];
+                }
+            });
+        }
+        
+        // Thermodynamics Lab Functions
+        
+        function setupThermodynamicsEquipment() {
+            // Create container
+            const containerGeometry = new THREE.BoxGeometry(4, 4, 4);
+            const containerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x333333, 
+                transparent: true, 
+                opacity: 0.3,
+                wireframe: true
+            });
+            const container = new THREE.Mesh(containerGeometry, containerMaterial);
+            container.position.set(0, 2, 0);
+            scene.add(container);
+            thermodynamicsObjects.container = container;
+            
+            // Create molecules
+            thermodynamicsObjects.molecules = [];
+            for (let i = 0; i < 50; i++) {
+                createMolecule();
+            }
+        }
+        
+        function createMolecule() {
+            const moleculeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const moleculeMaterial = new THREE.MeshPhongMaterial({ color: 0x3498db });
+            const molecule = new THREE.Mesh(moleculeGeometry, moleculeMaterial);
+            
+            molecule.position.set(
+                (Math.random() - 0.5) * 3,
+                (Math.random() - 0.5) * 3 + 2,
+                (Math.random() - 0.5) * 3
+            );
+            
+            molecule.userData = {
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1
+                )
+            };
+            
+            scene.add(molecule);
+            thermodynamicsObjects.molecules.push(molecule);
+        }
+        
+        function updateTemperature() {
+            temperature = parseInt(document.getElementById('temp-control').value);
+            document.getElementById('temp-value').textContent = temperature + 'K';
+            
+            // Update molecular velocities based on temperature
+            const velocityScale = Math.sqrt(temperature / 300);
+            if (thermodynamicsObjects.molecules) {
+                thermodynamicsObjects.molecules.forEach(molecule => {
+                    molecule.userData.velocity.multiplyScalar(velocityScale);
+                });
+            }
+            
+            // Update molecule colors based on temperature
+            const color = temperature < 273 ? 0x0066ff : 
+                         temperature > 373 ? 0xff3300 : 0x3498db;
+            
+            if (thermodynamicsObjects.molecules) {
+                thermodynamicsObjects.molecules.forEach(molecule => {
+                    molecule.material.color.setHex(color);
+                });
+            }
+        }
+        
+        function updatePressure() {
+            pressure = parseFloat(document.getElementById('pressure-control').value);
+            document.getElementById('pressure-value').textContent = pressure.toFixed(1);
+        }
+        
+        function updateMaterial() {
+            // Update material properties
+            const material = document.getElementById('material-select').value;
+            // Implementation would update thermal properties
+        }
+        
+        function heatSystem() {
+            temperature += 50;
+            document.getElementById('temp-control').value = temperature;
+            updateTemperature();
+            
+            energy += 1000; // Add energy
+        }
+        
+        function coolSystem() {
+            temperature = Math.max(200, temperature - 50);
+            document.getElementById('temp-control').value = temperature;
+            updateTemperature();
+            
+            energy -= 1000; // Remove energy
+        }
+        
+        function compressSystem() {
+            pressure += 1;
+            document.getElementById('pressure-control').value = pressure;
+            
+            // Compress container slightly
+            if (thermodynamicsObjects.container) {
+                thermodynamicsObjects.container.scale.multiplyScalar(0.9);
+            }
+        }
+        
+        function expandSystem() {
+            pressure = Math.max(0.1, pressure - 0.5);
+            document.getElementById('pressure-control').value = pressure;
+            
+            // Expand container slightly
+            if (thermodynamicsObjects.container) {
+                thermodynamicsObjects.container.scale.multiplyScalar(1.1);
+            }
+        }
+        
+        function measurePhase() {
+            let phase;
+            if (temperature < 273) phase = 'Solid';
+            else if (temperature > 373) phase = 'Gas';
+            else phase = 'Liquid';
+            
+            updateInfoPanel('Phase Measurement', 
+                'Current phase of matter', 
+                'PV = nRT', 
+                `Temperature: ${temperature}K<br>Phase: ${phase}<br>Pressure: ${pressure} atm`);
+        }
+        
+        function calculateEntropy() {
+            // Simplified entropy calculation
+            const deltaS = Math.log(temperature / 273) * 8.314; // J/K·mol
+            updateInfoPanel('Entropy Calculation', 
+                'Change in entropy', 
+                'ΔS = ∫dQ/T', 
+                `ΔS ≈ ${deltaS.toFixed(2)} J/K·mol`);
+        }
+        
+        function resetSystem() {
+            temperature = 300;
+            pressure = 1;
+            energy = 0;
+            
+            document.getElementById('temp-control').value = 300;
+            document.getElementById('pressure-control').value = 1;
+            updateTemperature();
+        }
+        
+        // Electromagnetism Lab Functions
+        
+        function setupElectromagnetismEquipment() {
+            // Create charged particle
+            const chargeGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const chargeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.3
+            });
+            const charge = new THREE.Mesh(chargeGeometry, chargeMaterial);
+            charge.position.set(-5, 2, 0);
+            charge.userData = { charge: 1, mass: 1 };
+            scene.add(charge);
+            electromagnetismObjects.charge = charge;
+            
+            // Create magnetic field indicator
+            const fieldGeometry = new THREE.CylinderGeometry(2, 2, 0.5);
+            const fieldMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x0000ff, 
+                transparent: true, 
+                opacity: 0.3,
+                wireframe: true
+            });
+            const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
+            field.position.set(0, 2, 0);
+            field.rotation.x = Math.PI / 2;
+            scene.add(field);
+            electromagnetismObjects.field = field;
+        }
+        
+        function updateElectricField() {
+            const ef = parseInt(document.getElementById('electric-field').value);
+            document.getElementById('ef-value').textContent = ef;
+        }
+        
+        function updateMagneticField() {
+            const bf = parseFloat(document.getElementById('magnetic-field').value);
+            document.getElementById('bf-value').textContent = bf;
+            
+            if (electromagnetismObjects.field) {
+                electromagnetismObjects.field.rotation.z = bf * Math.PI;
+            }
+        }
+        
+        function updateFrequency() {
+            const freq = parseInt(document.getElementById('frequency').value);
+            document.getElementById('freq-value').textContent = freq;
+        }
+        
+        function addCharge() {
+            const chargeGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const chargeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const charge = new THREE.Mesh(chargeGeometry, chargeMaterial);
+            charge.position.set(
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 4 + 2,
+                (Math.random() - 0.5) * 4
+            );
+            charge.userData = { charge: Math.random() > 0.5 ? 1 : -1, velocity: new THREE.Vector3() };
+            scene.add(charge);
+            
+            if (!electromagnetismObjects.charges) electromagnetismObjects.charges = [];
+            electromagnetismObjects.charges.push(charge);
+        }
+        
+        function addCurrent() {
+            const loopGeometry = new THREE.TorusGeometry(1, 0.1, 8, 16);
+            const loopMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ff00, 
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.2
+            });
+            const loop = new THREE.Mesh(loopGeometry, loopMaterial);
+            loop.position.set(3, 2, 0);
+            scene.add(loop);
+            
+            if (!electromagnetismObjects.loops) electromagnetismObjects.loops = [];
+            electromagnetismObjects.loops.push(loop);
+        }
+        
+        function toggleField() {
+            // Toggle electric and magnetic fields
+            if (electromagnetismObjects.field) {
+                electromagnetismObjects.field.visible = !electromagnetismObjects.field.visible;
+            }
+        }
+        
+        function measureForce() {
+            const ef = parseInt(document.getElementById('electric-field').value);
+            const bf = parseFloat(document.getElementById('magnetic-field').value);
+            
+            // Calculate Lorentz force F = q(E + v × B)
+            const force = ef * bf; // Simplified calculation
+            
+            document.getElementById('em-measurements').textContent = 
+                `F = ${force.toFixed(1)} N | E = ${ef} V/m | B = ${bf} T`;
+        }
+        
+        function simulateInduction() {
+            // Show electromagnetic induction effect
+            if (electromagnetismObjects.charge) {
+                electromagnetismObjects.charge.material.color.setHex(0xffff00);
+                setTimeout(() => {
+                    electromagnetismObjects.charge.material.color.setHex(0xff0000);
+                }, 1000);
+            }
+        }
+        
+        function showFieldLines() {
+            // Visualize field lines
+            const lines = [];
+            for (let i = 0; i < 20; i++) {
+                const start = new THREE.Vector3(-8, Math.sin(i * 0.3) * 3, Math.cos(i * 0.3) * 3);
+                const end = new THREE.Vector3(8, Math.sin(i * 0.3 + Math.PI) * 3, Math.cos(i * 0.3 + Math.PI) * 3);
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+                const material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                lines.push(line);
+            }
+            
+            setTimeout(() => {
+                lines.forEach(line => scene.remove(line));
+            }, 3000);
+        }
+        
+        function clearFields() {
+            ['charges', 'loops'].forEach(type => {
+                if (electromagnetismObjects[type]) {
+                    electromagnetismObjects[type].forEach(obj => scene.remove(obj));
+                    electromagnetismObjects[type] = [];
+                }
+            });
+        }
+        
+        // Mechanics Lab Functions
+        
+        function setupMechanicsEquipment() {
+            // Create projectile launcher
+            const launcherGeometry = new THREE.CylinderGeometry(0.3, 0.3, 2);
+            const launcherMaterial = new THREE.MeshPhongMaterial({ color: 0x7f8c8d });
+            const launcher = new THREE.Mesh(launcherGeometry, launcherMaterial);
+            launcher.position.set(-10, 0, 0);
+            launcher.rotation.z = Math.PI / 6;
+            scene.add(launcher);
+            mechanicsObjects.launcher = launcher;
+            
+            // Create projectile
+            const projectileGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const projectileMaterial = new THREE.MeshPhongMaterial({ color: 0xe74c3c });
+            const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+            projectile.position.copy(launcher.position);
+            projectile.userData = { 
+                velocity: new THREE.Vector3(),
+                mass: 1,
+                trajectory: []
+            };
+            scene.add(projectile);
+            mechanicsObjects.projectile = projectile;
+            
+            // Create target
+            const targetGeometry = new THREE.BoxGeometry(1, 5, 1);
+            const targetMaterial = new THREE.MeshPhongMaterial({ color: 0x2ecc71 });
+            const target = new THREE.Mesh(targetGeometry, targetMaterial);
+            target.position.set(10, 2.5, 0);
+            scene.add(target);
+            mechanicsObjects.target = target;
+        }
+        
+        function updateMass() {
+            const mass = parseFloat(document.getElementById('mass-control').value);
+            document.getElementById('mass-value').textContent = mass.toFixed(1);
+            
+            if (mechanicsObjects.projectile) {
+                mechanicsObjects.projectile.userData.mass = mass;
+            }
+        }
+        
+        function updateForce() {
+            const force = parseFloat(document.getElementById('force-control').value);
+            document.getElementById('force-value').textContent = force;
+        }
+        
+        function updateDamping() {
+            const damping = parseFloat(document.getElementById('damping').value);
+            document.getElementById('damping-value').textContent = damping;
+        }
+        
+        function launchProjectile() {
+            if (!mechanicsObjects.projectile) return;
+            
+            const force = parseFloat(document.getElementById('force-control').value);
+            const mass = mechanicsObjects.projectile.userData.mass;
+            const angle = Math.PI / 6; // 30 degrees
+            
+            const initialSpeed = force / mass * 2; // Simplified
+            mechanicsObjects.projectile.userData.velocity.set(
+                initialSpeed * Math.cos(angle),
+                initialSpeed * Math.sin(angle),
+                0
+            );
+            
+            // Clear previous trajectory
+            mechanicsObjects.projectile.userData.trajectory = [];
+        }
+        
+        function startOscillation() {
+            // Create simple harmonic oscillator
+            const oscillatorGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const oscillatorMaterial = new THREE.MeshPhongMaterial({ color: 0x9b59b6 });
+            const oscillator = new THREE.Mesh(oscillatorGeometry, oscillatorMaterial);
+            oscillator.position.set(0, 4, 0);
+            oscillator.userData = { amplitude: 2, frequency: 1, phase: 0 };
+            scene.add(oscillator);
+            mechanicsObjects.oscillator = oscillator;
+        }
+        
+        function simulateCollision() {
+            // Create two objects for collision
+            for (let i = 0; i < 2; i++) {
+                const ballGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+                const ballMaterial = new THREE.MeshPhongMaterial({ 
+                    color: i === 0 ? 0xe74c3c : 0x3498db 
+                });
+                const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+                ball.position.set(-5 + i * 4, 3, 0);
+                ball.userData = { 
+                    velocity: new THREE.Vector3(2, 0, 0),
+                    mass: i === 0 ? 1 : 2,
+                    collision: false
+                };
+                scene.add(ball);
+                
+                if (!mechanicsObjects.colliders) mechanicsObjects.colliders = [];
+                mechanicsObjects.colliders.push(ball);
+            }
+        }
+        
+        function measureEnergy() {
+            if (!mechanicsObjects.projectile) return;
+            
+            const velocity = mechanicsObjects.projectile.userData.velocity.length();
+            const mass = mechanicsObjects.projectile.userData.mass;
+            const kineticEnergy = 0.5 * mass * velocity * velocity;
+            
+            document.getElementById('mech-measurements').textContent = 
+                `v = ${velocity.toFixed(2)} m/s | KE = ${kineticEnergy.toFixed(2)} J`;
+        }
+        
+        function applyForce() {
+            if (mechanicsObjects.projectile) {
+                const force = parseFloat(document.getElementById('force-control').value);
+                mechanicsObjects.projectile.userData.velocity.y += force / 10;
+            }
+        }
+        
+        function changeGravity() {
+            // Toggle gravity direction or magnitude
+            // Implementation would modify gravitational field
+        }
+        
+        function resetMechanics() {
+            ['colliders', 'oscillator'].forEach(type => {
+                if (mechanicsObjects[type]) {
+                    mechanicsObjects[type].forEach(obj => scene.remove(obj));
+                    mechanicsObjects[type] = null;
+                }
+            });
+            
+            if (mechanicsObjects.projectile) {
+                mechanicsObjects.projectile.position.copy(mechanicsObjects.launcher.position);
+                mechanicsObjects.projectile.userData.velocity.set(0, 0, 0);
+                mechanicsObjects.projectile.userData.trajectory = [];
+            }
+        }
+        
+        // Quantum Lab Functions
+        
+        function setupQuantumEquipment() {
+            // Create electron source
+            const sourceGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const sourceMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.5
+            });
+            const source = new THREE.Mesh(sourceGeometry, sourceMaterial);
+            source.position.set(-8, 2, 0);
+            source.userData = { type: 'electron-source' };
+            scene.add(source);
+            quantumObjects.source = source;
+            
+            // Create double slit
+            const barrierGeometry = new THREE.BoxGeometry(0.2, 3, 3);
+            const barrierMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const barrier = new THREE.Mesh(barrierGeometry, barrierMaterial);
+            barrier.position.set(0, 2, 0);
+            scene.add(barrier);
+            
+            // Create slits
+            for (let i = 0; i < 2; i++) {
+                const slitGeometry = new THREE.BoxGeometry(0.2, 0.2, 3);
+                const slitMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const slit = new THREE.Mesh(slitGeometry, slitMaterial);
+                slit.position.set(0.1, 2 + (i - 0.5) * 1, 0);
+                scene.add(slit);
+            }
+            
+            // Create detection screen
+            const screenGeometry = new THREE.PlaneGeometry(4, 6);
+            const screenMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x000033,
+                transparent: true,
+                opacity: 0.8
+            });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(8, 2, 0);
+            screen.userData = { hits: [] };
+            scene.add(screen);
+            quantumObjects.screen = screen;
+        }
+        
+        function updateEnergyLevel() {
+            const energy = parseFloat(document.getElementById('energy-level').value);
+            document.getElementById('energy-value').textContent = energy.toFixed(1);
+        }
+        
+        function updateUncertainty() {
+            const uncertainty = parseFloat(document.getElementById('position-uncertainty').value);
+            document.getElementById('uncertainty-value').textContent = uncertainty.toFixed(1);
+        }
+        
+        function setupQuantumExperiment() {
+            const experiment = document.getElementById('quantum-experiment').value;
+            // Clear previous setup
+            if (quantumObjects.screen) {
+                quantumObjects.screen.userData.hits = [];
+            }
+            
+            // Update experiment-specific setup
+            switch(experiment) {
+                case 'tunneling':
+                    // Create potential barrier
+                    break;
+                case 'hydrogen':
+                    // Create hydrogen atom model
+                    break;
+                case 'superposition':
+                    // Setup superposition state
+                    break;
+            }
+        }
+        
+        function fireElectron() {
+            if (!quantumObjects.source) return;
+            
+            const electronGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+            const electronMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.8
+            });
+            const electron = new THREE.Mesh(electronGeometry, electronMaterial);
+            electron.position.copy(quantumObjects.source.position);
+            electron.userData = { 
+                velocity: new THREE.Vector3(5, (Math.random() - 0.5) * 0.1, 0),
+                probability: Math.random()
+            };
+            scene.add(electron);
+            
+            if (!quantumObjects.electrons) quantumObjects.electrons = [];
+            quantumObjects.electrons.push(electron);
+            
+            // Auto-remove after some time
+            setTimeout(() => {
+                scene.remove(electron);
+                quantumObjects.electrons = quantumObjects.electrons.filter(e => e !== electron);
+            }, 5000);
+        }
+        
+        function measurePosition() {
+            // Simulate position measurement
+            const position = Math.random() * 4 - 2;
+            const uncertainty = parseFloat(document.getElementById('position-uncertainty').value);
+            
+            // Update quantum log
+            const log = document.getElementById('quantum-log');
+            log.innerHTML += `<br>Position measured: ${position.toFixed(2)} nm ± ${uncertainty}`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function measureMomentum() {
+            // Simulate momentum measurement
+            const momentum = Math.random() * 10;
+            const uncertainty = 1 / parseFloat(document.getElementById('position-uncertainty').value);
+            
+            // Update quantum log
+            const log = document.getElementById('quantum-log');
+            log.innerHTML += `<br>Momentum measured: ${momentum.toFixed(2)} kg⋅m/s ± ${uncertainty.toFixed(3)}`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function observeWave() {
+            // Simulate wave interference pattern
+            if (!quantumObjects.screen) return;
+            
+            const experiment = document.getElementById('quantum-experiment').value;
+            if (experiment === 'double-slit') {
+                // Create interference pattern
+                for (let i = 0; i < 50; i++) {
+                    setTimeout(() => {
+                        const hitGeometry = new THREE.SphereGeometry(0.02, 4, 4);
+                        const hitMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                        const hit = new THREE.Mesh(hitGeometry, hitMaterial);
+                        
+                        // Calculate interference pattern
+                        const y = (Math.random() - 0.5) * 6;
+                        const interference = Math.cos(y * 2) * Math.sin(y);
+                        hit.position.set(8, 2 + interference, 0);
+                        
+                        scene.add(hit);
+                        
+                        // Auto-remove
+                        setTimeout(() => scene.remove(hit), 2000);
+                    }, i * 100);
+                }
+            }
+        }
+        
+        function collapsWavefunction() {
+            // Simulate wavefunction collapse
+            const log = document.getElementById('quantum-log');
+            log.innerHTML += '<br>⚠ Wavefunction collapsed to classical state';
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function entangleParticles() {
+            // Simulate quantum entanglement
+            const log = document.getElementById('quantum-log');
+            log.innerHTML += '<br>🔗 Particles entangled - measuring one affects the other';
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function resetQuantum() {
+            // Clear quantum objects
+            if (quantumObjects.electrons) {
+                quantumObjects.electrons.forEach(electron => scene.remove(electron));
+                quantumObjects.electrons = [];
+            }
+            
+            // Clear detection screen
+            if (quantumObjects.screen) {
+                quantumObjects.screen.userData.hits = [];
+            }
+            
+            // Reset quantum log
+            document.getElementById('quantum-log').innerHTML = 
+                'Quantum State: |ψ⟩<br>Observer Effect: Active<br>Entanglement: None';
+        }
+        
+        function clearScene() {
+            // Remove all objects except lights and bench
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && 
+                    object.type !== 'AmbientLight' && 
+                    object.type !== 'DirectionalLight' && 
+                    object.type !== 'PointLight' &&
+                    object.type !== 'Mesh' && object.material?.color?.getHex() !== 0x2c3e50) {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+            
+            // Clear object arrays
+            opticsObjects = {};
+            thermodynamicsObjects = {};
+            electromagnetismObjects = {};
+            mechanicsObjects = {};
+            quantumObjects = {};
+        }
+        
+        function updateInfoPanel(title, description, formula, details) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('experiment-display').innerHTML = `
+                <div class="experiment-info">
+                    <strong>Formula:</strong> ${formula}<br>
+                    ${details}
+                </div>
+            `;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            const time = Date.now() * 0.001;
+            simulationTime += 0.016;
+            
+            // Animate thermodynamic molecules
+            if (currentDemo === 'thermodynamics' && thermodynamicsObjects.molecules) {
+                const velocityScale = Math.sqrt(temperature / 300);
+                
+                thermodynamicsObjects.molecules.forEach(molecule => {
+                    molecule.position.add(molecule.userData.velocity.clone().multiplyScalar(velocityScale));
+                    
+                    // Bounce off container walls
+                    if (Math.abs(molecule.position.x) > 2) {
+                        molecule.userData.velocity.x *= -1;
+                        molecule.position.x = Math.sign(molecule.position.x) * 2;
+                    }
+                    if (molecule.position.y > 4 || molecule.position.y < 0) {
+                        molecule.userData.velocity.y *= -1;
+                        molecule.position.y = Math.max(0, Math.min(4, molecule.position.y));
+                    }
+                    if (Math.abs(molecule.position.z) > 2) {
+                        molecule.userData.velocity.z *= -1;
+                        molecule.position.z = Math.sign(molecule.position.z) * 2;
+                    }
+                });
+            }
+            
+            // Animate electromagnetism charges
+            if (currentDemo === 'electromagnetism' && electromagnetismObjects.charges) {
+                const ef = parseInt(document.getElementById('electric-field').value) || 0;
+                const bf = parseFloat(document.getElementById('magnetic-field').value) || 0;
+                
+                electromagnetismObjects.charges.forEach(charge => {
+                    // Apply electromagnetic forces (simplified)
+                    charge.userData.velocity.y += ef * 0.001;
+                    charge.userData.velocity.x += bf * 0.001;
+                    
+                    charge.position.add(charge.userData.velocity);
+                    
+                    // Wrap around bounds
+                    if (Math.abs(charge.position.x) > 8) {
+                        charge.userData.velocity.x *= -1;
+                    }
+                    if (Math.abs(charge.position.y) > 4) {
+                        charge.userData.velocity.y *= -1;
+                    }
+                });
+            }
+            
+            // Animate mechanics objects
+            if (currentDemo === 'mechanics') {
+                // Projectile motion
+                if (mechanicsObjects.projectile && mechanicsObjects.projectile.userData.velocity.length() > 0) {
+                    const velocity = mechanicsObjects.projectile.userData.velocity;
+                    const gravity = new THREE.Vector3(0, -9.81, 0);
+                    
+                    velocity.add(gravity.multiplyScalar(0.016));
+                    mechanicsObjects.projectile.position.add(velocity.clone().multiplyScalar(0.016));
+                    
+                    // Record trajectory
+                    mechanicsObjects.projectile.userData.trajectory.push(
+                        mechanicsObjects.projectile.position.clone()
+                    );
+                    
+                    // Bounce off ground
+                    if (mechanicsObjects.projectile.position.y < 0) {
+                        mechanicsObjects.projectile.position.y = 0;
+                        velocity.y *= -0.7; // Energy loss
+                    }
+                }
+                
+                // Oscillation
+                if (mechanicsObjects.oscillator) {
+                    const oscillator = mechanicsObjects.oscillator;
+                    const t = simulationTime * 2;
+                    oscillator.position.y = 4 + Math.sin(t) * 2;
+                }
+                
+                // Collisions
+                if (mechanicsObjects.colliders) {
+                    mechanicsObjects.colliders.forEach((ball, index) => {
+                        ball.position.add(ball.userData.velocity.clone().multiplyScalar(0.016));
+                        
+                        // Collision detection
+                        const other = mechanicsObjects.colliders[1 - index];
+                        if (other && !ball.userData.collision) {
+                            const distance = ball.position.distanceTo(other.position);
+                            if (distance < 1) {
+                                // Simple elastic collision
+                                ball.userData.collision = true;
+                                setTimeout(() => {
+                                    ball.userData.collision = false;
+                                }, 1000);
+                                
+                                const temp = ball.userData.velocity.clone();
+                                ball.userData.velocity.copy(other.userData.velocity);
+                                other.userData.velocity.copy(temp);
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // Animate quantum objects
+            if (currentDemo === 'quantum' && quantumObjects.electrons) {
+                quantumObjects.electrons.forEach(electron => {
+                    electron.position.add(electron.userData.velocity);
+                    
+                    // Quantum tunneling probability
+                    if (electron.position.x > -1 && electron.position.x < 1) {
+                        if (Math.random() < 0.1) { // 10% tunneling chance
+                            electron.position.x = 1;
+                        }
+                    }
+                    
+                    // Remove electrons that go off screen
+                    if (Math.abs(electron.position.x) > 10 || Math.abs(electron.position.y) > 6) {
+                        scene.remove(electron);
+                        quantumObjects.electrons = quantumObjects.electrons.filter(e => e !== electron);
+                    }
+                });
+            }
+            
+            // Update timer displays
+            if (currentDemo === 'thermodynamics') {
+                document.getElementById('thermo-timer').textContent = 
+                    `Time: ${Math.floor(simulationTime / 60).toString().padStart(2, '0')}:${(simulationTime % 60).toFixed(0).padStart(2, '0')} | Energy: ${energy} J`;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

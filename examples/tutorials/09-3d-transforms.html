@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>09 - 3D Transforms: Position, Rotation, Scale</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #fff;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #fff;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls input[type="range"] {
+            width: 100px;
+            margin: 2px;
+        }
+        
+        .transform-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎯 Tutorial 09: 3D Transforms</h1>
+        <div class="step">
+            <strong>Goal:</strong> Master position, rotation, and scale
+        </div>
+        <div class="step">
+            <strong>Transform Types:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li><strong>Position:</strong> Where the object is (x, y, z)</li>
+                <li><strong>Rotation:</strong> How the object is oriented</li>
+                <li><strong>Scale:</strong> Size of the object</li>
+                <li><strong>Parent/Child:</strong> Transform hierarchies</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>Transform Controls:</strong><br>
+            <label>X Position: <input type="range" id="pos-x" min="-10" max="10" step="0.1" value="0"></label><br>
+            <label>Y Position: <input type="range" id="pos-y" min="-5" max="10" step="0.1" value="0"></label><br>
+            <label>Z Position: <input type="range" id="pos-z" min="-10" max="10" step="0.1" value="0"></label><br>
+            <button onclick="resetTransform()">Reset Transform</button><br>
+            <button onclick="randomTransform()">Random Transform</button>
+        </div>
+    </div>
+    
+    <div class="transform-info">
+        <strong>Current Transform:</strong><br>
+        Position: <span id="current-pos">0, 0, 0</span><br>
+        Rotation: <span id="current-rot">0°, 0°, 0°</span><br>
+        Scale: <span id="current-scale">1, 1, 1</span>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 09: 3D TRANSFORMS
+         * ==========================================
+         * 
+         * 3D transforms are the foundation of all 3D graphics:
+         * 
+         * 1. POSITION: Where an object exists in 3D space
+         *    - Uses x, y, z coordinates
+         *    - Right-handed coordinate system
+         *    - Units are arbitrary (meters, feet, etc.)
+         * 
+         * 2. ROTATION: How an object is oriented
+         *    - Measured in radians (or degrees)
+         *    - Three axes: X (pitch), Y (yaw), Z (roll)
+         *    - Order of rotation matters!
+         * 
+         * 3. SCALE: The size of an object
+         *    - Uses x, y, z scale factors
+         *    - 1 = normal size, 2 = twice as big
+         *    - 0.5 = half size
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let mainObject, orbitGroup;
+        let children = [];
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 6, 12);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Add axes helper
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+            
+            // Add grid helper
+            const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+            scene.add(gridHelper);
+        }
+        
+        // ==========================================
+        // CREATE TRANSFORM DEMO OBJECTS
+        // ==========================================
+        function createTransformDemo() {
+            // Create an orbit group to rotate all objects
+            orbitGroup = new THREE.Group();
+            scene.add(orbitGroup);
+            
+            // Main object - the one we'll control
+            const mainGeometry = new THREE.BoxGeometry(2, 2, 2);
+            const mainMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff6b6b,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+            mainObject = new THREE.Mesh(mainGeometry, mainMaterial);
+            mainObject.position.set(0, 0, 0);
+            mainObject.castShadow = true;
+            orbitGroup.add(mainObject);
+            
+            // Create child objects to show parent-child transforms
+            const childPositions = [
+                { offset: [3, 0, 0], color: 0x4ecdc4, name: 'Right Child' },
+                { offset: [-3, 0, 0], color: 0x45b7d1, name: 'Left Child' },
+                { offset: [0, 3, 0], color: 0xf7b731, name: 'Top Child' },
+                { offset: [0, -3, 0], color: 0x5f27cd, name: 'Bottom Child' },
+                { offset: [0, 0, 3], color: 0x00d2d3, name: 'Front Child' },
+                { offset: [0, 0, -3], color: 0xff9ff3, name: 'Back Child' }
+            ];
+            
+            childPositions.forEach((childPos, index) => {
+                const childGeometry = new THREE.SphereGeometry(0.8, 16, 16);
+                const childMaterial = new THREE.MeshStandardMaterial({ 
+                    color: childPos.color,
+                    roughness: 0.5,
+                    metalness: 0.3
+                });
+                const child = new THREE.Mesh(childGeometry, childMaterial);
+                child.position.set(...childPos.offset);
+                child.castShadow = true;
+                
+                // Add the child to the main object (parent-child relationship)
+                mainObject.add(child);
+                children.push({
+                    mesh: child,
+                    name: childPos.name,
+                    originalOffset: new THREE.Vector3(...childPos.offset)
+                });
+                
+                // Add labels (optional visual aid)
+                const sprite = createTextSprite(childPos.name);
+                sprite.position.copy(child.position);
+                sprite.position.y += 2;
+                mainObject.add(sprite);
+            });
+        }
+        
+        // ==========================================
+        // CREATE TEXT SPRITE FOR LABELS
+        // ==========================================
+        function createTextSprite(text) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            context.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.fillStyle = '#000';
+            context.font = 'Bold 24px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(3, 0.8, 1);
+            
+            return sprite;
+        }
+        
+        // ==========================================
+        // TRANSFORM CONTROL FUNCTIONS
+        // ==========================================
+        function setupTransformControls() {
+            const posX = document.getElementById('pos-x');
+            const posY = document.getElementById('pos-y');
+            const posZ = document.getElementById('pos-z');
+            
+            function updatePosition() {
+                if (mainObject) {
+                    mainObject.position.set(
+                        parseFloat(posX.value),
+                        parseFloat(posY.value),
+                        parseFloat(posZ.value)
+                    );
+                    updateTransformInfo();
+                }
+            }
+            
+            posX.addEventListener('input', updatePosition);
+            posY.addEventListener('input', updatePosition);
+            posZ.addEventListener('input', updatePosition);
+        }
+        
+        function resetTransform() {
+            // Reset position
+            document.getElementById('pos-x').value = 0;
+            document.getElementById('pos-y').value = 0;
+            document.getElementById('pos-z').value = 0;
+            
+            // Reset rotation
+            mainObject.rotation.set(0, 0, 0);
+            
+            // Reset scale
+            mainObject.scale.set(1, 1, 1);
+            
+            // Update display
+            updateTransformInfo();
+        }
+        
+        function randomTransform() {
+            // Random position
+            const posX = (Math.random() - 0.5) * 10;
+            const posY = (Math.random() - 0.5) * 5;
+            const posZ = (Math.random() - 0.5) * 10;
+            
+            document.getElementById('pos-x').value = posX.toFixed(1);
+            document.getElementById('pos-y').value = posY.toFixed(1);
+            document.getElementById('pos-z').value = posZ.toFixed(1);
+            
+            // Random rotation (in degrees, convert to radians)
+            mainObject.rotation.x = (Math.random() - 0.5) * Math.PI * 2;
+            mainObject.rotation.y = (Math.random() - 0.5) * Math.PI * 2;
+            mainObject.rotation.z = (Math.random() - 0.5) * Math.PI * 2;
+            
+            // Random scale
+            const scale = 0.5 + Math.random() * 2;
+            mainObject.scale.set(scale, scale, scale);
+            
+            updateTransformInfo();
+        }
+        
+        // ==========================================
+        // UPDATE TRANSFORM INFORMATION DISPLAY
+        // ==========================================
+        function updateTransformInfo() {
+            const pos = mainObject.position;
+            const rot = mainObject.rotation;
+            const scale = mainObject.scale;
+            
+            document.getElementById('current-pos').textContent = 
+                `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+            
+            document.getElementById('current-rot').textContent = 
+                `${(rot.x * 180 / Math.PI).toFixed(0)}°, ${(rot.y * 180 / Math.PI).toFixed(0)}°, ${(rot.z * 180 / Math.PI).toFixed(0)}°`;
+            
+            document.getElementById('current-scale').textContent = 
+                `${scale.x.toFixed(1)}, ${scale.y.toFixed(1)}, ${scale.z.toFixed(1)}`;
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Rotate the orbit group slowly to show 3D space
+            orbitGroup.rotation.y += 0.005;
+            
+            // Rotate the main object
+            mainObject.rotation.x += 0.01;
+            mainObject.rotation.z += 0.005;
+            
+            // Animate child objects relative to parent
+            children.forEach((child, index) => {
+                const angle = time + index * Math.PI / 3;
+                child.mesh.position.x = child.originalOffset.x + Math.sin(angle) * 0.5;
+                child.mesh.position.z = child.originalOffset.z + Math.cos(angle) * 0.5;
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🎯 Starting 3D Transforms Demo...');
+            
+            setupScene();
+            createTransformDemo();
+            setupTransformControls();
+            updateTransformInfo();
+            
+            window.addEventListener('resize', handleResize);
+            animate();
+            
+            console.log('✅ Transform demo initialized!');
+            console.log('💡 Notice how child objects move with the parent - this is hierarchical transforms!');
+        }
+        
+        // Make functions globally available
+        window.resetTransform = resetTransform;
+        window.randomTransform = randomTransform;
+        
+        init();
+    </script>
+</body>
+</html>

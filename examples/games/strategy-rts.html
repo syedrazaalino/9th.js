@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTS Game - Real-Time Strategy</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a472a;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+            min-width: 250px;
+        }
+        #resources {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 5px;
+        }
+        .resource {
+            text-align: center;
+        }
+        #unitPanel {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        .unit-btn {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .unit-btn:hover {
+            background: #4CAF50;
+        }
+        .unit-btn:disabled {
+            background: #666;
+            border-color: #666;
+            cursor: not-allowed;
+        }
+        #buildings {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .building-btn {
+            padding: 15px;
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .building-btn:hover {
+            background: #4CAF50;
+            transform: scale(1.05);
+        }
+        .building-btn:disabled {
+            background: #666;
+            border-color: #666;
+            cursor: not-allowed;
+        }
+        #minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            border: 2px solid #4CAF50;
+            background: rgba(0,0,0,0.8);
+        }
+        #selectionInfo {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+            min-width: 200px;
+        }
+        #instructions {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+            font-size: 14px;
+            max-width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="resources">
+            <div class="resource">
+                <div>💰</div>
+                <div id="gold">1000</div>
+            </div>
+            <div class="resource">
+                <div>🌾</div>
+                <div id="food">500</div>
+            </div>
+            <div class="resource">
+                <div>⚡</div>
+                <div id="energy">200</div>
+            </div>
+        </div>
+        <div>
+            <div>Population: <span id="population">5</span>/<span id="maxPop">50</span></div>
+            <div>Score: <span id="score">0</span></div>
+        </div>
+        <div id="unitPanel">
+            <div><strong>Selected:</strong> <span id="selectedCount">0</span> units</div>
+        </div>
+    </div>
+    
+    <div id="buildings">
+        <div class="building-btn" data-building="townhall">
+            <div>🏰</div>
+            <div>Town Hall</div>
+            <div style="font-size: 12px;">500 gold</div>
+        </div>
+        <div class="building-btn" data-building="barracks">
+            <div>⚔️</div>
+            <div>Barracks</div>
+            <div style="font-size: 12px;">300 gold</div>
+        </div>
+        <div class="building-btn" data-building="factory">
+            <div>🏭</div>
+            <div>Factory</div>
+            <div style="font-size: 12px;">400 gold</div>
+        </div>
+        <div class="building-btn" data-building="turret">
+            <div>🗼</div>
+            <div>Turret</div>
+            <div style="font-size: 12px;">200 gold</div>
+        </div>
+    </div>
+    
+    <canvas id="minimap" width="200" height="200"></canvas>
+    
+    <div id="selectionInfo">
+        <div id="unitDetails">Click on units to see details</div>
+    </div>
+    
+    <div id="instructions">
+        <div><strong>Controls:</strong></div>
+        <div>• Drag: Select units</div>
+        <div>• Right-click: Move/Attack</div>
+        <div>• Scroll: Zoom</div>
+        <div>• WASD: Pan camera</div>
+        <div>• B: Build mode</div>
+        <div>• ESC: Cancel selection</div>
+    </div>
+
+    <script>
+        class RTSGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimap = document.getElementById('minimap');
+                this.minimapCtx = this.minimap.getContext('2d');
+                
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+                
+                // Game world
+                this.worldSize = { width: 3000, height: 3000 };
+                this.camera = {
+                    x: this.worldSize.width / 2 - this.width / 2,
+                    y: this.worldSize.height / 2 - this.height / 2,
+                    zoom: 1
+                };
+                
+                // Game state
+                this.resources = { gold: 1000, food: 500, energy: 200 };
+                this.population = 5;
+                this.maxPopulation = 50;
+                this.score = 0;
+                this.selectedUnits = [];
+                this.buildMode = false;
+                this.buildingToPlace = null;
+                this.isDragging = false;
+                this.dragStart = { x: 0, y: 0 };
+                this.dragEnd = { x: 0, y: 0 };
+                this.enemyUnits = [];
+                this.projectiles = [];
+                
+                // Units and buildings
+                this.units = [];
+                this.buildings = [];
+                
+                // Initialize
+                this.setupControls();
+                this.initializeGame();
+                this.start();
+            }
+            
+            setupControls() {
+                // Mouse controls
+                this.canvas.addEventListener('mousedown', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left + this.camera.x;
+                    const y = e.clientY - rect.top + this.camera.y;
+                    
+                    if (e.button === 0) { // Left click
+                        if (this.buildMode) {
+                            this.placeBuilding(x, y);
+                        } else {
+                            this.startSelection(x, y);
+                        }
+                    } else if (e.button === 2) { // Right click
+                        this.handleRightClick(x, y);
+                    }
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left + this.camera.x;
+                    const y = e.clientY - rect.top + this.camera.y;
+                    
+                    if (this.isDragging) {
+                        this.dragEnd = { x, y };
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', (e) => {
+                    if (e.button === 0 && this.isDragging) {
+                        this.endSelection();
+                    }
+                    this.isDragging = false;
+                });
+                
+                // Prevent context menu
+                this.canvas.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    switch (e.key.toLowerCase()) {
+                        case 'b':
+                            this.toggleBuildMode();
+                            break;
+                        case 'escape':
+                            this.cancelSelection();
+                            break;
+                        case 'w':
+                        case 'a':
+                        case 's':
+                        case 'd':
+                            this.handleCameraMovement(e.key.toLowerCase());
+                            break;
+                    }
+                });
+                
+                // Mouse wheel for zoom
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const zoomSpeed = 0.1;
+                    this.camera.zoom += e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+                    this.camera.zoom = Math.max(0.5, Math.min(2, this.camera.zoom));
+                });
+                
+                // Building buttons
+                document.querySelectorAll('.building-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (!this.buildMode) {
+                            this.toggleBuildMode();
+                        }
+                        this.buildingToPlace = btn.dataset.building;
+                    });
+                });
+            }
+            
+            initializeGame() {
+                // Create initial town hall
+                this.createBuilding('townhall', this.worldSize.width / 2, this.worldSize.height / 2);
+                
+                // Create initial workers
+                for (let i = 0; i < 3; i++) {
+                    this.createUnit('worker', this.worldSize.width / 2 + 100 + i * 50, this.worldSize.height / 2);
+                }
+                
+                // Create initial soldiers
+                for (let i = 0; i < 2; i++) {
+                    this.createUnit('soldier', this.worldSize.width / 2 + 150 + i * 50, this.worldSize.height / 2 + 100);
+                }
+                
+                // Create enemy units
+                this.spawnEnemies();
+                
+                // Start resource generation
+                setInterval(() => {
+                    this.generateResources();
+                }, 2000);
+            }
+            
+            spawnEnemies() {
+                for (let i = 0; i < 5; i++) {
+                    const side = Math.random() < 0.5 ? 0 : 1;
+                    let x, y;
+                    
+                    if (side === 0) { // Left side
+                        x = 100;
+                        y = 100 + i * 100;
+                    } else { // Right side
+                        x = this.worldSize.width - 100;
+                        y = 100 + i * 100;
+                    }
+                    
+                    this.enemyUnits.push({
+                        x: x,
+                        y: y,
+                        radius: 15,
+                        health: 100,
+                        maxHealth: 100,
+                        type: 'enemy',
+                        speed: 1,
+                        target: null,
+                        attackCooldown: 0
+                    });
+                }
+            }
+            
+            createUnit(type, x, y) {
+                const unitData = {
+                    worker: { health: 50, speed: 1.5, cost: 100, icon: '👷' },
+                    soldier: { health: 100, speed: 2, cost: 150, icon: '⚔️' },
+                    tank: { health: 200, speed: 1, cost: 300, icon: '🚗' }
+                };
+                
+                const data = unitData[type];
+                if (!data || this.resources.gold < data.cost || this.population >= this.maxPopulation) {
+                    return false;
+                }
+                
+                this.resources.gold -= data.cost;
+                this.population++;
+                
+                this.units.push({
+                    x: x,
+                    y: y,
+                    radius: 12,
+                    health: data.health,
+                    maxHealth: data.health,
+                    type: type,
+                    speed: data.speed,
+                    target: null,
+                    selected: false,
+                    attackCooldown: 0,
+                    gathering: false,
+                    icon: data.icon
+                });
+                
+                return true;
+            }
+            
+            createBuilding(type, x, y) {
+                const buildingData = {
+                    townhall: { width: 80, height: 80, health: 500, cost: 500, icon: '🏰' },
+                    barracks: { width: 60, height: 60, health: 300, cost: 300, icon: '⚔️' },
+                    factory: { width: 70, height: 70, health: 400, cost: 400, icon: '🏭' },
+                    turret: { width: 40, height: 40, health: 200, cost: 200, icon: '🗼' }
+                };
+                
+                const data = buildingData[type];
+                if (!data || this.resources.gold < data.cost) {
+                    return false;
+                }
+                
+                this.resources.gold -= data.cost;
+                
+                this.buildings.push({
+                    x: x,
+                    y: y,
+                    width: data.width,
+                    height: data.height,
+                    health: data.health,
+                    maxHealth: data.health,
+                    type: type,
+                    selected: false,
+                    icon: data.icon
+                });
+                
+                return true;
+            }
+            
+            toggleBuildMode() {
+                this.buildMode = !this.buildMode;
+                if (!this.buildMode) {
+                    this.buildingToPlace = null;
+                }
+            }
+            
+            placeBuilding(x, y) {
+                if (this.buildingToPlace) {
+                    if (this.createBuilding(this.buildingToPlace, x, y)) {
+                        this.buildingToPlace = null;
+                        this.buildMode = false;
+                    }
+                }
+            }
+            
+            startSelection(x, y) {
+                this.isDragging = true;
+                this.dragStart = { x, y };
+                this.dragEnd = { x, y };
+            }
+            
+            endSelection() {
+                this.clearSelection();
+                
+                if (Math.abs(this.dragEnd.x - this.dragStart.x) < 10 && 
+                    Math.abs(this.dragEnd.y - this.dragStart.y) < 10) {
+                    // Single click selection
+                    const clickedUnit = this.getUnitAt(this.dragEnd.x, this.dragEnd.y);
+                    if (clickedUnit) {
+                        clickedUnit.selected = true;
+                        this.selectedUnits = [clickedUnit];
+                    }
+                } else {
+                    // Box selection
+                    const minX = Math.min(this.dragStart.x, this.dragEnd.x);
+                    const maxX = Math.max(this.dragStart.x, this.dragEnd.x);
+                    const minY = Math.min(this.dragStart.y, this.dragEnd.y);
+                    const maxY = Math.max(this.dragStart.y, this.dragEnd.y);
+                    
+                    for (let unit of this.units) {
+                        if (unit.x >= minX && unit.x <= maxX && 
+                            unit.y >= minY && unit.y <= maxY) {
+                            unit.selected = true;
+                            this.selectedUnits.push(unit);
+                        }
+                    }
+                }
+                
+                this.updateSelectionInfo();
+            }
+            
+            clearSelection() {
+                for (let unit of this.units) {
+                    unit.selected = false;
+                }
+                this.selectedUnits = [];
+            }
+            
+            cancelSelection() {
+                this.clearSelection();
+                this.buildMode = false;
+                this.buildingToPlace = null;
+                this.updateSelectionInfo();
+            }
+            
+            handleRightClick(x, y) {
+                if (this.selectedUnits.length === 0) return;
+                
+                // Check if clicking on enemy
+                const clickedEnemy = this.getEnemyAt(x, y);
+                
+                if (clickedEnemy) {
+                    // Attack command
+                    for (let unit of this.selectedUnits) {
+                        unit.target = clickedEnemy;
+                    }
+                } else {
+                    // Move command
+                    const formation = this.calculateFormation(this.selectedUnits.length);
+                    
+                    for (let i = 0; i < this.selectedUnits.length; i++) {
+                        const unit = this.selectedUnits[i];
+                        unit.target = { x: x + formation[i].x, y: y + formation[i].y };
+                    }
+                }
+            }
+            
+            calculateFormation(count) {
+                const formation = [];
+                const spacing = 30;
+                
+                if (count === 1) {
+                    formation.push({ x: 0, y: 0 });
+                } else {
+                    const cols = Math.ceil(Math.sqrt(count));
+                    const rows = Math.ceil(count / cols);
+                    
+                    for (let i = 0; i < count; i++) {
+                        const row = Math.floor(i / cols);
+                        const col = i % cols;
+                        formation.push({
+                            x: (col - cols/2) * spacing,
+                            y: (row - rows/2) * spacing
+                        });
+                    }
+                }
+                
+                return formation;
+            }
+            
+            handleCameraMovement(key) {
+                const speed = 20 / this.camera.zoom;
+                switch (key) {
+                    case 'w':
+                        this.camera.y -= speed;
+                        break;
+                    case 's':
+                        this.camera.y += speed;
+                        break;
+                    case 'a':
+                        this.camera.x -= speed;
+                        break;
+                    case 'd':
+                        this.camera.x += speed;
+                        break;
+                }
+                
+                // Keep camera in bounds
+                this.camera.x = Math.max(0, Math.min(this.worldSize.width - this.width / this.camera.zoom, this.camera.x));
+                this.camera.y = Math.max(0, Math.min(this.worldSize.height - this.height / this.camera.zoom, this.camera.y));
+            }
+            
+            getUnitAt(x, y) {
+                for (let unit of this.units) {
+                    const dist = Math.sqrt((x - unit.x) ** 2 + (y - unit.y) ** 2);
+                    if (dist <= unit.radius) return unit;
+                }
+                return null;
+            }
+            
+            getEnemyAt(x, y) {
+                for (let enemy of this.enemyUnits) {
+                    const dist = Math.sqrt((x - enemy.x) ** 2 + (y - enemy.y) ** 2);
+                    if (dist <= enemy.radius) return enemy;
+                }
+                return null;
+            }
+            
+            update() {
+                this.updateUnits();
+                this.updateEnemies();
+                this.updateProjectiles();
+                this.checkCollisions();
+                this.updateCamera();
+                this.generateIncome();
+                this.updateUI();
+            }
+            
+            updateUnits() {
+                for (let unit of this.units) {
+                    if (unit.target) {
+                        const dx = unit.target.x - unit.x;
+                        const dy = unit.target.y - unit.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance > 5) {
+                            unit.x += (dx / distance) * unit.speed;
+                            unit.y += (dy / distance) * unit.speed;
+                        } else {
+                            unit.target = null;
+                        }
+                    }
+                    
+                    // Update attack cooldown
+                    if (unit.attackCooldown > 0) {
+                        unit.attackCooldown--;
+                    }
+                }
+            }
+            
+            updateEnemies() {
+                for (let enemy of this.enemyUnits) {
+                    // Simple AI - move towards closest player unit
+                    let closestUnit = null;
+                    let closestDist = Infinity;
+                    
+                    for (let unit of this.units) {
+                        const dist = Math.sqrt((enemy.x - unit.x) ** 2 + (enemy.y - unit.y) ** 2);
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestUnit = unit;
+                        }
+                    }
+                    
+                    if (closestUnit && closestDist > 50) {
+                        enemy.x += ((closestUnit.x - enemy.x) / closestDist) * enemy.speed;
+                        enemy.y += ((closestUnit.y - enemy.y) / closestDist) * enemy.speed;
+                    }
+                    
+                    // Attack if close enough
+                    if (closestUnit && closestDist < 30 && enemy.attackCooldown <= 0) {
+                        this.createProjectile(enemy.x, enemy.y, closestUnit.x, closestUnit.y);
+                        enemy.attackCooldown = 60;
+                    }
+                    
+                    if (enemy.attackCooldown > 0) {
+                        enemy.attackCooldown--;
+                    }
+                }
+            }
+            
+            updateProjectiles() {
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const projectile = this.projectiles[i];
+                    projectile.x += projectile.vx;
+                    projectile.y += projectile.vy;
+                    projectile.life--;
+                    
+                    if (projectile.life <= 0 || 
+                        projectile.x < 0 || projectile.x > this.worldSize.width ||
+                        projectile.y < 0 || projectile.y > this.worldSize.height) {
+                        this.projectiles.splice(i, 1);
+                    }
+                }
+            }
+            
+            createProjectile(x1, y1, x2, y2) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                this.projectiles.push({
+                    x: x1,
+                    y: y1,
+                    vx: (dx / distance) * 8,
+                    vy: (dy / distance) * 8,
+                    life: 100,
+                    damage: 20
+                });
+            }
+            
+            checkCollisions() {
+                // Projectile collisions with units
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const projectile = this.projectiles[i];
+                    
+                    // Check collision with enemy units
+                    for (let j = this.enemyUnits.length - 1; j >= 0; j--) {
+                        const enemy = this.enemyUnits[j];
+                        const dist = Math.sqrt((projectile.x - enemy.x) ** 2 + (projectile.y - enemy.y) ** 2);
+                        
+                        if (dist < enemy.radius) {
+                            enemy.health -= projectile.damage;
+                            this.projectiles.splice(i, 1);
+                            
+                            if (enemy.health <= 0) {
+                                this.enemyUnits.splice(j, 1);
+                                this.score += 100;
+                                this.resources.gold += 50; // Reward
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // Check if enemies reached base
+                const townHall = this.buildings.find(b => b.type === 'townhall');
+                if (townHall) {
+                    for (let i = this.enemyUnits.length - 1; i >= 0; i--) {
+                        const enemy = this.enemyUnits[i];
+                        const dist = Math.sqrt((enemy.x - townHall.x) ** 2 + (enemy.y - townHall.y) ** 2);
+                        
+                        if (dist < 50) {
+                            this.enemyUnits.splice(i, 1);
+                            this.resources.gold = Math.max(0, this.resources.gold - 100);
+                        }
+                    }
+                }
+            }
+            
+            updateCamera() {
+                // Camera follows average position of selected units
+                if (this.selectedUnits.length > 0) {
+                    const avgX = this.selectedUnits.reduce((sum, unit) => sum + unit.x, 0) / this.selectedUnits.length;
+                    const avgY = this.selectedUnits.reduce((sum, unit) => sum + unit.y, 0) / this.selectedUnits.length;
+                    
+                    const targetX = avgX - this.width / (2 * this.camera.zoom);
+                    const targetY = avgY - this.height / (2 * this.camera.zoom);
+                    
+                    this.camera.x += (targetX - this.camera.x) * 0.1;
+                    this.camera.y += (targetY - this.camera.y) * 0.1;
+                }
+            }
+            
+            generateResources() {
+                // Generate passive income
+                this.resources.gold += 10;
+                this.resources.food += 5;
+                this.resources.energy += 3;
+                
+                // Building bonuses
+                for (let building of this.buildings) {
+                    switch (building.type) {
+                        case 'townhall':
+                            this.resources.gold += 20;
+                            break;
+                        case 'factory':
+                            this.resources.energy += 15;
+                            break;
+                    }
+                }
+            }
+            
+            generateIncome() {
+                // Minor continuous income
+                this.resources.gold += 0.1;
+                this.resources.food += 0.05;
+            }
+            
+            updateUI() {
+                document.getElementById('gold').textContent = Math.floor(this.resources.gold);
+                document.getElementById('food').textContent = Math.floor(this.resources.food);
+                document.getElementById('energy').textContent = Math.floor(this.resources.energy);
+                document.getElementById('population').textContent = this.population;
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('selectedCount').textContent = this.selectedUnits.length;
+            }
+            
+            updateSelectionInfo() {
+                const details = document.getElementById('unitDetails');
+                
+                if (this.selectedUnits.length === 0) {
+                    details.innerHTML = 'Click on units to see details';
+                } else if (this.selectedUnits.length === 1) {
+                    const unit = this.selectedUnits[0];
+                    details.innerHTML = `
+                        <div><strong>${unit.icon} ${unit.type.toUpperCase()}</strong></div>
+                        <div>Health: ${unit.health}/${unit.maxHealth}</div>
+                        <div>Position: (${Math.floor(unit.x)}, ${Math.floor(unit.y)})</div>
+                    `;
+                } else {
+                    const avgHealth = Math.floor(
+                        this.selectedUnits.reduce((sum, unit) => sum + unit.health, 0) / this.selectedUnits.length
+                    );
+                    const types = {};
+                    this.selectedUnits.forEach(unit => {
+                        types[unit.type] = (types[unit.type] || 0) + 1;
+                    });
+                    
+                    let typeStr = '';
+                    for (let [type, count] of Object.entries(types)) {
+                        typeStr += `${count}x ${type} `;
+                    }
+                    
+                    details.innerHTML = `
+                        <div><strong>${this.selectedUnits.length} units selected</strong></div>
+                        <div>Types: ${typeStr}</div>
+                        <div>Avg Health: ${avgHealth}</div>
+                    `;
+                }
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#2d5016';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Save context for camera transform
+                this.ctx.save();
+                this.ctx.scale(this.camera.zoom, this.camera.zoom);
+                this.ctx.translate(-this.camera.x, -this.camera.y);
+                
+                // Draw terrain
+                this.drawTerrain();
+                
+                // Draw buildings
+                this.drawBuildings();
+                
+                // Draw units
+                this.drawUnits();
+                
+                // Draw enemy units
+                this.drawEnemyUnits();
+                
+                // Draw projectiles
+                this.drawProjectiles();
+                
+                // Draw selection box
+                if (this.isDragging) {
+                    this.drawSelectionBox();
+                }
+                
+                // Draw building preview
+                if (this.buildMode && this.buildingToPlace) {
+                    this.drawBuildingPreview();
+                }
+                
+                this.ctx.restore();
+                
+                // Draw minimap
+                this.renderMinimap();
+            }
+            
+            drawTerrain() {
+                // Draw grid
+                this.ctx.strokeStyle = 'rgba(100, 100, 100, 0.2)';
+                this.ctx.lineWidth = 1;
+                
+                const gridSize = 100;
+                for (let x = 0; x <= this.worldSize.width; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.worldSize.height);
+                    this.ctx.stroke();
+                }
+                
+                for (let y = 0; y <= this.worldSize.height; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.worldSize.width, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw resources nodes
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * this.worldSize.width;
+                    const y = Math.random() * this.worldSize.height;
+                    
+                    if (Math.random() < 0.3) {
+                        this.drawResourceNode(x, y, 'gold');
+                    } else if (Math.random() < 0.5) {
+                        this.drawResourceNode(x, y, 'food');
+                    } else {
+                        this.drawResourceNode(x, y, 'energy');
+                    }
+                }
+            }
+            
+            drawResourceNode(x, y, type) {
+                const colors = {
+                    gold: '#FFD700',
+                    food: '#90EE90',
+                    energy: '#00FFFF'
+                };
+                
+                this.ctx.fillStyle = colors[type];
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+            }
+            
+            drawBuildings() {
+                for (let building of this.buildings) {
+                    // Draw building body
+                    this.ctx.fillStyle = '#8B4513';
+                    this.ctx.fillRect(
+                        building.x - building.width / 2,
+                        building.y - building.height / 2,
+                        building.width,
+                        building.height
+                    );
+                    
+                    // Draw icon
+                    this.ctx.font = '24px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(building.icon, building.x, building.y + 8);
+                    this.ctx.textAlign = 'left';
+                    
+                    // Draw health bar
+                    if (building.health < building.maxHealth) {
+                        const healthPercent = building.health / building.maxHealth;
+                        const barWidth = building.width;
+                        const barHeight = 5;
+                        
+                        this.ctx.fillStyle = '#FF0000';
+                        this.ctx.fillRect(
+                            building.x - barWidth / 2,
+                            building.y - building.height / 2 - 10,
+                            barWidth,
+                            barHeight
+                        );
+                        
+                        this.ctx.fillStyle = '#00FF00';
+                        this.ctx.fillRect(
+                            building.x - barWidth / 2,
+                            building.y - building.height / 2 - 10,
+                            barWidth * healthPercent,
+                            barHeight
+                        );
+                    }
+                    
+                    // Draw selection highlight
+                    if (building.selected) {
+                        this.ctx.strokeStyle = '#FFFF00';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.strokeRect(
+                            building.x - building.width / 2,
+                            building.y - building.height / 2,
+                            building.width,
+                            building.height
+                        );
+                    }
+                }
+            }
+            
+            drawUnits() {
+                for (let unit of this.units) {
+                    // Draw unit circle
+                    this.ctx.fillStyle = '#4169E1';
+                    this.ctx.beginPath();
+                    this.ctx.arc(unit.x, unit.y, unit.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Draw unit icon
+                    this.ctx.font = '16px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(unit.icon, unit.x, unit.y + 6);
+                    this.ctx.textAlign = 'left';
+                    
+                    // Draw health bar
+                    const healthPercent = unit.health / unit.maxHealth;
+                    const barWidth = unit.radius * 2;
+                    const barHeight = 4;
+                    
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.fillRect(
+                        unit.x - barWidth / 2,
+                        unit.y - unit.radius - 8,
+                        barWidth,
+                        barHeight
+                    );
+                    
+                    this.ctx.fillStyle = '#00FF00';
+                    this.ctx.fillRect(
+                        unit.x - barWidth / 2,
+                        unit.y - unit.radius - 8,
+                        barWidth * healthPercent,
+                        barHeight
+                    );
+                    
+                    // Draw selection highlight
+                    if (unit.selected) {
+                        this.ctx.strokeStyle = '#FFFF00';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.arc(unit.x, unit.y, unit.radius + 3, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                    
+                    // Draw target line
+                    if (unit.target) {
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(unit.x, unit.y);
+                        this.ctx.lineTo(unit.target.x, unit.target.y);
+                        this.ctx.stroke();
+                    }
+                }
+            }
+            
+            drawEnemyUnits() {
+                for (let enemy of this.enemyUnits) {
+                    // Draw enemy
+                    this.ctx.fillStyle = '#FF4444';
+                    this.ctx.beginPath();
+                    this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Draw enemy health bar
+                    const healthPercent = enemy.health / enemy.maxHealth;
+                    const barWidth = enemy.radius * 2;
+                    const barHeight = 4;
+                    
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.fillRect(
+                        enemy.x - barWidth / 2,
+                        enemy.y - enemy.radius - 8,
+                        barWidth,
+                        barHeight
+                    );
+                    
+                    this.ctx.fillStyle = '#00FF00';
+                    this.ctx.fillRect(
+                        enemy.x - barWidth / 2,
+                        enemy.y - enemy.radius - 8,
+                        barWidth * healthPercent,
+                        barHeight
+                    );
+                }
+            }
+            
+            drawProjectiles() {
+                for (let projectile of this.projectiles) {
+                    this.ctx.fillStyle = '#FFFF00';
+                    this.ctx.beginPath();
+                    this.ctx.arc(projectile.x, projectile.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+            
+            drawSelectionBox() {
+                const minX = Math.min(this.dragStart.x, this.dragEnd.x);
+                const maxX = Math.max(this.dragStart.x, this.dragEnd.x);
+                const minY = Math.min(this.dragStart.y, this.dragEnd.y);
+                const maxY = Math.max(this.dragStart.y, this.dragEnd.y);
+                
+                this.ctx.strokeStyle = '#FFFF00';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+                
+                this.ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+                this.ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+            }
+            
+            drawBuildingPreview() {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = this.mouse.x + this.camera.x;
+                const mouseY = this.mouse.y + this.camera.y;
+                
+                const buildingData = {
+                    townhall: { width: 80, height: 80, color: 'rgba(139, 69, 19, 0.5)' },
+                    barracks: { width: 60, height: 60, color: 'rgba(139, 69, 19, 0.5)' },
+                    factory: { width: 70, height: 70, color: 'rgba(139, 69, 19, 0.5)' },
+                    turret: { width: 40, height: 40, color: 'rgba(139, 69, 19, 0.5)' }
+                };
+                
+                const data = buildingData[this.buildingToPlace];
+                if (data) {
+                    this.ctx.fillStyle = data.color;
+                    this.ctx.fillRect(
+                        mouseX - data.width / 2,
+                        mouseY - data.height / 2,
+                        data.width,
+                        data.height
+                    );
+                    
+                    this.ctx.strokeStyle = '#FFFF00';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(
+                        mouseX - data.width / 2,
+                        mouseY - data.height / 2,
+                        data.width,
+                        data.height
+                    );
+                }
+            }
+            
+            renderMinimap() {
+                const scale = this.minimap.width / this.worldSize.width;
+                
+                // Clear minimap
+                this.minimapCtx.fillStyle = '#1a472a';
+                this.minimapCtx.fillRect(0, 0, this.minimap.width, this.minimap.height);
+                
+                // Draw grid
+                this.minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.minimapCtx.lineWidth = 1;
+                
+                const gridSize = 300 * scale;
+                for (let x = 0; x <= this.minimap.width; x += gridSize) {
+                    this.minimapCtx.beginPath();
+                    this.minimapCtx.moveTo(x, 0);
+                    this.minimapCtx.lineTo(x, this.minimap.height);
+                    this.minimapCtx.stroke();
+                }
+                
+                for (let y = 0; y <= this.minimap.height; y += gridSize) {
+                    this.minimapCtx.beginPath();
+                    this.minimapCtx.moveTo(0, y);
+                    this.minimapCtx.lineTo(this.minimap.width, y);
+                    this.minimapCtx.stroke();
+                }
+                
+                // Draw units
+                this.minimapCtx.fillStyle = '#4169E1';
+                for (let unit of this.units) {
+                    this.minimapCtx.beginPath();
+                    this.minimapCtx.arc(
+                        unit.x * scale,
+                        unit.y * scale,
+                        2, 0, Math.PI * 2
+                    );
+                    this.minimapCtx.fill();
+                }
+                
+                // Draw enemies
+                this.minimapCtx.fillStyle = '#FF4444';
+                for (let enemy of this.enemyUnits) {
+                    this.minimapCtx.beginPath();
+                    this.minimapCtx.arc(
+                        enemy.x * scale,
+                        enemy.y * scale,
+                        2, 0, Math.PI * 2
+                    );
+                    this.minimapCtx.fill();
+                }
+                
+                // Draw camera view
+                this.minimapCtx.strokeStyle = '#FFFF00';
+                this.minimapCtx.lineWidth = 2;
+                this.minimapCtx.strokeRect(
+                    this.camera.x * scale,
+                    this.camera.y * scale,
+                    this.width / this.camera.zoom * scale,
+                    this.height / this.camera.zoom * scale
+                );
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            start() {
+                this.gameLoop();
+            }
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            new RTSGame();
+        });
+    </script>
+</body>
+</html>

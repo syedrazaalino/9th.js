@@ -1,0 +1,40 @@
+{
+  "version": "0.1.0",
+  "description": "Import map for 9th.js - WebGL 1.0/2.0 compatible 3D library",
+  "imports": {
+    "9th.js": "./dist/umd/9th.umd.min.js",
+    "9th.js/": "./dist/full/",
+    "9th.js/core": "./dist/core/index.js",
+    "9th.js/geometry": "./dist/full/geometry/index.js",
+    "9th.js/materials": "./dist/full/materials/index.js",
+    "9th.js/rendering": "./dist/full/rendering/index.js",
+    "9th.js/animation": "./dist/full/animation/index.js",
+    "9th.js/loaders": "./dist/full/loaders/index.js",
+    "9th.js/cameras": "./dist/full/cameras/index.js",
+    "9th.js/lights": "./dist/full/lights/index.js",
+    "9th.js/controls": "./dist/full/controls/index.js",
+    "9th.js/textures": "./dist/full/textures/index.js",
+    "9th.js/extras": "./dist/full/extras/index.js",
+    "9th.js/utils": "./dist/full/utils/index.js",
+    "9th.js/helpers": "./dist/full/helpers/index.js",
+    "9th.js/renderers": "./dist/full/renderers/index.js",
+    "9th.js/particles": "./dist/experimental/particles/index.js",
+    "9th.js/physics": "./dist/experimental/physics/index.js",
+    "9th.js/experimental": "./dist/experimental/index.js",
+    "9th.js/full": "./dist/full/main.js"
+  },
+  "scopes": {
+    "./examples/": {
+      "9th.js/": "./dist/full/"
+    },
+    "./tools/": {
+      "9th.js/": "./dist/full/"
+    }
+  },
+  "comments": {
+    "usage": "Add this import map to your HTML to enable cleaner imports like: import { WebGLRenderer } from '9th.js';",
+    "webgl": "All builds support WebGL 1.0 with automatic fallback detection and WebGL 2.0 optimizations where available",
+    "modular": "Use 9th.js/core for minimal builds, 9th.js/full for complete functionality, or 9th.js/experimental for bleeding-edge features",
+    "cdn": "For CDN usage, import from '9th.js' directly or use the UMD builds in dist/umd/"
+  }
+}

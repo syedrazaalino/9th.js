@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Materials Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 280px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls input[type="color"] {
+            width: 100%;
+            height: 30px;
+            margin-bottom: 8px;
+        }
+        
+        #controls select {
+            width: 100%;
+            padding: 4px;
+            margin-bottom: 8px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: 100%;
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        #controls .control-group {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🎨 Materials Demo</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Explore different material types</li>
+            <li>Understand material properties</li>
+            <li>Learn about lighting interactions</li>
+            <li>Master material parameters</li>
+        </ul>
+        <p><strong>What you see:</strong> Various geometries with different materials, lighting effects, and interactive controls to modify properties in real-time.</p>
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <h4>🎛️ Scene Controls</h4>
+            
+            <label for="materialType">Material Type:</label>
+            <select id="materialType">
+                <option value="basic">Basic</option>
+                <option value="lambert">Lambert</option>
+                <option value="phong">Phong</option>
+                <option value="pbr">PBR</option>
+            </select>
+            
+            <label for="color">Base Color:</label>
+            <input type="color" id="color" value="#4488ff">
+            
+            <label for="rotation">Rotation Speed:</label>
+            <input type="range" id="rotation" min="0" max="2" step="0.1" value="0.5">
+            <span id="rotation-value">0.5</span>
+        </div>
+        
+        <div class="control-group" id="lightingControls">
+            <h4>💡 Lighting Properties</h4>
+            
+            <label for="ambientIntensity">Ambient Light:</label>
+            <input type="range" id="ambientIntensity" min="0" max="2" step="0.1" value="0.4">
+            <span id="ambient-value">0.4</span>
+            
+            <label for="directionalIntensity">Directional Light:</label>
+            <input type="range" id="directionalIntensity" min="0" max="2" step="0.1" value="0.8">
+            <span id="directional-value">0.8</span>
+            
+            <label for="lightRotation">Light Direction:</label>
+            <input type="range" id="lightRotation" min="0" max="360" step="10" value="45">
+            <span id="light-rotation-value">45°</span>
+        </div>
+        
+        <div class="control-group" id="materialSpecificControls">
+            <h4>🔧 Material Properties</h4>
+            <div id="basicControls" class="material-controls">
+                <p><em>Basic materials don't have additional properties</em></p>
+            </div>
+            
+            <div id="lambertControls" class="material-controls" style="display: none;">
+                <label for="lambertDiffuse">Diffuse Intensity:</label>
+                <input type="range" id="lambertDiffuse" min="0" max="2" step="0.1" value="1.0">
+                <span id="lambert-diffuse-value">1.0</span>
+            </div>
+            
+            <div id="phongControls" class="material-controls" style="display: none;">
+                <label for="phongSpecular">Specular Intensity:</label>
+                <input type="range" id="phongSpecular" min="0" max="2" step="0.1" value="1.0">
+                <span id="phong-specular-value">1.0</span>
+                
+                <label for="phongShininess">Shininess:</label>
+                <input type="range" id="phongShininess" min="1" max="100" step="1" value="32">
+                <span id="phong-shininess-value">32</span>
+            </div>
+            
+            <div id="pbrControls" class="material-controls" style="display: none;">
+                <label for="pbrMetallic">Metallic:</label>
+                <input type="range" id="pbrMetallic" min="0" max="1" step="0.05" value="0.0">
+                <span id="pbr-metallic-value">0.0</span>
+                
+                <label for="pbrRoughness">Roughness:</label>
+                <input type="range" id="pbrRoughness" min="0" max="1" step="0.05" value="0.5">
+                <span id="pbr-roughness-value">0.5</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <button id="reset">Reset All</button>
+            <button id="randomize">Randomize</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <small>FPS: <span id="fps">0</span></small>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html" class="current">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class MaterialsDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.currentMaterialType = 'basic';
+                this.materials = {};
+                this.rotationSpeed = 0.5;
+                
+                this.init();
+                this.setupMaterials();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#1a1a1a');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 0, 8);
+                
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                this.setupGeometry();
+                this.setupLighting();
+                
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+            }
+            
+            setupGeometry() {
+                // Create multiple geometries to showcase materials
+                const geometries = [
+                    new NinthJS.BoxGeometry(1.5, 1.5, 1.5),
+                    new NinthJS.SphereGeometry(1, 32, 16),
+                    new NinthJS.CylinderGeometry(1, 1, 2, 32),
+                    new NinthJS.ConeGeometry(1, 2, 32)
+                ];
+                
+                const positions = [
+                    { x: -4, y: 0, z: 0 },
+                    { x: -1.3, y: 0, z: 0 },
+                    { x: 1.3, y: 0, z: 0 },
+                    { x: 4, y: 0, z: 0 }
+                ];
+                
+                this.meshes = geometries.map((geometry, index) => {
+                    const mesh = new NinthJS.Mesh(geometry);
+                    mesh.setPosition(positions[index].x, positions[index].y, positions[index].z);
+                    this.scene.add(mesh);
+                    return mesh;
+                });
+            }
+            
+            setupLighting() {
+                this.ambientLight = new NinthJS.AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+                
+                this.directionalLight = new NinthJS.DirectionalLight(0.8, '#ffffff');
+                this.directionalLight.setDirection(-1, -1, -1);
+                this.scene.add(this.directionalLight);
+            }
+            
+            setupMaterials() {
+                const baseColor = '#4488ff';
+                
+                // Basic material
+                this.materials.basic = new NinthJS.BasicMaterial({ color: baseColor });
+                
+                // Lambert material
+                this.materials.lambert = new NinthJS.LambertMaterial({ 
+                    color: baseColor,
+                    diffuse: 1.0
+                });
+                
+                // Phong material
+                this.materials.phong = new NinthJS.PhongMaterial({ 
+                    color: baseColor,
+                    specular: 1.0,
+                    shininess: 32
+                });
+                
+                // PBR material
+                this.materials.pbr = new NinthJS.PBRMaterial({ 
+                    color: baseColor,
+                    metallic: 0.0,
+                    roughness: 0.5
+                });
+                
+                this.applyMaterial('basic');
+            }
+            
+            applyMaterial(type) {
+                this.meshes.forEach(mesh => {
+                    mesh.material = this.materials[type];
+                });
+                this.currentMaterialType = type;
+            }
+            
+            setupControls() {
+                // Material type selector
+                document.getElementById('materialType').addEventListener('change', (e) => {
+                    this.applyMaterial(e.target.value);
+                    this.showMaterialControls(e.target.value);
+                });
+                
+                // Color control
+                document.getElementById('color').addEventListener('change', (e) => {
+                    this.updateMaterialColor(e.target.value);
+                });
+                
+                // Rotation speed
+                const rotationSlider = document.getElementById('rotation');
+                const rotationValue = document.getElementById('rotation-value');
+                rotationSlider.addEventListener('input', (e) => {
+                    this.rotationSpeed = parseFloat(e.target.value);
+                    rotationValue.textContent = this.rotationSpeed.toFixed(1);
+                });
+                
+                // Lighting controls
+                this.setupLightingControls();
+                
+                // Material-specific controls
+                this.setupMaterialSpecificControls();
+                
+                // Reset and randomize
+                document.getElementById('reset').addEventListener('click', () => this.reset());
+                document.getElementById('randomize').addEventListener('click', () => this.randomize());
+            }
+            
+            setupLightingControls() {
+                // Ambient intensity
+                const ambientSlider = document.getElementById('ambientIntensity');
+                const ambientValue = document.getElementById('ambient-value');
+                ambientSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    ambientValue.textContent = value.toFixed(1);
+                    this.ambientLight.intensity = value;
+                });
+                
+                // Directional intensity
+                const directionalSlider = document.getElementById('directionalIntensity');
+                const directionalValue = document.getElementById('directional-value');
+                directionalSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    directionalValue.textContent = value.toFixed(1);
+                    this.directionalLight.intensity = value;
+                });
+                
+                // Light direction
+                const lightRotationSlider = document.getElementById('lightRotation');
+                const lightRotationValue = document.getElementById('light-rotation-value');
+                lightRotationSlider.addEventListener('input', (e) => {
+                    const degrees = parseInt(e.target.value);
+                    lightRotationValue.textContent = degrees + '°';
+                    const radians = (degrees * Math.PI) / 180;
+                    const direction = {
+                        x: Math.cos(radians),
+                        y: -1,
+                        z: Math.sin(radians)
+                    };
+                    this.directionalLight.setDirection(direction.x, direction.y, direction.z);
+                });
+            }
+            
+            setupMaterialSpecificControls() {
+                // Lambert controls
+                const lambertDiffuseSlider = document.getElementById('lambertDiffuse');
+                const lambertDiffuseValue = document.getElementById('lambert-diffuse-value');
+                lambertDiffuseSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    lambertDiffuseValue.textContent = value.toFixed(1);
+                    this.materials.lambert.diffuse = value;
+                });
+                
+                // Phong controls
+                const phongSpecularSlider = document.getElementById('phongSpecular');
+                const phongSpecularValue = document.getElementById('phong-specular-value');
+                phongSpecularSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    phongSpecularValue.textContent = value.toFixed(1);
+                    this.materials.phong.specular = value;
+                });
+                
+                const phongShininessSlider = document.getElementById('phongShininess');
+                const phongShininessValue = document.getElementById('phong-shininess-value');
+                phongShininessSlider.addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    phongShininessValue.textContent = value;
+                    this.materials.phong.shininess = value;
+                });
+                
+                // PBR controls
+                const pbrMetallicSlider = document.getElementById('pbrMetallic');
+                const pbrMetallicValue = document.getElementById('pbr-metallic-value');
+                pbrMetallicSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    pbrMetallicValue.textContent = value.toFixed(2);
+                    this.materials.pbr.metallic = value;
+                });
+                
+                const pbrRoughnessSlider = document.getElementById('pbrRoughness');
+                const pbrRoughnessValue = document.getElementById('pbr-roughness-value');
+                pbrRoughnessSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    pbrRoughnessValue.textContent = value.toFixed(2);
+                    this.materials.pbr.roughness = value;
+                });
+            }
+            
+            showMaterialControls(type) {
+                // Hide all material controls
+                document.querySelectorAll('.material-controls').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Show relevant controls
+                const controlsMap = {
+                    'basic': 'basicControls',
+                    'lambert': 'lambertControls',
+                    'phong': 'phongControls',
+                    'pbr': 'pbrControls'
+                };
+                
+                const controlId = controlsMap[type];
+                if (controlId) {
+                    document.getElementById(controlId).style.display = 'block';
+                }
+            }
+            
+            updateMaterialColor(color) {
+                Object.values(this.materials).forEach(material => {
+                    material.setColor(color);
+                });
+            }
+            
+            reset() {
+                // Reset all controls to default values
+                document.getElementById('materialType').value = 'basic';
+                document.getElementById('color').value = '#4488ff';
+                document.getElementById('rotation').value = '0.5';
+                document.getElementById('rotation-value').textContent = '0.5';
+                
+                document.getElementById('ambientIntensity').value = '0.4';
+                document.getElementById('ambient-value').textContent = '0.4';
+                document.getElementById('directionalIntensity').value = '0.8';
+                document.getElementById('directional-value').textContent = '0.8';
+                document.getElementById('lightRotation').value = '45';
+                document.getElementById('light-rotation-value').textContent = '45°';
+                
+                // Reset material properties
+                this.materials.lambert.diffuse = 1.0;
+                this.materials.phong.specular = 1.0;
+                this.materials.phong.shininess = 32;
+                this.materials.pbr.metallic = 0.0;
+                this.materials.pbr.roughness = 0.5;
+                
+                // Update display values
+                document.getElementById('lambertDiffuse').value = '1.0';
+                document.getElementById('lambert-diffuse-value').textContent = '1.0';
+                document.getElementById('phongSpecular').value = '1.0';
+                document.getElementById('phong-specular-value').textContent = '1.0';
+                document.getElementById('phongShininess').value = '32';
+                document.getElementById('phong-shininess-value').textContent = '32';
+                document.getElementById('pbrMetallic').value = '0.0';
+                document.getElementById('pbr-metallic-value').textContent = '0.0';
+                document.getElementById('pbrRoughness').value = '0.5';
+                document.getElementById('pbr-roughness-value').textContent = '0.5';
+                
+                // Apply changes
+                this.rotationSpeed = 0.5;
+                this.ambientLight.intensity = 0.4;
+                this.directionalLight.intensity = 0.8;
+                this.directionalLight.setDirection(-1, -1, -1);
+                this.updateMaterialColor('#4488ff');
+                this.applyMaterial('basic');
+                this.showMaterialControls('basic');
+            }
+            
+            randomize() {
+                const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                const randomSpeed = (Math.random() * 2).toFixed(1);
+                const randomAmbient = (Math.random() * 2).toFixed(1);
+                const randomDirectional = (Math.random() * 2).toFixed(1);
+                
+                document.getElementById('color').value = randomColor;
+                document.getElementById('rotation').value = randomSpeed;
+                document.getElementById('rotation-value').textContent = randomSpeed;
+                document.getElementById('ambientIntensity').value = randomAmbient;
+                document.getElementById('ambient-value').textContent = randomAmbient;
+                document.getElementById('directionalIntensity').value = randomDirectional;
+                document.getElementById('directional-value').textContent = randomDirectional;
+                
+                this.rotationSpeed = parseFloat(randomSpeed);
+                this.ambientLight.intensity = parseFloat(randomAmbient);
+                this.directionalLight.intensity = parseFloat(randomDirectional);
+                this.updateMaterialColor(randomColor);
+                
+                // Update material-specific properties randomly
+                if (this.currentMaterialType === 'lambert') {
+                    const diffuse = (Math.random() * 2).toFixed(1);
+                    this.materials.lambert.diffuse = parseFloat(diffuse);
+                    document.getElementById('lambertDiffuse').value = diffuse;
+                    document.getElementById('lambert-diffuse-value').textContent = diffuse;
+                } else if (this.currentMaterialType === 'phong') {
+                    const specular = (Math.random() * 2).toFixed(1);
+                    const shininess = Math.floor(Math.random() * 100) + 1;
+                    this.materials.phong.specular = parseFloat(specular);
+                    this.materials.phong.shininess = shininess;
+                    document.getElementById('phongSpecular').value = specular;
+                    document.getElementById('phong-specular-value').textContent = specular;
+                    document.getElementById('phongShininess').value = shininess;
+                    document.getElementById('phong-shininess-value').textContent = shininess;
+                } else if (this.currentMaterialType === 'pbr') {
+                    const metallic = (Math.random()).toFixed(2);
+                    const roughness = (Math.random()).toFixed(2);
+                    this.materials.pbr.metallic = parseFloat(metallic);
+                    this.materials.pbr.roughness = parseFloat(roughness);
+                    document.getElementById('pbrMetallic').value = metallic;
+                    document.getElementById('pbrMetallic-value').textContent = metallic;
+                    document.getElementById('pbrRoughness').value = roughness;
+                    document.getElementById('pbrRoughness-value').textContent = roughness;
+                }
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                
+                const time = performance.now() * 0.001 * this.rotationSpeed;
+                this.meshes.forEach((mesh, index) => {
+                    mesh.setRotation(time, time * 0.5 + index * 0.5, 0);
+                });
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        try {
+            new MaterialsDemo();
+            console.log('✅ Materials demo loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Materials demo:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

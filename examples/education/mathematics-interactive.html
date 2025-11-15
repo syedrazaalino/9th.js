@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematics Interactive - Explore Mathematical Concepts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .demo-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4ecdc4;
+        }
+        
+        .learning-objectives {
+            background: rgba(78, 205, 196, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin: 12px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            background: #4ecdc4;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #26a69a;
+            transform: translateY(-1px);
+        }
+        
+        .control-group button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .control-group button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .math-info {
+            background: rgba(78, 205, 196, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #4ecdc4;
+        }
+        
+        .calculation-display {
+            background: rgba(255, 193, 7, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .interactive-workspace {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            min-width: 300px;
+        }
+        
+        .function-editor {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .function-editor input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 8px;
+            border: none;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .equation-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .graph-controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .coordinate-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .tool-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .tool-button {
+            background: rgba(78, 205, 196, 0.3);
+            color: white;
+            border: 1px solid rgba(78, 205, 196, 0.5);
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .tool-button:hover {
+            background: rgba(78, 205, 196, 0.5);
+        }
+        
+        .tool-button.active {
+            background: #4ecdc4;
+            border-color: #4ecdc4;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(78, 205, 196, 0.3) !important;
+            border: 1px solid #4ecdc4;
+        }
+        
+        .error-message {
+            background: rgba(244, 67, 54, 0.3);
+            padding: 5px;
+            border-radius: 3px;
+            color: #ffcdd2;
+            font-size: 12px;
+            margin: 5px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Mathematics Interactive</h1>
+            
+            <div class="demo-section" onclick="selectDemo('graphing')">
+                <div class="demo-title">Function Grapher</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Plot mathematical functions<br>
+                    • Explore function transformations<br>
+                    • Visualize relationships
+                </div>
+                
+                <div class="function-editor">
+                    <label>Function f(x):</label>
+                    <input type="text" id="graph-function" value="sin(x)" onchange="updateGraphFunction()">
+                    <div class="error-message" id="graph-error">Invalid function syntax</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Domain (-10 to 10):</label>
+                    <input type="range" id="x-domain" min="2" max="20" value="10" onchange="updateGraphDomain()">
+                    <span id="domain-value">10</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Resolution:</label>
+                    <input type="range" id="resolution" min="50" max="1000" value="200" onchange="updateGraphResolution()">
+                    <span id="resolution-value">200</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="plotFunction()">Plot Function</button>
+                    <button onclick="clearGraph()">Clear Graph</button>
+                    <button onclick="addTransformation()">Add Transformation</button>
+                </div>
+                
+                <div class="tool-panel">
+                    <div class="tool-button" onclick="selectTool('move')">Move</div>
+                    <div class="tool-button" onclick="selectTool('measure')">Measure</div>
+                    <div class="tool-button" onclick="selectTool('derivative')">Derivative</div>
+                    <div class="tool-button" onclick="selectTool('integral')">Integral</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('geometry')">
+                <div class="demo-title">Interactive Geometry</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore geometric shapes<br>
+                    • Understand area and perimeter<br>
+                    • Visualize transformations
+                </div>
+                
+                <div class="control-group">
+                    <label>Shape Type:</label>
+                    <select id="shape-selector" onchange="createGeometryShape()">
+                        <option value="circle">Circle</option>
+                        <option value="triangle">Triangle</option>
+                        <option value="square">Square</option>
+                        <option value="polygon">Polygon</option>
+                        <option value="ellipse">Ellipse</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Size:</label>
+                    <input type="range" id="shape-size" min="0.5" max="5" step="0.1" value="2" onchange="updateShapeSize()">
+                    <span id="size-value">2.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Rotation (degrees):</label>
+                    <input type="range" id="shape-rotation" min="0" max="360" step="1" value="0" onchange="updateShapeRotation()">
+                    <span id="rotation-value">0</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="addShape()">Add Shape</button>
+                    <button onclick="calculateProperties()">Calculate Properties</button>
+                    <button onclick="animateTransformation()">Animate Transformation</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="reflectShape()">Reflect</button>
+                    <button class="secondary" onclick="rotateShape()">Rotate 90°</button>
+                    <button class="secondary" onclick="scaleShape()">Scale 1.5x</button>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('algebra')">
+                <div class="demo-title">Algebra Solver</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Solve equations visually<br>
+                    • Understand variables<br>
+                    • Explore inequalities
+                </div>
+                
+                <div class="function-editor">
+                    <label>Equation:</label>
+                    <input type="text" id="equation-input" value="x^2 - 4 = 0" onchange="solveEquation()">
+                    <div class="error-message" id="equation-error">Invalid equation</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Variable:</label>
+                    <select id="equation-variable" onchange="solveEquation()">
+                        <option value="x">x</option>
+                        <option value="y">y</option>
+                        <option value="z">z</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Solve for:</label>
+                    <select id="solve-mode" onchange="updateSolveMode()">
+                        <option value="exact">Exact Solution</option>
+                        <option value="numerical">Numerical</option>
+                        <option value="graphical">Graphical</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="solveEquation()">Solve Equation</button>
+                    <button onclick="showGraph()">Show on Graph</button>
+                    <button onclick="findRoots()">Find Roots</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="calculation-display" id="solution-display">
+                        Enter an equation to solve
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('calculus')">
+                <div class="demo-title">Calculus Explorer</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand derivatives<br>
+                    • Explore integrals<br>
+                    • Visualize limits
+                </div>
+                
+                <div class="function-editor">
+                    <label>Function for Calculus:</label>
+                    <input type="text" id="calculus-function" value="x^2" onchange="updateCalculusFunction()">
+                </div>
+                
+                <div class="control-group">
+                    <label>Point (x-coordinate):</label>
+                    <input type="range" id="calculus-point" min="-5" max="5" step="0.1" value="2" onchange="updateCalculusPoint()">
+                    <span id="point-value">2.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="calculateDerivative()">Calculate Derivative</button>
+                    <button onclick="calculateIntegral()">Calculate Integral</button>
+                    <button onclick="showLimit()">Show Limit</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="tool-button" onclick="toggleDerivative()">Toggle Derivative</div>
+                    <div class="tool-button" onclick="toggleIntegral()">Toggle Integral</div>
+                    <div class="tool-button" onclick="toggleTangent()">Show Tangent</div>
+                    <div class="tool-button" onclick="toggleArea()">Show Area</div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('statistics')">
+                <div class="demo-title">Statistics & Probability</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore data visualization<br>
+                    • Understand probability<br>
+                    • Learn statistical measures
+                </div>
+                
+                <div class="control-group">
+                    <label>Data Set Size:</label>
+                    <input type="range" id="data-size" min="10" max="1000" value="100" onchange="generateData()">
+                    <span id="data-size-value">100</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Distribution Type:</label>
+                    <select id="distribution-type" onchange="generateData()">
+                        <option value="normal">Normal Distribution</option>
+                        <option value="uniform">Uniform Distribution</option>
+                        <option value="exponential">Exponential</option>
+                        <option value="poisson">Poisson</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Parameters:</label>
+                    <div>
+                        <input type="number" id="param1" value="0" placeholder="μ or λ" style="width: 45%;">
+                        <input type="number" id="param2" value="1" placeholder="σ" style="width: 45%; float: right;">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="generateData()">Generate Data</button>
+                    <button onclick="calculateStatistics()">Calculate Statistics</button>
+                    <button onclick="createHistogram()">Create Histogram</button>
+                </div>
+                
+                <div class="control-group">
+                    <div class="calculation-display" id="stats-display">
+                        Mean: N/A | Std Dev: N/A
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a module to begin</h3>
+                <div id="demo-description">
+                    Explore mathematics through interactive visualizations!
+                </div>
+                <div id="math-display"></div>
+                <div id="calculation-display"></div>
+            </div>
+            <div class="coordinate-display" id="coordinate-display">
+                X: 0.000 | Y: 0.000
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Mathematical objects and data
+        let graphObjects = {};
+        let geometryObjects = {};
+        let algebraObjects = {};
+        let calculusObjects = {};
+        let statisticsObjects = {};
+        
+        // Interactive variables
+        let selectedTool = 'move';
+        let currentFunction = 'sin(x)';
+        let currentShape = null;
+        let selectedPoint = null;
+        
+        // Statistics data
+        let dataSet = [];
+        
+        init();
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 15);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0, 0);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0x4ecdc4, 0.6, 50);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+            
+            // Create coordinate system
+            createCoordinateSystem();
+            
+            // Start render loop
+            animate();
+            
+            // Handle mouse interactions
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Generate initial data
+            generateData();
+        }
+        
+        function createCoordinateSystem() {
+            // Create grid
+            const gridHelper = new THREE.GridHelper(20, 20, 0x4ecdc4, 0x333333);
+            scene.add(gridHelper);
+            
+            // Create axes
+            const axesHelper = new THREE.AxesHelper(10);
+            axesHelper.material.linewidth = 3;
+            scene.add(axesHelper);
+            
+            // Create axis labels
+            const textCanvas = document.createElement('canvas');
+            const context = textCanvas.getContext('2d');
+            textCanvas.width = 64;
+            textCanvas.height = 32;
+            
+            // X-axis label
+            context.fillStyle = '#ffffff';
+            context.font = '20px Arial';
+            context.fillText('X', 30, 25);
+            
+            const xTexture = new THREE.CanvasTexture(textCanvas);
+            const xMaterial = new THREE.SpriteMaterial({ map: xTexture });
+            const xLabel = new THREE.Sprite(xMaterial);
+            xLabel.position.set(8, 0.5, 0);
+            xLabel.scale.set(1, 0.5, 1);
+            scene.add(xLabel);
+            
+            // Y-axis label
+            const yCanvas = document.createElement('canvas');
+            const yContext = yCanvas.getContext('2d');
+            yCanvas.width = 64;
+            yCanvas.height = 32;
+            yContext.fillStyle = '#ffffff';
+            yContext.font = '20px Arial';
+            yContext.fillText('Y', 30, 25);
+            
+            const yTexture = new THREE.CanvasTexture(yCanvas);
+            const yMaterial = new THREE.SpriteMaterial({ map: yTexture });
+            const yLabel = new THREE.Sprite(yMaterial);
+            yLabel.position.set(0.5, 8, 0);
+            yLabel.scale.set(1, 0.5, 1);
+            scene.add(yLabel);
+        }
+        
+        function selectDemo(moduleName) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = moduleName;
+            
+            switch(moduleName) {
+                case 'graphing':
+                    setupGraphingModule();
+                    break;
+                case 'geometry':
+                    setupGeometryModule();
+                    break;
+                case 'algebra':
+                    setupAlgebraModule();
+                    break;
+                case 'calculus':
+                    setupCalculusModule();
+                    break;
+                case 'statistics':
+                    setupStatisticsModule();
+                    break;
+            }
+        }
+        
+        function setupGraphingModule() {
+            updateInfoPanel('Function Grapher', 
+                'Plot and explore mathematical functions interactively.', 
+                'f(x) = sin(x)', 'Visualize mathematical relationships');
+            
+            currentFunction = document.getElementById('graph-function').value;
+            plotFunction();
+        }
+        
+        function setupGeometryModule() {
+            updateInfoPanel('Interactive Geometry', 
+                'Create and manipulate geometric shapes.', 
+                'Geometry Tools', 'Area • Perimeter • Transformations');
+            
+            clearScene();
+            createCoordinateSystem();
+        }
+        
+        function setupAlgebraModule() {
+            updateInfoPanel('Algebra Solver', 
+                'Solve equations and visualize mathematical relationships.', 
+                'ax + b = c', 'Find solutions to equations');
+            
+            clearScene();
+            createCoordinateSystem();
+        }
+        
+        function setupCalculusModule() {
+            updateInfoPanel('Calculus Explorer', 
+                'Explore derivatives, integrals, and limits.', 
+                'f\'(x) = lim[h→0] (f(x+h) - f(x))/h', 'Fundamental Theorem of Calculus');
+            
+            clearScene();
+            createCoordinateSystem();
+        }
+        
+        function setupStatisticsModule() {
+            updateInfoPanel('Statistics & Probability', 
+                'Analyze data and understand probability distributions.', 
+                'P(X = x) = λ^x e^-λ / x!', 'Statistical analysis and visualization');
+            
+            clearScene();
+            createCoordinateSystem();
+            createHistogram();
+        }
+        
+        // Function Grapher Functions
+        
+        function updateGraphFunction() {
+            currentFunction = document.getElementById('graph-function').value;
+            document.getElementById('graph-error').style.display = 'none';
+        }
+        
+        function updateGraphDomain() {
+            const domain = parseInt(document.getElementById('x-domain').value);
+            document.getElementById('domain-value').textContent = domain;
+        }
+        
+        function updateGraphResolution() {
+            const resolution = parseInt(document.getElementById('resolution').value);
+            document.getElementById('resolution-value').textContent = resolution;
+        }
+        
+        function plotFunction() {
+            if (currentDemo !== 'graphing') return;
+            
+            try {
+                const compiled = math.compile(currentFunction);
+                const domain = parseInt(document.getElementById('x-domain').value);
+                const resolution = parseInt(document.getElementById('resolution').value);
+                
+                // Remove previous graph
+                if (graphObjects.line) {
+                    scene.remove(graphObjects.line);
+                }
+                
+                // Create new graph
+                const points = [];
+                for (let i = 0; i <= resolution; i++) {
+                    const x = (i / resolution) * domain * 2 - domain;
+                    try {
+                        const y = compiled.evaluate({x: x});
+                        if (isFinite(y) && Math.abs(y) < 50) {
+                            points.push(new THREE.Vector3(x, y, 0));
+                        }
+                    } catch (e) {
+                        // Skip invalid points
+                    }
+                }
+                
+                if (points.length > 1) {
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const material = new THREE.LineBasicMaterial({ 
+                        color: 0x4ecdc4, 
+                        linewidth: 3 
+                    });
+                    graphObjects.line = new THREE.Line(geometry, material);
+                    scene.add(graphObjects.line);
+                }
+                
+                updateInfoPanel('Function Grapher', 
+                    'Function plotted successfully', 
+                    `f(x) = ${currentFunction}`, `${points.length} points plotted`);
+                    
+            } catch (error) {
+                document.getElementById('graph-error').style.display = 'block';
+            }
+        }
+        
+        function clearGraph() {
+            if (graphObjects.line) {
+                scene.remove(graphObjects.line);
+                graphObjects.line = null;
+            }
+        }
+        
+        function addTransformation() {
+            // Add transformed version of function
+            if (!graphObjects.line) return;
+            
+            const transformedFunction = currentFunction.replace(/x/g, '(x - 2)');
+            // Implementation would create transformed graph
+        }
+        
+        function selectTool(tool) {
+            selectedTool = tool;
+            document.querySelectorAll('.tool-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+        
+        // Geometry Functions
+        
+        function createGeometryShape() {
+            const shapeType = document.getElementById('shape-selector').value;
+            if (currentShape) {
+                scene.remove(currentShape);
+            }
+            
+            let geometry, material;
+            
+            switch(shapeType) {
+                case 'circle':
+                    geometry = new THREE.CircleGeometry(2, 32);
+                    break;
+                case 'triangle':
+                    geometry = new THREE.CircleGeometry(2, 3);
+                    break;
+                case 'square':
+                    geometry = new THREE.PlaneGeometry(4, 4);
+                    break;
+                case 'ellipse':
+                    geometry = new THREE.CircleGeometry(2, 32);
+                    geometry.scale(1.5, 1, 1);
+                    break;
+                case 'polygon':
+                    geometry = new THREE.CircleGeometry(2, 6);
+                    break;
+            }
+            
+            material = new THREE.MeshPhongMaterial({ 
+                color: 0x4ecdc4, 
+                transparent: true, 
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            
+            currentShape = new THREE.Mesh(geometry, material);
+            currentShape.position.set(0, 0, 0);
+            currentShape.userData = { type: shapeType };
+            
+            scene.add(currentShape);
+        }
+        
+        function updateShapeSize() {
+            const size = parseFloat(document.getElementById('shape-size').value);
+            document.getElementById('size-value').textContent = size.toFixed(1);
+            
+            if (currentShape) {
+                const scale = size / 2;
+                currentShape.scale.set(scale, scale, scale);
+            }
+        }
+        
+        function updateShapeRotation() {
+            const rotation = parseInt(document.getElementById('shape-rotation').value);
+            document.getElementById('rotation-value').textContent = rotation;
+            
+            if (currentShape) {
+                currentShape.rotation.z = rotation * Math.PI / 180;
+            }
+        }
+        
+        function addShape() {
+            if (!currentShape) return;
+            
+            const newShape = currentShape.clone();
+            newShape.position.set(
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 8,
+                0
+            );
+            
+            scene.add(newShape);
+            
+            if (!geometryObjects.shapes) geometryObjects.shapes = [];
+            geometryObjects.shapes.push(newShape);
+        }
+        
+        function calculateProperties() {
+            if (!currentShape) return;
+            
+            const size = parseFloat(document.getElementById('shape-size').value);
+            let area, perimeter, properties;
+            
+            switch(currentShape.userData.type) {
+                case 'circle':
+                    area = Math.PI * Math.pow(size, 2);
+                    perimeter = 2 * Math.PI * size;
+                    properties = `Circle: Area = πr² = ${area.toFixed(2)}, Perimeter = 2πr = ${perimeter.toFixed(2)}`;
+                    break;
+                case 'square':
+                    area = Math.pow(size * 2, 2);
+                    perimeter = 4 * size * 2;
+                    properties = `Square: Area = s² = ${area.toFixed(2)}, Perimeter = 4s = ${perimeter.toFixed(2)}`;
+                    break;
+                case 'triangle':
+                    area = 0.433 * Math.pow(size * 2, 2); // Equilateral triangle
+                    perimeter = 6 * size;
+                    properties = `Triangle: Area = (√3/4)s² = ${area.toFixed(2)}, Perimeter = 3s = ${perimeter.toFixed(2)}`;
+                    break;
+            }
+            
+            updateInfoPanel('Geometry Properties', 
+                'Calculated geometric properties', 
+                'Mathematical Properties', properties);
+        }
+        
+        function animateTransformation() {
+            if (!currentShape) return;
+            
+            let startTime = Date.now();
+            function animate() {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const progress = (elapsed % 2) / 2; // 2-second cycle
+                
+                if (progress < 1) {
+                    currentShape.scale.setScalar(2 + Math.sin(progress * Math.PI) * 0.5);
+                    requestAnimationFrame(animate);
+                } else {
+                    currentShape.scale.setScalar(2);
+                }
+            }
+            animate();
+        }
+        
+        function reflectShape() {
+            if (!currentShape) return;
+            currentShape.scale.x *= -1;
+        }
+        
+        function rotateShape() {
+            if (!currentShape) return;
+            currentShape.rotation.z += Math.PI / 2;
+        }
+        
+        function scaleShape() {
+            if (!currentShape) return;
+            currentShape.scale.multiplyScalar(1.5);
+        }
+        
+        // Algebra Functions
+        
+        function solveEquation() {
+            const equation = document.getElementById('equation-input').value;
+            const variable = document.getElementById('equation-variable').value;
+            
+            try {
+                // Parse equation (simple implementation)
+                if (equation.includes('=')) {
+                    const [left, right] = equation.split('=');
+                    const simplified = `${left} - (${right})`;
+                    
+                    // Try to solve numerically
+                    const solutions = findRoots(simplified, variable);
+                    
+                    let resultText = 'Solutions: ';
+                    if (solutions.length > 0) {
+                        resultText += solutions.map(s => s.toFixed(4)).join(', ');
+                    } else {
+                        resultText += 'No real solutions found';
+                    }
+                    
+                    document.getElementById('solution-display').textContent = resultText;
+                    document.getElementById('equation-error').style.display = 'none';
+                    
+                } else {
+                    throw new Error('Equation must contain "="');
+                }
+                
+            } catch (error) {
+                document.getElementById('equation-error').style.display = 'block';
+            }
+        }
+        
+        function findRoots(expression, variable) {
+            const roots = [];
+            const step = 0.01;
+            
+            for (let x = -10; x <= 10; x += step) {
+                try {
+                    const compiled = math.compile(expression);
+                    const y = compiled.evaluate({[variable]: x});
+                    
+                    if (isFinite(y) && Math.abs(y) < 0.1) {
+                        // Check if this is a root (sign change)
+                        const prevX = x - step;
+                        const prevY = compiled.evaluate({[variable]: prevX});
+                        
+                        if (Math.abs(prevY) > 0.1 || y * prevY < 0) {
+                            if (!roots.some(root => Math.abs(root - x) < 0.1)) {
+                                roots.push(x);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Skip invalid points
+                }
+            }
+            
+            return roots;
+        }
+        
+        function showGraph() {
+            // Show equation graph on coordinate system
+            if (currentDemo !== 'graphing') {
+                selectDemo('graphing');
+            }
+            
+            const equation = document.getElementById('equation-input').value;
+            if (equation.includes('=')) {
+                const [left, right] = equation.split('=');
+                currentFunction = `${left} - (${right})`;
+                plotFunction();
+            }
+        }
+        
+        function updateSolveMode() {
+            const mode = document.getElementById('solve-mode').value;
+            // Update solving approach based on mode
+        }
+        
+        // Calculus Functions
+        
+        function updateCalculusFunction() {
+            // Update calculus function
+        }
+        
+        function updateCalculusPoint() {
+            const point = parseFloat(document.getElementById('calculus-point').value);
+            document.getElementById('point-value').textContent = point.toFixed(1);
+            
+            if (calculusObjects.pointMarker) {
+                scene.remove(calculusObjects.pointMarker);
+            }
+            
+            // Create point marker
+            const markerGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const markerMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            calculusObjects.pointMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+            calculusObjects.pointMarker.position.set(point, 0, 0);
+            scene.add(calculusObjects.pointMarker);
+        }
+        
+        function calculateDerivative() {
+            const funcStr = document.getElementById('calculus-function').value;
+            const point = parseFloat(document.getElementById('calculus-point').value);
+            
+            try {
+                // Numerical derivative using difference quotient
+                const h = 0.001;
+                const compiled = math.compile(funcStr);
+                
+                const f1 = compiled.evaluate({x: point + h});
+                const f2 = compiled.evaluate({x: point - h});
+                const derivative = (f1 - f2) / (2 * h);
+                
+                updateInfoPanel('Derivative Calculation', 
+                    'Numerical derivative using difference quotient', 
+                    'f\'(x) ≈ (f(x+h) - f(x-h))/(2h)', 
+                    `f(${point}) = ${f1.toFixed(4)}<br>f\'(${point}) ≈ ${derivative.toFixed(4)}`);
+                
+            } catch (error) {
+                console.error('Derivative calculation error:', error);
+            }
+        }
+        
+        function calculateIntegral() {
+            const funcStr = document.getElementById('calculus-function').value;
+            const a = -2, b = 2;
+            
+            try {
+                // Numerical integration using trapezoidal rule
+                const n = 1000;
+                const compiled = math.compile(funcStr);
+                let integral = 0;
+                
+                for (let i = 0; i < n; i++) {
+                    const x1 = a + (b - a) * i / n;
+                    const x2 = a + (b - a) * (i + 1) / n;
+                    
+                    try {
+                        const f1 = compiled.evaluate({x: x1});
+                        const f2 = compiled.evaluate({x: x2});
+                        
+                        if (isFinite(f1) && isFinite(f2)) {
+                            integral += (f1 + f2) * (x2 - x1) / 2;
+                        }
+                    } catch (e) {
+                        // Skip invalid points
+                    }
+                }
+                
+                updateInfoPanel('Integral Calculation', 
+                    'Numerical integration using trapezoidal rule', 
+                    '∫ f(x) dx', 
+                    `∫[${a},${b}] f(x) dx ≈ ${integral.toFixed(4)}`);
+                
+            } catch (error) {
+                console.error('Integral calculation error:', error);
+            }
+        }
+        
+        function showLimit() {
+            // Show limit visualization
+            const funcStr = document.getElementById('calculus-function').value;
+            const point = parseFloat(document.getElementById('calculus-point').value);
+            
+            // Implementation would show limit approaching point
+        }
+        
+        function toggleDerivative() {
+            // Toggle derivative line
+        }
+        
+        function toggleIntegral() {
+            // Toggle integral area
+        }
+        
+        function toggleTangent() {
+            // Show tangent line at point
+            const funcStr = document.getElementById('calculus-function').value;
+            const point = parseFloat(document.getElementById('calculus-point').value);
+            
+            try {
+                // Calculate derivative and plot tangent line
+                const h = 0.001;
+                const compiled = math.compile(funcStr);
+                
+                const f1 = compiled.evaluate({x: point + h});
+                const f2 = compiled.evaluate({x: point - h});
+                const slope = (f1 - f2) / (2 * h);
+                const yIntercept = compiled.evaluate({x: point}) - slope * point;
+                
+                // Plot tangent line
+                const tangentPoints = [];
+                for (let x = point - 2; x <= point + 2; x += 0.1) {
+                    const y = slope * x + yIntercept;
+                    tangentPoints.push(new THREE.Vector3(x, y, 0.1));
+                }
+                
+                if (calculusObjects.tangent) {
+                    scene.remove(calculusObjects.tangent);
+                }
+                
+                const tangentGeometry = new THREE.BufferGeometry().setFromPoints(tangentPoints);
+                const tangentMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+                calculusObjects.tangent = new THREE.Line(tangentGeometry, tangentMaterial);
+                scene.add(calculusObjects.tangent);
+                
+            } catch (error) {
+                console.error('Tangent line calculation error:', error);
+            }
+        }
+        
+        function toggleArea() {
+            // Show area under curve
+        }
+        
+        // Statistics Functions
+        
+        function generateData() {
+            const size = parseInt(document.getElementById('data-size').value);
+            const type = document.getElementById('distribution-type').value;
+            const param1 = parseFloat(document.getElementById('param1').value) || 0;
+            const param2 = parseFloat(document.getElementById('param2').value) || 1;
+            
+            document.getElementById('data-size-value').textContent = size;
+            
+            dataSet = [];
+            
+            for (let i = 0; i < size; i++) {
+                let value;
+                
+                switch(type) {
+                    case 'normal':
+                        // Box-Muller transformation for normal distribution
+                        const u1 = Math.random();
+                        const u2 = Math.random();
+                        value = param1 + param2 * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                        break;
+                    case 'uniform':
+                        value = param1 + (param2 - param1) * Math.random();
+                        break;
+                    case 'exponential':
+                        value = -Math.log(1 - Math.random()) / param1;
+                        break;
+                    case 'poisson':
+                        value = Math.floor(-Math.log(1 - Math.random()) / param1);
+                        break;
+                }
+                
+                dataSet.push(value);
+            }
+            
+            if (currentDemo === 'statistics') {
+                calculateStatistics();
+                createHistogram();
+            }
+        }
+        
+        function calculateStatistics() {
+            if (dataSet.length === 0) return;
+            
+            // Calculate basic statistics
+            const mean = dataSet.reduce((sum, val) => sum + val, 0) / dataSet.length;
+            const variance = dataSet.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / dataSet.length;
+            const stdDev = Math.sqrt(variance);
+            
+            // Sort for median calculation
+            const sorted = [...dataSet].sort((a, b) => a - b);
+            const median = sorted.length % 2 === 0 
+                ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+                : sorted[Math.floor(sorted.length / 2)];
+            
+            document.getElementById('stats-display').textContent = 
+                `Mean: ${mean.toFixed(3)} | Std Dev: ${stdDev.toFixed(3)} | Median: ${median.toFixed(3)}`;
+            
+            updateInfoPanel('Statistics', 
+                'Statistical measures calculated', 
+                'Data Analysis', 
+                `Sample Size: ${dataSet.length}<br>Mean: ${mean.toFixed(4)}<br>Median: ${median.toFixed(4)}<br>Std Dev: ${stdDev.toFixed(4)}`);
+        }
+        
+        function createHistogram() {
+            if (dataSet.length === 0) return;
+            
+            // Remove previous histogram
+            if (statisticsObjects.histogram) {
+                scene.remove(statisticsObjects.histogram);
+            }
+            
+            // Create histogram bars
+            const min = Math.min(...dataSet);
+            const max = Math.max(...dataSet);
+            const numBins = Math.min(20, Math.sqrt(dataSet.length));
+            const binWidth = (max - min) / numBins;
+            
+            const bins = new Array(numBins).fill(0);
+            dataSet.forEach(value => {
+                const binIndex = Math.min(Math.floor((value - min) / binWidth), numBins - 1);
+                bins[binIndex]++;
+            });
+            
+            const maxCount = Math.max(...bins);
+            
+            // Create bars
+            const barGroup = new THREE.Group();
+            for (let i = 0; i < numBins; i++) {
+                const barGeometry = new THREE.BoxGeometry(binWidth * 0.8, 0.1, 2);
+                const barMaterial = new THREE.MeshPhongMaterial({ color: 0x4ecdc4 });
+                const bar = new THREE.Mesh(barGeometry, barMaterial);
+                
+                bar.position.set(
+                    min + i * binWidth + binWidth / 2,
+                    bins[i] / 2,
+                    0
+                );
+                bar.scale.y = bins[i] / maxCount * 10;
+                
+                barGroup.add(bar);
+            }
+            
+            barGroup.userData = { type: 'histogram' };
+            scene.add(barGroup);
+            statisticsObjects.histogram = barGroup;
+        }
+        
+        // Interaction functions
+        
+        function onMouseClick(event) {
+            // Handle tool interactions
+            if (selectedTool === 'measure' && currentShape) {
+                // Measure distance or angle
+            }
+        }
+        
+        function onMouseMove(event) {
+            // Update coordinate display
+            const rect = renderer.domElement.getBoundingClientRect();
+            const mouse = new THREE.Vector2();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Find intersection with XY plane
+            const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+            const intersection = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersection);
+            
+            if (intersection) {
+                document.getElementById('coordinate-display').textContent = 
+                    `X: ${intersection.x.toFixed(3)} | Y: ${intersection.y.toFixed(3)}`;
+            }
+        }
+        
+        function clearScene() {
+            // Remove all objects except lights and coordinate system
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && 
+                    object.type !== 'AmbientLight' && 
+                    object.type !== 'DirectionalLight' && 
+                    object.type !== 'PointLight' &&
+                    object.type !== 'GridHelper' &&
+                    object.type !== 'AxesHelper') {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+            
+            // Clear object arrays
+            graphObjects = {};
+            geometryObjects = {};
+            algebraObjects = {};
+            calculusObjects = {};
+            statisticsObjects = {};
+        }
+        
+        function updateInfoPanel(title, description, formula, details) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('math-display').innerHTML = `
+                <div class="math-info">
+                    <strong>Formula:</strong> ${formula}<br>
+                    ${details}
+                </div>
+            `;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Add gentle rotation to shapes
+            if (currentDemo === 'geometry' && geometryObjects.shapes) {
+                geometryObjects.shapes.forEach((shape, index) => {
+                    shape.rotation.z += 0.01 * (index + 1);
+                });
+            }
+            
+            // Animate histogram bars
+            if (statisticsObjects.histogram) {
+                statisticsObjects.histogram.children.forEach((bar, index) => {
+                    const targetScale = bar.scale.y;
+                    bar.scale.y += (targetScale - bar.scale.y) * 0.05;
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Particle System Examples</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        
+        #controls h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .control-group {
+            margin: 8px 0;
+        }
+        
+        .control-group label {
+            display: inline-block;
+            width: 120px;
+            font-size: 12px;
+        }
+        
+        .control-group input[type="range"] {
+            width: 120px;
+            margin-left: 10px;
+        }
+        
+        .control-group input[type="checkbox"] {
+            margin-left: 10px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button.active {
+            background: #2196F3;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 200px;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <h3>Particle Systems</h3>
+        <button id="fluidBtn" class="active">Fluid Simulation (SPH)</button>
+        <button id="clothBtn">Soft Body Simulation</button>
+        <button id="gpuBtn">GPU Particles</button>
+        
+        <div id="fluidControls" class="controls">
+            <h4>Fluid Controls</h4>
+            <div class="control-group">
+                <label>Particle Count:</label>
+                <input type="range" id="fluidParticleCount" min="100" max="2000" value="500" step="100">
+                <span id="fluidParticleCountValue">500</span>
+            </div>
+            <div class="control-group">
+                <label>Viscosity:</label>
+                <input type="range" id="fluidViscosity" min="0.01" max="0.5" value="0.1" step="0.01">
+                <span id="fluidViscosityValue">0.1</span>
+            </div>
+            <div class="control-group">
+                <label>Pressure:</label>
+                <input type="range" id="fluidPressure" min="50" max="500" value="200" step="10">
+                <span id="fluidPressureValue">200</span>
+            </div>
+            <button id="fluidReset">Reset Fluid</button>
+            <button id="fluidAddForce">Add Force</button>
+        </div>
+        
+        <div id="clothControls" class="controls" style="display: none;">
+            <h4>Cloth Controls</h4>
+            <div class="control-group">
+                <label>Wind:</label>
+                <input type="checkbox" id="clothWind">
+            </div>
+            <div class="control-group">
+                <label>Wind Strength:</label>
+                <input type="range" id="clothWindStrength" min="0" max="20" value="5" step="1">
+                <span id="clothWindStrengthValue">5</span>
+            </div>
+            <div class="control-group">
+                <label>Iterations:</label>
+                <input type="range" id="clothIterations" min="1" max="10" value="5" step="1">
+                <span id="clothIterationsValue">5</span>
+            </div>
+            <button id="clothReset">Reset Cloth</button>
+            <button id="clothDrag">Toggle Drag</button>
+        </div>
+        
+        <div id="gpuControls" class="controls" style="display: none;">
+            <h4>GPU Particles</h4>
+            <div class="control-group">
+                <label>Max Particles:</label>
+                <input type="range" id="gpuParticleCount" min="10000" max="500000" value="100000" step="10000">
+                <span id="gpuParticleCountValue">100000</span>
+            </div>
+            <div class="control-group">
+                <label>Emission Rate:</label>
+                <input type="range" id="gpuEmissionRate" min="100" max="50000" value="5000" step="100">
+                <span id="gpuEmissionRateValue">5000</span>
+            </div>
+            <div class="control-group">
+                <label>Particle Size:</label>
+                <input type="range" id="gpuParticleSize" min="0.5" max="5" value="2" step="0.1">
+                <span id="gpuParticleSizeValue">2.0</span>
+            </div>
+            <button id="gpuBurst">Particle Burst</button>
+            <button id="gpuExplosion">Explosion</button>
+        </div>
+    </div>
+    
+    <div id="stats">
+        <h3>Performance Stats</h3>
+        <div id="fps">FPS: 0</div>
+        <div id="particleCount">Particles: 0</div>
+        <div id="systemInfo">System: Fluid</div>
+        <div id="memoryUsage">Memory: 0 MB</div>
+    </div>
+    
+    <div id="instructions">
+        <h3>Instructions</h3>
+        <p><strong>Mouse Controls:</strong></p>
+        <ul>
+            <li>Left click + drag: Rotate camera</li>
+            <li>Right click + drag: Pan camera</li>
+            <li>Scroll wheel: Zoom in/out</li>
+        </ul>
+        <p><strong>Fluid Simulation:</strong> Watch realistic water behavior with SPH physics.</p>
+        <p><strong>Soft Body:</strong> See cloth physics with wind and collisions.</p>
+        <p><strong>GPU Particles:</strong> Millions of particles rendered on GPU.</p>
+    </div>
+
+    <script type="module">
+        import { Scene, PerspectiveCamera, WebGLRenderer } from '../core/index.js';
+        import { OrbitControls } from '../controls/index.js';
+        import { Vector3, Color } from '../core/math/index.js';
+        import { FluidSimulation, createDamBreakSimulation, createWaterSplashSimulation } from './FluidSimulation.js';
+        import { SoftBodySimulation, SoftBodyRope } from './SoftBodySimulation.js';
+        import { GPUParticleSystem, GPUFireworkSystem, GPUExplosionSystem } from './GPUParticleSystem.js';
+
+        class ParticleSystemDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true });
+                this.controls = null;
+                
+                this.currentSystem = null;
+                this.currentSystemType = 'fluid';
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 0;
+                this.performanceHistory = [];
+                
+                this.init();
+                this.setupControls();
+                this.setupEventListeners();
+                this.loadFluidSystem();
+                this.animate();
+            }
+            
+            init() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000510, 1);
+                
+                this.camera.position.set(0, 5, 15);
+                this.controls = new OrbitControls(this.camera, this.canvas);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                
+                // Add lights
+                const ambientLight = new AmbientLight(0x404040, 0.4);
+                const directionalLight = new DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                this.scene.add(ambientLight);
+                this.scene.add(directionalLight);
+                
+                // Add ground plane for reference
+                this.addGround();
+            }
+            
+            addGround() {
+                // Simple ground plane
+                const groundGeometry = new PlaneGeometry(50, 50, 10, 10);
+                const groundMaterial = new MeshBasicMaterial({ 
+                    color: 0x222222, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const ground = new Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.y = -5;
+                this.scene.add(ground);
+            }
+            
+            setupControls() {
+                // System switching buttons
+                const fluidBtn = document.getElementById('fluidBtn');
+                const clothBtn = document.getElementById('clothBtn');
+                const gpuBtn = document.getElementById('gpuBtn');
+                
+                fluidBtn.addEventListener('click', () => this.loadFluidSystem());
+                clothBtn.addEventListener('click', () => this.loadClothSystem());
+                gpuBtn.addEventListener('click', () => this.loadGPUSystem());
+                
+                // Fluid controls
+                this.setupFluidControls();
+                
+                // Cloth controls
+                this.setupClothControls();
+                
+                // GPU controls
+                this.setupGPUControls();
+            }
+            
+            setupFluidControls() {
+                const particleCountSlider = document.getElementById('fluidParticleCount');
+                const particleCountValue = document.getElementById('fluidParticleCountValue');
+                const viscositySlider = document.getElementById('fluidViscosity');
+                const viscosityValue = document.getElementById('fluidViscosityValue');
+                const pressureSlider = document.getElementById('fluidPressure');
+                const pressureValue = document.getElementById('fluidPressureValue');
+                
+                particleCountSlider.addEventListener('input', (e) => {
+                    particleCountValue.textContent = e.target.value;
+                });
+                
+                viscositySlider.addEventListener('input', (e) => {
+                    viscosityValue.textContent = e.target.value;
+                    if (this.currentSystem) {
+                        this.currentSystem.viscosity = parseFloat(e.target.value);
+                    }
+                });
+                
+                pressureSlider.addEventListener('input', (e) => {
+                    pressureValue.textContent = e.target.value;
+                    if (this.currentSystem) {
+                        this.currentSystem.pressureStiffness = parseFloat(e.target.value);
+                    }
+                });
+                
+                document.getElementById('fluidReset').addEventListener('click', () => {
+                    this.loadFluidSystem();
+                });
+                
+                document.getElementById('fluidAddForce').addEventListener('click', () => {
+                    if (this.currentSystem) {
+                        const force = new Vector3(
+                            (Math.random() - 0.5) * 20,
+                            Math.random() * 10,
+                            (Math.random() - 0.5) * 20
+                        );
+                        this.currentSystem.applyForce(new Vector3(0, 0, 0), 3, force);
+                    }
+                });
+            }
+            
+            setupClothControls() {
+                const windCheckbox = document.getElementById('clothWind');
+                const windStrengthSlider = document.getElementById('clothWindStrength');
+                const windStrengthValue = document.getElementById('clothWindStrengthValue');
+                const iterationsSlider = document.getElementById('clothIterations');
+                const iterationsValue = document.getElementById('clothIterationsValue');
+                
+                windCheckbox.addEventListener('change', (e) => {
+                    if (this.currentSystem) {
+                        this.currentSystem.setWindEnabled(e.target.checked);
+                    }
+                });
+                
+                windStrengthSlider.addEventListener('input', (e) => {
+                    windStrengthValue.textContent = e.target.value;
+                    if (this.currentSystem) {
+                        this.currentSystem.setWind(new Vector3(
+                            parseFloat(e.target.value), 0, 0
+                        ));
+                    }
+                });
+                
+                iterationsSlider.addEventListener('input', (e) => {
+                    iterationsValue.textContent = e.target.value;
+                    if (this.currentSystem) {
+                        this.currentSystem.iterations = parseInt(e.target.value);
+                    }
+                });
+                
+                document.getElementById('clothReset').addEventListener('click', () => {
+                    this.loadClothSystem();
+                });
+                
+                document.getElementById('clothDrag').addEventListener('click', () => {
+                    if (this.currentSystem) {
+                        // Toggle dragging on a particle
+                        const randomParticle = Math.floor(Math.random() * this.currentSystem.particles.length);
+                        const particle = this.currentSystem.particles[randomParticle];
+                        particle.pinned = !particle.pinned;
+                    }
+                });
+            }
+            
+            setupGPUControls() {
+                const particleCountSlider = document.getElementById('gpuParticleCount');
+                const particleCountValue = document.getElementById('gpuParticleCountValue');
+                const emissionRateSlider = document.getElementById('gpuEmissionRate');
+                const emissionRateValue = document.getElementById('gpuEmissionRateValue');
+                const particleSizeSlider = document.getElementById('gpuParticleSize');
+                const particleSizeValue = document.getElementById('gpuParticleSizeValue');
+                
+                particleCountSlider.addEventListener('input', (e) => {
+                    particleCountValue.textContent = e.target.value;
+                    this.loadGPUSystem(parseInt(e.target.value));
+                });
+                
+                emissionRateSlider.addEventListener('input', (e) => {
+                    emissionRateValue.textContent = e.target.value;
+                    if (this.currentSystem) {
+                        this.currentSystem.emissionRate = parseInt(e.target.value);
+                    }
+                });
+                
+                particleSizeSlider.addEventListener('input', (e) => {
+                    particleSizeValue.textContent = e.target.value;
+                    if (this.currentSystem) {
+                        this.currentSystem.pointSize = parseFloat(e.target.value);
+                    }
+                });
+                
+                document.getElementById('gpuBurst').addEventListener('click', () => {
+                    if (this.currentSystem) {
+                        this.currentSystem.burst(10000);
+                    }
+                });
+                
+                document.getElementById('gpuExplosion').addEventListener('click', () => {
+                    if (this.currentSystem) {
+                        const pos = new Vector3(
+                            (Math.random() - 0.5) * 20,
+                            Math.random() * 10,
+                            (Math.random() - 0.5) * 20
+                        );
+                        this.currentSystem.explode(pos, Math.random() * 2 + 0.5);
+                    }
+                });
+            }
+            
+            loadFluidSystem() {
+                this.clearCurrentSystem();
+                
+                const particleCount = parseInt(document.getElementById('fluidParticleCount').value);
+                const viscosity = parseFloat(document.getElementById('fluidViscosity').value);
+                const pressure = parseFloat(document.getElementById('fluidPressure').value);
+                
+                this.currentSystem = createDamBreakSimulation({
+                    particleRadius: 0.05,
+                    smoothingRadius: 0.15,
+                    restDensity: 1000,
+                    viscosity: viscosity,
+                    pressureStiffness: pressure,
+                    columnWidth: 3,
+                    columnHeight: 6,
+                    columnDepth: 2,
+                    bounds: {
+                        min: new Vector3(-10, -5, -10),
+                        max: new Vector3(10, 15, 10)
+                    }
+                });
+                
+                this.currentSystemType = 'fluid';
+                this.scene.add(this.currentSystem);
+                this.updateControlVisibility();
+                
+                console.log('Fluid system loaded with SPH physics');
+            }
+            
+            loadClothSystem() {
+                this.clearCurrentSystem();
+                
+                const windEnabled = document.getElementById('clothWind').checked;
+                const windStrength = parseFloat(document.getElementById('clothWindStrength').value);
+                const iterations = parseInt(document.getElementById('clothIterations').value);
+                
+                this.currentSystem = SoftBodySimulation.createHangingCloth(12, 12, 20);
+                this.currentSystem.iterations = iterations;
+                this.currentSystem.setWindEnabled(windEnabled);
+                this.currentSystem.setWind(new Vector3(windStrength, 0, 0));
+                
+                // Add some colliders
+                this.currentSystem.addSphereCollider(new Vector3(0, -2, 0), 2);
+                this.currentSystem.addPlaneCollider(new Vector3(0, 1, 0), -3);
+                
+                this.currentSystemType = 'cloth';
+                this.scene.add(this.currentSystem);
+                this.updateControlVisibility();
+                
+                console.log('Cloth system loaded with soft body physics');
+            }
+            
+            loadGPUSystem(maxParticles = 100000) {
+                this.clearCurrentSystem();
+                
+                const emissionRate = parseInt(document.getElementById('gpuEmissionRate').value);
+                const particleSize = parseFloat(document.getElementById('gpuParticleSize').value);
+                
+                try {
+                    this.currentSystem = new GPUParticleSystem({
+                        maxParticles: maxParticles,
+                        emitRate: emissionRate,
+                        particleSize: particleSize,
+                        blending: 'additive'
+                    });
+                    
+                    this.currentSystemType = 'gpu';
+                    this.scene.add(this.currentSystem);
+                    this.updateControlVisibility();
+                    
+                    console.log('GPU particle system loaded');
+                } catch (error) {
+                    console.error('GPU particle system not supported:', error);
+                    // Fallback to firework system
+                    this.currentSystem = new GPUFireworkSystem({
+                        maxParticles: maxParticles,
+                        frequency: 1000
+                    });
+                    this.currentSystemType = 'gpu';
+                    this.scene.add(this.currentSystem);
+                    this.updateControlVisibility();
+                }
+            }
+            
+            clearCurrentSystem() {
+                if (this.currentSystem) {
+                    this.scene.remove(this.currentSystem);
+                    this.currentSystem.dispose();
+                    this.currentSystem = null;
+                }
+            }
+            
+            updateControlVisibility() {
+                // Hide all control groups
+                document.getElementById('fluidControls').style.display = 'none';
+                document.getElementById('clothControls').style.display = 'none';
+                document.getElementById('gpuControls').style.display = 'none';
+                
+                // Show active system controls
+                document.getElementById(this.currentSystemType + 'Controls').style.display = 'block';
+                
+                // Update active button
+                document.querySelectorAll('button[id$="Btn"]').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById(this.currentSystemType + 'Btn').classList.add('active');
+                
+                // Update stats
+                document.getElementById('systemInfo').textContent = `System: ${this.currentSystemType.toUpperCase()}`;
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+                
+                // Mouse interaction for particle systems
+                this.canvas.addEventListener('click', (e) => {
+                    if (this.currentSystem) {
+                        this.handleClick(e);
+                    }
+                });
+            }
+            
+            handleClick(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Convert mouse coordinates to world space (simplified)
+                const worldX = mouseX * 20;
+                const worldY = (1 - mouseY) * 20 - 5;
+                const worldZ = 0;
+                
+                const clickPosition = new Vector3(worldX, worldY, worldZ);
+                
+                if (this.currentSystemType === 'fluid') {
+                    // Apply force to fluid
+                    const force = new Vector3(0, 5, 0);
+                    this.currentSystem.applyForce(clickPosition, 3, force);
+                } else if (this.currentSystemType === 'cloth') {
+                    // Pin/unpin cloth particle
+                    let minDist = Infinity;
+                    let closestParticle = null;
+                    
+                    for (const particle of this.currentSystem.particles) {
+                        const dist = particle.position.distanceTo(clickPosition);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closestParticle = particle;
+                        }
+                    }
+                    
+                    if (closestParticle && minDist < 2) {
+                        closestParticle.pinned = !closestParticle.pinned;
+                    }
+                } else if (this.currentSystemType === 'gpu') {
+                    // Create explosion or burst
+                    if (Math.random() > 0.5) {
+                        this.currentSystem.explode(clickPosition, Math.random() * 2 + 0.5);
+                    } else {
+                        this.currentSystem.setEmission(clickPosition, new Vector3(0, 0, 0), 1000);
+                        this.currentSystem.burst(5000);
+                    }
+                }
+            }
+            
+            updateStats() {
+                const currentTime = performance.now();
+                this.frameCount++;
+                
+                if (currentTime >= this.lastTime + 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                    
+                    document.getElementById('fps').textContent = `FPS: ${this.fps}`;
+                }
+                
+                // Update particle count
+                let particleCount = 0;
+                if (this.currentSystem) {
+                    if (this.currentSystemType === 'fluid') {
+                        particleCount = this.currentSystem.activeCount;
+                    } else if (this.currentSystemType === 'cloth') {
+                        particleCount = this.currentSystem.particles.length;
+                    } else if (this.currentSystemType === 'gpu') {
+                        particleCount = this.currentSystem.getParticleCount();
+                    }
+                }
+                
+                document.getElementById('particleCount').textContent = `Particles: ${particleCount}`;
+                
+                // Update memory usage (estimated)
+                const memoryMB = Math.round((particleCount * 32) / (1024 * 1024) * 100) / 100;
+                document.getElementById('memoryUsage').textContent = `Memory: ${memoryMB} MB`;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = Math.min(0.016, (performance.now() - this.lastTime) / 1000);
+                
+                if (this.currentSystem) {
+                    this.currentSystem.update(deltaTime);
+                }
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                
+                this.updateStats();
+            }
+        }
+        
+        // Initialize demo when page loads
+        window.addEventListener('load', () => {
+            new ParticleSystemDemo();
+        });
+    </script>
+</body>
+</html>

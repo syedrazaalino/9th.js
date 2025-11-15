@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Configurator - 3D Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .vehicle-ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 30, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            color: white;
+            min-width: 340px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .vehicle-ui h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 26px;
+            color: #00d4ff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .vehicle-type {
+            margin-bottom: 20px;
+        }
+
+        .vehicle-type label {
+            display: block;
+            margin-bottom: 10px;
+            color: #00d4ff;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .vehicle-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .vehicle-btn {
+            padding: 12px 8px;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .vehicle-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .vehicle-btn.active {
+            background: rgba(0, 212, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .paint-section {
+            margin-bottom: 20px;
+        }
+
+        .paint-section h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .paint-categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .paint-category {
+            padding: 8px 12px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: rgba(68, 68, 68, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .paint-category:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .paint-category.active {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .color-option {
+            width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+            border-color: #00d4ff;
+        }
+
+        .color-option.active {
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        .wheels-section {
+            margin-bottom: 20px;
+        }
+
+        .wheels-section h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .wheel-styles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .wheel-style {
+            padding: 10px 8px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: rgba(68, 68, 68, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .wheel-style:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .wheel-style.active {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .wheel-size {
+            margin-bottom: 15px;
+        }
+
+        .wheel-size label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00d4ff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .size-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .size-value {
+            text-align: right;
+            color: #00d4ff;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .interior-section {
+            margin-bottom: 20px;
+        }
+
+        .interior-section h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .interior-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .interior-option {
+            padding: 10px 8px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: rgba(68, 68, 68, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .interior-option:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .interior-option.active {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .lighting-controls {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .lighting-controls h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .light-control {
+            margin-bottom: 15px;
+        }
+
+        .light-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00d4ff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .control-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .control-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .control-value {
+            text-align: right;
+            color: #00d4ff;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .environment-presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .preset-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .scene-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .car-preview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 250px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            padding: 10px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .spec-item {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .spec-label {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .vehicle-ui {
+                width: 300px;
+                right: 10px;
+                top: 10px;
+                padding: 15px;
+            }
+            
+            .vehicle-buttons,
+            .paint-categories,
+            .wheel-styles,
+            .interior-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .color-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="vehicle-ui">
+        <h1>🚗 Vehicle Configurator</h1>
+        
+        <div class="vehicle-type">
+            <label>Select Vehicle:</label>
+            <div class="vehicle-buttons">
+                <button class="vehicle-btn active" data-type="sedan">Sedan</button>
+                <button class="vehicle-btn" data-type="sports">Sports Car</button>
+                <button class="vehicle-btn" data-type="suv">SUV</button>
+                <button class="vehicle-btn" data-type="truck">Truck</button>
+            </div>
+        </div>
+
+        <div class="paint-section">
+            <h3>🎨 Paint & Finish</h3>
+            <div class="paint-categories">
+                <div class="paint-category active" data-category="solid">Solid</div>
+                <div class="paint-category" data-category="metallic">Metallic</div>
+                <div class="paint-category" data-category="pearl">Pearl</div>
+                <div class="paint-category" data-category="matte">Matte</div>
+            </div>
+            
+            <div class="color-grid" id="colorGrid">
+                <!-- Colors will be populated based on category -->
+            </div>
+        </div>
+
+        <div class="wheels-section">
+            <h3>⚙️ Wheels & Tires</h3>
+            <div class="wheel-styles">
+                <div class="wheel-style active" data-style="classic">Classic</div>
+                <div class="wheel-style" data-style="sport">Sport</div>
+                <div class="wheel-style" data-style="premium">Premium</div>
+                <div class="wheel-style" data-style="racing">Racing</div>
+            </div>
+            
+            <div class="wheel-size">
+                <label>Wheel Size:</label>
+                <input type="range" class="size-slider" id="wheelSize" min="16" max="22" value="18">
+                <div class="size-value">18 inches</div>
+            </div>
+        </div>
+
+        <div class="interior-section">
+            <h3>🪑 Interior</h3>
+            <div class="interior-options">
+                <div class="interior-option active" data-interior="leather-black">Black Leather</div>
+                <div class="interior-option" data-interior="leather-brown">Brown Leather</div>
+                <div class="interior-option" data-interior="fabric-gray">Gray Fabric</div>
+                <div class="interior-option" data-interior="leather-red">Red Leather</div>
+                <div class="interior-option" data-interior="alcantara">Alcantara</div>
+                <div class="interior-option" data-interior="leather-white">White Leather</div>
+            </div>
+        </div>
+
+        <div class="lighting-controls">
+            <h3>💡 Environment</h3>
+            
+            <div class="light-control">
+                <label>Key Light:</label>
+                <input type="range" class="control-slider" id="keyLight" min="0" max="200" value="100">
+                <div class="control-value" id="keyValue">100%</div>
+            </div>
+
+            <div class="light-control">
+                <label>Fill Light:</label>
+                <input type="range" class="control-slider" id="fillLight" min="0" max="150" value="50">
+                <div class="control-value" id="fillValue">50%</div>
+            </div>
+
+            <div class="light-control">
+                <label>Rim Light:</label>
+                <input type="range" class="control-slider" id="rimLight" min="0" max="100" value="30">
+                <div class="control-value" id="rimValue">30%</div>
+            </div>
+
+            <div class="light-control">
+                <label>Environment:</label>
+                <input type="color" id="environmentColor" value="#404040" style="width: 100%; height: 30px; border-radius: 5px; border: 2px solid #00d4ff;">
+            </div>
+
+            <div class="environment-presets">
+                <button class="preset-btn" onclick="setEnvironmentPreset('studio')">Studio</button>
+                <button class="preset-btn" onclick="setEnvironmentPreset('garage')">Garage</button>
+                <button class="preset-btn" onclick="setEnvironmentPreset('outdoor')">Outdoor</button>
+                <button class="preset-btn" onclick="setEnvironmentPreset('showroom')">Showroom</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="scene-info">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Polygons: <span id="polygons">5,234</span></div>
+        <div>Materials: <span id="materials">4</span></div>
+        <div>Textures: <span id="textures">3</span></div>
+        <div>Lights: <span id="lights">5</span></div>
+    </div>
+
+    <div class="car-preview">
+        <div class="spec-item">
+            <span class="spec-label">Body:</span>
+            <span id="carBody">Sedan</span>
+        </div>
+        <div class="spec-item">
+            <span class="spec-label">Paint:</span>
+            <span id="carPaint">Deep Blue (Metallic)</span>
+        </div>
+        <div class="spec-item">
+            <span class="spec-label">Wheels:</span>
+            <span id="carWheels">18" Classic Alloy</span>
+        </div>
+        <div class="spec-item">
+            <span class="spec-label">Interior:</span>
+            <span id="carInterior">Black Leather</span>
+        </div>
+        <div class="spec-item">
+            <span class="spec-label">Polish:</span>
+            <span id="carPolish">High Gloss</span>
+        </div>
+    </div>
+
+    <script src="../../dist/umd/9th.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, car, animationId;
+        let ambientLight, keyLight, fillLight, rimLight, groundLight;
+        let bodyMaterial, glassMaterial, wheelMaterial, tireMaterial, interiorMaterial;
+        let currentVehicle = 'sedan', currentPaintCategory = 'solid', currentWheelStyle = 'classic';
+        let currentWheelSize = 18, currentInterior = 'leather-black';
+        
+        const stats = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: performance.now()
+        };
+
+        // Paint categories and colors
+        const paintCategories = {
+            solid: ['#000000', '#FFFFFF', '#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#808000'],
+            metallic: ['#C0C0C0', '#FFD700', '#CD7F32', '#B8860B', '#708090', '#778899', '#2F4F4F', '#696969', '#A9A9A9', '#D3D3D3', '#F5F5DC', '#E6E6FA'],
+            pearl: ['#F0F8FF', '#F5F5DC', '#FFEFD5', '#FFE4E1', '#F0FFF0', '#FFF8DC', '#FFFAF0', '#F5FFFA', '#FFFACD', '#E0FFFF', '#F0F0F0', '#FDF5E6'],
+            matte: ['#2F2F2F', '#696969', '#A9A9A9', '#808080', '#D3D3D3', '#C0C0C0', '#778899', '#708090', '#2F4F4F', '#4682B4', '#B22222', '#556B2F']
+        };
+
+        // Wheel styles
+        const wheelStyles = {
+            classic: { segments: 5, innerRadius: 0.3, thickness: 0.15 },
+            sport: { segments: 8, innerRadius: 0.25, thickness: 0.12 },
+            premium: { segments: 12, innerRadius: 0.2, thickness: 0.1 },
+            racing: { segments: 20, innerRadius: 0.15, thickness: 0.08 }
+        };
+
+        // Initialize the application
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create scene
+            scene = new Ninth.Scene();
+            scene.background = new Ninth.Color(0x0a0a0a);
+
+            // Create camera
+            camera = new Ninth.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 4, 8);
+            camera.lookAt(0, 1, 0);
+
+            // Create renderer
+            renderer = new Ninth.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = Ninth.PCFSoftShadowMap;
+            renderer.toneMapping = Ninth.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            renderer.outputEncoding = Ninth.sRGBEncoding;
+
+            // Setup lighting
+            setupLighting();
+
+            // Create car
+            createCar('sedan');
+
+            // Setup ground
+            createGround();
+
+            // Setup controls
+            setupControls();
+
+            // Populate colors
+            updateColorGrid();
+
+            // Start animation loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Ambient light
+            ambientLight = new Ninth.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            // Key light (main directional)
+            keyLight = new Ninth.DirectionalLight(0xffffff, 1.0);
+            keyLight.position.set(10, 15, 5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 2048;
+            keyLight.shadow.mapSize.height = 2048;
+            keyLight.shadow.camera.near = 0.5;
+            keyLight.shadow.camera.far = 50;
+            scene.add(keyLight);
+
+            // Fill light
+            fillLight = new Ninth.DirectionalLight(0xffffff, 0.5);
+            fillLight.position.set(-5, 10, -5);
+            scene.add(fillLight);
+
+            // Rim light
+            rimLight = new Ninth.DirectionalLight(0xffffff, 0.3);
+            rimLight.position.set(0, 5, -10);
+            scene.add(rimLight);
+
+            // Ground light
+            groundLight = new Ninth.PointLight(0x404040, 0.5, 20);
+            groundLight.position.set(0, 2, 0);
+            scene.add(groundLight);
+        }
+
+        function createGround() {
+            const groundGeometry = new Ninth.PlaneGeometry(50, 50);
+            const groundMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const ground = new Ninth.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Add grid lines
+            const gridHelper = new Ninth.GridHelper(50, 50, 0x00d4ff, 0x333333);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+        }
+
+        function createCar(type) {
+            // Remove existing car
+            if (car) {
+                scene.remove(car);
+            }
+
+            // Create materials
+            createMaterials();
+
+            // Create car group
+            car = new Ninth.Group();
+
+            // Vehicle-specific creation
+            switch (type) {
+                case 'sedan':
+                    createSedan();
+                    break;
+                case 'sports':
+                    createSportsCar();
+                    break;
+                case 'suv':
+                    createSUV();
+                    break;
+                case 'truck':
+                    createTruck();
+                    break;
+            }
+
+            // Add wheels
+            addWheels();
+
+            // Position car
+            car.position.y = 0.3;
+            car.castShadow = true;
+            scene.add(car);
+
+            updateStats();
+            updateCarSpecs();
+        }
+
+        function createMaterials() {
+            // Body material
+            const paintColor = paintCategories[currentPaintCategory][0];
+            const paintProps = getPaintProperties(currentPaintCategory);
+            
+            bodyMaterial = new Ninth.MeshPhysicalMaterial({
+                color: parseInt(paintColor.replace('#', '0x')),
+                metalness: paintProps.metalness,
+                roughness: paintProps.roughness,
+                clearcoat: paintProps.clearcoat,
+                clearcoatRoughness: paintProps.clearcoatRoughness,
+                transmission: paintProps.transmission || 0,
+                ior: paintProps.ior || 1.5
+            });
+
+            // Glass material
+            glassMaterial = new Ninth.MeshPhysicalMaterial({
+                color: 0x88aaff,
+                transparent: true,
+                opacity: 0.3,
+                metalness: 0,
+                roughness: 0,
+                transmission: 0.9,
+                ior: 1.5,
+                thickness: 0.1
+            });
+
+            // Wheel material
+            wheelMaterial = new Ninth.MeshStandardMaterial({
+                color: 0xC0C0C0,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+
+            // Tire material
+            tireMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            // Interior material
+            const interiorProps = getInteriorProperties(currentInterior);
+            interiorMaterial = new Ninth.MeshStandardMaterial({
+                color: interiorProps.color,
+                roughness: interiorProps.roughness,
+                metalness: interiorProps.metalness
+            });
+        }
+
+        function getPaintProperties(category) {
+            const props = {
+                solid: { metalness: 0.1, roughness: 0.3, clearcoat: 0.3, clearcoatRoughness: 0.1 },
+                metallic: { metalness: 0.9, roughness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.05 },
+                pearl: { metalness: 0.7, roughness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.02 },
+                matte: { metalness: 0.0, roughness: 0.9, clearcoat: 0.0, clearcoatRoughness: 0.8 }
+            };
+            return props[category] || props.solid;
+        }
+
+        function getInteriorProperties(interior) {
+            const props = {
+                'leather-black': { color: 0x222222, roughness: 0.3, metalness: 0.1 },
+                'leather-brown': { color: 0x8B4513, roughness: 0.3, metalness: 0.1 },
+                'fabric-gray': { color: 0x808080, roughness: 0.8, metalness: 0.0 },
+                'leather-red': { color: 0x8B0000, roughness: 0.3, metalness: 0.1 },
+                'alcantara': { color: 0x2F2F2F, roughness: 0.9, metalness: 0.0 },
+                'leather-white': { color: 0xF5F5F5, roughness: 0.3, metalness: 0.1 }
+            };
+            return props[interior] || props['leather-black'];
+        }
+
+        function createSedan() {
+            // Main body
+            const bodyGeometry = new Ninth.BoxGeometry(4.5, 1.2, 2.0);
+            const body = new Ninth.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.8;
+            body.castShadow = true;
+            car.add(body);
+
+            // Hood
+            const hoodGeometry = new Ninth.BoxGeometry(2.0, 0.3, 2.0);
+            const hood = new Ninth.Mesh(hoodGeometry, bodyMaterial);
+            hood.position.set(1.5, 1.0, 0);
+            hood.castShadow = true;
+            car.add(hood);
+
+            // Trunk
+            const trunkGeometry = new Ninth.BoxGeometry(1.8, 0.3, 2.0);
+            const trunk = new Ninth.Mesh(trunkGeometry, bodyMaterial);
+            trunk.position.set(-1.8, 1.0, 0);
+            trunk.castShadow = true;
+            car.add(trunk);
+
+            // Roof
+            const roofGeometry = new Ninth.BoxGeometry(2.8, 0.4, 1.8);
+            const roof = new Ninth.Mesh(roofGeometry, bodyMaterial);
+            roof.position.y = 1.6;
+            roof.castShadow = true;
+            car.add(roof);
+
+            // Windows
+            createWindows(2.4, 0.6, 1.6, 1.2);
+        }
+
+        function createSportsCar() {
+            // Lower body
+            const lowerBodyGeometry = new Ninth.BoxGeometry(4.0, 0.6, 2.2);
+            const lowerBody = new Ninth.Mesh(lowerBodyGeometry, bodyMaterial);
+            lowerBody.position.y = 0.6;
+            lowerBody.castShadow = true;
+            car.add(lowerBody);
+
+            // Upper body (streamlined)
+            const upperBodyGeometry = new Ninth.BoxGeometry(3.5, 0.8, 1.8);
+            const upperBody = new Ninth.Mesh(upperBodyGeometry, bodyMaterial);
+            upperBody.position.y = 1.4;
+            upperBody.castShadow = true;
+            car.add(upperBody);
+
+            // Windshield
+            createWindows(3.2, 0.7, 1.6, 0.8);
+        }
+
+        function createSUV() {
+            // Main body (higher)
+            const bodyGeometry = new Ninth.BoxGeometry(4.8, 1.8, 2.2);
+            const body = new Ninth.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.3;
+            body.castShadow = true;
+            car.add(body);
+
+            // Roof rack
+            const rackGeometry = new Ninth.BoxGeometry(4.0, 0.1, 1.8);
+            const rack = new Ninth.Mesh(rackGeometry, bodyMaterial);
+            rack.position.y = 2.2;
+            rack.castShadow = true;
+            car.add(rack);
+
+            // Windows
+            createWindows(3.8, 1.2, 1.9, 1.0);
+        }
+
+        function createTruck() {
+            // Cab
+            const cabGeometry = new Ninth.BoxGeometry(2.5, 1.5, 2.2);
+            const cab = new Ninth.Mesh(cabGeometry, bodyMaterial);
+            cab.position.set(0.5, 1.0, 0);
+            cab.castShadow = true;
+            car.add(cab);
+
+            // Bed
+            const bedGeometry = new Ninth.BoxGeometry(3.5, 1.0, 2.2);
+            const bed = new Ninth.Mesh(bedGeometry, bodyMaterial);
+            bed.position.set(-2.5, 0.8, 0);
+            bed.castShadow = true;
+            car.add(bed);
+
+            // Windows
+            createWindows(1.8, 0.8, 1.9, 0.8);
+        }
+
+        function createWindows(width, height, depth, yPosition) {
+            // Windshield
+            const windshieldGeometry = new Ninth.BoxGeometry(width * 0.8, height, 0.05);
+            const windshield = new Ninth.Mesh(windshieldGeometry, glassMaterial);
+            windshield.position.set(0, yPosition, depth / 2 - 0.1);
+            windshield.castShadow = false;
+            car.add(windshield);
+
+            // Side windows
+            const sideWindowGeometry = new Ninth.BoxGeometry(0.05, height, depth * 0.8);
+            const leftWindow = new Ninth.Mesh(sideWindowGeometry, glassMaterial);
+            leftWindow.position.set(-width / 2, yPosition, 0);
+            leftWindow.castShadow = false;
+            car.add(leftWindow);
+
+            const rightWindow = new Ninth.Mesh(sideWindowGeometry, glassMaterial);
+            rightWindow.position.set(width / 2, yPosition, 0);
+            rightWindow.castShadow = false;
+            car.add(rightWindow);
+
+            // Rear window
+            const rearWindowGeometry = new Ninth.BoxGeometry(width * 0.8, height, 0.05);
+            const rearWindow = new Ninth.Mesh(rearWindowGeometry, glassMaterial);
+            rearWindow.position.set(0, yPosition, -depth / 2 + 0.1);
+            rearWindow.castShadow = false;
+            car.add(rearWindow);
+        }
+
+        function addWheels() {
+            const wheelPositions = [
+                [-1.6, 0.3, 0.9],
+                [1.6, 0.3, 0.9],
+                [-1.6, 0.3, -0.9],
+                [1.6, 0.3, -0.9]
+            ];
+
+            const scale = currentWheelSize / 18; // Base size is 18 inches
+
+            wheelPositions.forEach(pos => {
+                const wheelGroup = new Ninth.Group();
+                
+                // Tire
+                const tireGeometry = new Ninth.CylinderGeometry(0.4 * scale, 0.4 * scale, 0.3, 16);
+                const tire = new Ninth.Mesh(tireGeometry, tireMaterial);
+                tire.rotation.z = Math.PI / 2;
+                tire.castShadow = true;
+                wheelGroup.add(tire);
+
+                // Rim
+                const rimGeometry = new Ninth.CylinderGeometry(0.3 * scale, 0.3 * scale, 0.32, 16);
+                const rim = new Ninth.Mesh(rimGeometry, wheelMaterial);
+                rim.rotation.z = Math.PI / 2;
+                rim.castShadow = true;
+                wheelGroup.add(rim);
+
+                // Spokes based on wheel style
+                const style = wheelStyles[currentWheelStyle];
+                for (let i = 0; i < style.segments; i++) {
+                    const angle = (i / style.segments) * Math.PI * 2;
+                    const spokeGeometry = new Ninth.BoxGeometry(style.innerRadius * scale, 0.05 * scale, 0.02 * scale);
+                    const spoke = new Ninth.Mesh(spokeGeometry, wheelMaterial);
+                    spoke.position.set(
+                        Math.cos(angle) * style.innerRadius * scale / 2,
+                        0,
+                        Math.sin(angle) * style.innerRadius * scale / 2
+                    );
+                    spoke.rotation.y = angle;
+                    wheelGroup.add(spoke);
+                }
+
+                wheelGroup.position.set(...pos);
+                car.add(wheelGroup);
+            });
+        }
+
+        function setupControls() {
+            // Vehicle type buttons
+            document.querySelectorAll('.vehicle-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.vehicle-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentVehicle = this.dataset.type;
+                    createCar(currentVehicle);
+                });
+            });
+
+            // Paint category buttons
+            document.querySelectorAll('.paint-category').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.paint-category').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPaintCategory = this.dataset.category;
+                    updateColorGrid();
+                    createMaterials();
+                    updateCarMaterials();
+                });
+            });
+
+            // Wheel style buttons
+            document.querySelectorAll('.wheel-style').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.wheel-style').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentWheelStyle = this.dataset.style;
+                    createCar(currentVehicle);
+                });
+            });
+
+            // Interior options
+            document.querySelectorAll('.interior-option').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.interior-option').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentInterior = this.dataset.interior;
+                    createMaterials();
+                    updateCarMaterials();
+                });
+            });
+
+            // Wheel size slider
+            const wheelSizeSlider = document.getElementById('wheelSize');
+            const wheelSizeValue = document.querySelector('.size-value');
+            
+            wheelSizeSlider.addEventListener('input', function() {
+                const value = parseInt(this.value);
+                currentWheelSize = value;
+                wheelSizeValue.textContent = value + ' inches';
+                createCar(currentVehicle);
+            });
+
+            // Lighting controls
+            const lightControls = [
+                { id: 'keyLight', obj: keyLight, valueId: 'keyValue', suffix: '%' },
+                { id: 'fillLight', obj: fillLight, valueId: 'fillValue', suffix: '%' },
+                { id: 'rimLight', obj: rimLight, valueId: 'rimValue', suffix: '%' }
+            ];
+
+            lightControls.forEach(control => {
+                const element = document.getElementById(control.id);
+                const valueElement = document.getElementById(control.valueId);
+                
+                element.addEventListener('input', function() {
+                    const value = parseFloat(this.value);
+                    control.obj.intensity = value / 100;
+                    valueElement.textContent = value + control.suffix;
+                });
+            });
+
+            // Environment color
+            document.getElementById('environmentColor').addEventListener('change', function() {
+                const color = parseInt(this.value.replace('#', '0x'));
+                ambientLight.color.setHex(color);
+                fillLight.color.setHex(color);
+                scene.background.setHex(color);
+            });
+        }
+
+        function updateColorGrid() {
+            const colorGrid = document.getElementById('colorGrid');
+            const colors = paintCategories[currentPaintCategory];
+            
+            colorGrid.innerHTML = colors.map(color => 
+                `<div class="color-option" style="background: ${color}" data-color="${color}"></div>`
+            ).join('');
+
+            // Set first color as active
+            const firstColor = colorGrid.querySelector('.color-option');
+            if (firstColor) {
+                firstColor.classList.add('active');
+                bodyMaterial.color.setHex(parseInt(firstColor.dataset.color.replace('#', '0x')));
+            }
+
+            // Reattach event listeners
+            colorGrid.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    colorGrid.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+                    this.classList.add('active');
+                    bodyMaterial.color.setHex(parseInt(this.dataset.color.replace('#', '0x')));
+                });
+            });
+        }
+
+        function updateCarMaterials() {
+            if (car) {
+                car.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        // Determine material type based on geometry and current vehicle parts
+                        if (child.geometry.type === 'BoxGeometry') {
+                            if (child.position.y > 1.0 || child.position.y < 0.3) {
+                                // Windows
+                                child.material = glassMaterial;
+                            } else {
+                                // Body parts
+                                child.material = bodyMaterial;
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateCarSpecs() {
+            const bodyNames = {
+                sedan: 'Sedan',
+                sports: 'Sports Car',
+                suv: 'SUV',
+                truck: 'Truck'
+            };
+
+            const paintNames = {
+                solid: 'Solid',
+                metallic: 'Metallic',
+                pearl: 'Pearl',
+                matte: 'Matte'
+            };
+
+            const wheelNames = {
+                classic: 'Classic',
+                sport: 'Sport',
+                premium: 'Premium',
+                racing: 'Racing'
+            };
+
+            const interiorNames = {
+                'leather-black': 'Black Leather',
+                'leather-brown': 'Brown Leather',
+                'fabric-gray': 'Gray Fabric',
+                'leather-red': 'Red Leather',
+                'alcantara': 'Alcantara',
+                'leather-white': 'White Leather'
+            };
+
+            document.getElementById('carBody').textContent = bodyNames[currentVehicle];
+            document.getElementById('carWheels').textContent = `${currentWheelSize}" ${wheelNames[currentWheelStyle]} Alloy`;
+            document.getElementById('carInterior').textContent = interiorNames[currentInterior];
+            document.getElementById('carPaint').textContent = `${getCurrentColorName()} (${paintNames[currentPaintCategory]})`;
+            document.getElementById('carPolish').textContent = getPolishType();
+        }
+
+        function getCurrentColorName() {
+            const activeColor = document.querySelector('.color-option.active');
+            if (activeColor) {
+                const colorMap = {
+                    '#000000': 'Black',
+                    '#FFFFFF': 'White',
+                    '#FF0000': 'Red',
+                    '#0000FF': 'Blue',
+                    '#00FF00': 'Green',
+                    '#FFFF00': 'Yellow',
+                    '#FFD700': 'Gold',
+                    '#C0C0C0': 'Silver'
+                };
+                return colorMap[activeColor.dataset.color] || 'Custom';
+            }
+            return 'Custom';
+        }
+
+        function getPolishType() {
+            const polishMap = {
+                solid: 'Standard',
+                metallic: 'High Gloss',
+                pearl: 'Pearl',
+                matte: 'Satin'
+            };
+            return polishMap[currentPaintCategory] || 'Standard';
+        }
+
+        function setEnvironmentPreset(preset) {
+            const presets = {
+                studio: { key: 120, fill: 60, rim: 40, color: '#404040' },
+                garage: { key: 80, fill: 40, rim: 20, color: '#303030' },
+                outdoor: { key: 150, fill: 80, rim: 50, color: '#6080a0' },
+                showroom: { key: 100, fill: 50, rim: 30, color: '#505050' }
+            };
+
+            const p = presets[preset];
+            if (p) {
+                document.getElementById('keyLight').value = p.key;
+                document.getElementById('fillLight').value = p.fill;
+                document.getElementById('rimLight').value = p.rim;
+                document.getElementById('environmentColor').value = p.color;
+                
+                keyLight.intensity = p.key / 100;
+                fillLight.intensity = p.fill / 100;
+                rimLight.intensity = p.rim / 100;
+                
+                const colorHex = parseInt(p.color.replace('#', '0x'));
+                ambientLight.color.setHex(colorHex);
+                fillLight.color.setHex(colorHex);
+                scene.background.setHex(colorHex);
+                
+                document.getElementById('keyValue').textContent = p.key + '%';
+                document.getElementById('fillValue').textContent = p.fill + '%';
+                document.getElementById('rimValue').textContent = p.rim + '%';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('materials').textContent = '5';
+            document.getElementById('textures').textContent = '3';
+            document.getElementById('lights').textContent = '5';
+            document.getElementById('polygons').textContent = '5,234';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Update FPS counter
+            const now = performance.now();
+            stats.frameCount++;
+            
+            if (now - stats.lastTime >= 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (now - stats.lastTime));
+                document.getElementById('fps').textContent = stats.fps;
+                stats.frameCount = 0;
+                stats.lastTime = now;
+            }
+
+            // Gentle rotation for showcase
+            if (car) {
+                car.rotation.y += 0.002;
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

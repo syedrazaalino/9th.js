@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Renderer Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+        
+        .demo-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        canvas {
+            border: 2px solid #4CAF50;
+            border-radius: 4px;
+            background-color: #000;
+        }
+        
+        .info-panel {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
+        }
+        
+        .button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .metric {
+            background-color: #444;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .log-container {
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 4px;
+        }
+        
+        .log-error {
+            color: #ff6b6b;
+        }
+        
+        .log-warning {
+            color: #feca57;
+        }
+        
+        .log-info {
+            color: #48dbfb;
+        }
+        
+        .log-success {
+            color: #0be881;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebGL Renderer Demo</h1>
+        
+        <!-- Basic Renderer Test -->
+        <div class="demo-section">
+            <h2>Basic WebGL Renderer Test</h2>
+            <p>This demo showcases the comprehensive WebGL renderer with context management, shader compilation, and rendering pipeline.</p>
+            
+            <div class="controls">
+                <button class="button" id="initBtn">Initialize Renderer</button>
+                <button class="button" id="runTestsBtn" disabled>Run Tests</button>
+                <button class="button" id="startRenderBtn" disabled>Start Rendering</button>
+                <button class="button" id="stopRenderBtn" disabled>Stop Rendering</button>
+                <button class="button" id="clearLogBtn">Clear Log</button>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="webglCanvas" width="800" height="600"></canvas>
+            </div>
+            
+            <div id="status" class="status" style="display: none;"></div>
+            
+            <div class="performance-metrics" id="metrics" style="display: none;">
+                <div class="metric">
+                    <div class="metric-value" id="fps">0</div>
+                    <div class="metric-label">FPS</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="drawCalls">0</div>
+                    <div class="metric-label">Draw Calls</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="triangles">0</div>
+                    <div class="metric-label">Triangles</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="renderTime">0</div>
+                    <div class="metric-label">Render Time (ms)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- WebGL Info -->
+        <div class="demo-section">
+            <h2>WebGL Capabilities</h2>
+            <div id="webglInfo" class="info-panel">Click "Initialize Renderer" to see WebGL capabilities</div>
+        </div>
+        
+        <!-- Test Results -->
+        <div class="demo-section">
+            <h2>Test Results</h2>
+            <div id="testResults" class="info-panel">No tests run yet</div>
+        </div>
+        
+        <!-- Console Log -->
+        <div class="demo-section">
+            <h2>Console Log</h2>
+            <div id="consoleLog" class="log-container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { WebGLRendererExample } from './webgl-renderer-example.js';
+        
+        class WebGLDemo {
+            constructor() {
+                this.example = null;
+                this.isRendering = false;
+                this.performanceUpdateInterval = null;
+                
+                this.initializeEventListeners();
+            }
+            
+            initializeEventListeners() {
+                document.getElementById('initBtn').addEventListener('click', () => this.initializeRenderer());
+                document.getElementById('runTestsBtn').addEventListener('click', () => this.runTests());
+                document.getElementById('startRenderBtn').addEventListener('click', () => this.startRendering());
+                document.getElementById('stopRenderBtn').addEventListener('click', () => this.stopRendering());
+                document.getElementById('clearLogBtn').addEventListener('click', () => this.clearLog());
+                
+                // Handle window resize
+                window.addEventListener('resize', () => this.handleResize());
+            }
+            
+            async initializeRenderer() {
+                const canvas = document.getElementById('webglCanvas');
+                
+                try {
+                    this.updateStatus('Initializing WebGL Renderer...', 'warning');
+                    this.log('info', 'Starting WebGL Renderer initialization...');
+                    
+                    this.example = new WebGLRendererExample();
+                    await this.example.initialize(canvas, {
+                        antialias: true,
+                        alpha: false,
+                        depth: true,
+                        stencil: false
+                    });
+                    
+                    this.updateStatus('WebGL Renderer initialized successfully!', 'success');
+                    this.log('success', 'WebGL Renderer initialized successfully!');
+                    
+                    // Enable controls
+                    document.getElementById('runTestsBtn').disabled = false;
+                    document.getElementById('startRenderBtn').disabled = false;
+                    document.getElementById('initBtn').disabled = true;
+                    
+                    // Display WebGL info
+                    this.displayWebGLInfo();
+                    
+                } catch (error) {
+                    this.updateStatus(`Failed to initialize WebGL: ${error.message}`, 'error');
+                    this.log('error', `Initialization failed: ${error.message}`);
+                    console.error('Initialization error:', error);
+                }
+            }
+            
+            async runTests() {
+                if (!this.example) {
+                    this.updateStatus('Please initialize the renderer first', 'error');
+                    return;
+                }
+                
+                try {
+                    this.updateStatus('Running comprehensive tests...', 'warning');
+                    this.log('info', 'Starting comprehensive tests...');
+                    
+                    const results = await this.example.runAllTests();
+                    
+                    this.updateStatus('All tests completed!', 'success');
+                    this.log('success', 'All tests completed successfully!');
+                    
+                    this.displayTestResults(results);
+                    
+                } catch (error) {
+                    this.updateStatus(`Tests failed: ${error.message}`, 'error');
+                    this.log('error', `Tests failed: ${error.message}`);
+                    console.error('Test error:', error);
+                }
+            }
+            
+            startRendering() {
+                if (!this.example) {
+                    this.updateStatus('Please initialize the renderer first', 'error');
+                    return;
+                }
+                
+                this.isRendering = true;
+                this.updateStatus('Rendering started', 'success');
+                this.log('info', 'Starting render loop...');
+                
+                // Setup performance monitoring
+                this.startPerformanceMonitoring();
+                
+                // Start the example render loop
+                this.example.startRenderLoop();
+                
+                // Update button states
+                document.getElementById('startRenderBtn').disabled = true;
+                document.getElementById('stopRenderBtn').disabled = false;
+                
+                // Show metrics
+                document.getElementById('metrics').style.display = 'grid';
+            }
+            
+            stopRendering() {
+                this.isRendering = false;
+                this.updateStatus('Rendering stopped', 'warning');
+                this.log('info', 'Render loop stopped');
+                
+                // Stop performance monitoring
+                this.stopPerformanceMonitoring();
+                
+                // Update button states
+                document.getElementById('startRenderBtn').disabled = false;
+                document.getElementById('stopRenderBtn').disabled = true;
+                
+                // Hide metrics
+                document.getElementById('metrics').style.display = 'none';
+            }
+            
+            startPerformanceMonitoring() {
+                if (this.performanceUpdateInterval) {
+                    clearInterval(this.performanceUpdateInterval);
+                }
+                
+                this.performanceUpdateInterval = setInterval(() => {
+                    if (this.example && this.isRendering) {
+                        this.updatePerformanceMetrics();
+                    }
+                }, 100); // Update every 100ms
+            }
+            
+            stopPerformanceMonitoring() {
+                if (this.performanceUpdateInterval) {
+                    clearInterval(this.performanceUpdateInterval);
+                    this.performanceUpdateInterval = null;
+                }
+            }
+            
+            updatePerformanceMetrics() {
+                const performance = this.example.getRenderer().getPerformance();
+                
+                document.getElementById('fps').textContent = Math.round(performance.fps);
+                document.getElementById('drawCalls').textContent = performance.drawCalls;
+                document.getElementById('triangles').textContent = performance.triangles;
+                document.getElementById('renderTime').textContent = performance.renderTime.toFixed(2);
+            }
+            
+            displayWebGLInfo() {
+                const renderer = this.example.getRenderer();
+                const capabilities = renderer.getCapabilities();
+                const features = renderer.getFeatures();
+                
+                const info = `
+Version: ${renderer.version}
+Vendor: ${renderer.vendor}
+Renderer: ${renderer.renderer}
+Max Texture Size: ${renderer.maxTextureSize}
+Max Vertex Attributes: ${renderer.maxVertexAttribs}
+
+Features:
+- Instancing: ${features.instancing ? '✓' : '✗'}
+- Occlusion Query: ${features.occlusionQuery ? '✓' : '✗'}
+- Transform Feedback: ${features.transformFeedback ? '✓' : '✗'}
+- Depth Texture: ${features.depthTexture ? '✓' : '✗'}
+- Float Textures: ${features.floatTextures ? '✓' : '✗'}
+- Half Float Textures: ${features.halfFloatTextures ? '✓' : '✗'}
+
+Extensions: ${Object.keys(capabilities).filter(key => capabilities[key]).length} supported
+                `;
+                
+                document.getElementById('webglInfo').textContent = info;
+            }
+            
+            displayTestResults(results) {
+                let resultsText = 'Test Results:\n\n';
+                
+                if (results.buffers) {
+                    resultsText += '✓ Buffer Creation: Success\n';
+                    resultsText += `  - Vertex Buffer ID: ${results.buffers.bufferId}\n`;
+                    resultsText += `  - Index Buffer ID: ${results.buffers.indexBufferId}\n\n`;
+                }
+                
+                if (results.texture) {
+                    resultsText += '✓ Texture Creation: Success\n';
+                    resultsText += `  - Texture ID: ${results.texture}\n\n`;
+                }
+                
+                if (results.framebuffer) {
+                    resultsText += '✓ Framebuffer Creation: Success\n';
+                    resultsText += `  - Width: ${results.framebuffer.width}\n`;
+                    resultsText += `  - Height: ${results.framebuffer.height}\n\n`;
+                }
+                
+                const errors = this.example.getRenderer().getErrors();
+                if (errors.length > 0) {
+                    resultsText += `\nErrors encountered: ${errors.length}\n`;
+                    errors.forEach((error, index) => {
+                        resultsText += `${index + 1}. ${error.error}\n`;
+                    });
+                }
+                
+                document.getElementById('testResults').textContent = resultsText;
+            }
+            
+            updateStatus(message, type = 'info') {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = message;
+                statusEl.className = `status ${type}`;
+                statusEl.style.display = 'block';
+                
+                // Auto-hide success messages after 3 seconds
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
+                }
+            }
+            
+            log(level, message) {
+                const logContainer = document.getElementById('consoleLog');
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry log-${level}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            clearLog() {
+                document.getElementById('consoleLog').innerHTML = '';
+            }
+            
+            handleResize() {
+                if (this.example) {
+                    const canvas = document.getElementById('webglCanvas');
+                    const rect = canvas.getBoundingClientRect();
+                    this.example.resize(rect.width, rect.height);
+                }
+            }
+            
+            dispose() {
+                this.stopRendering();
+                
+                if (this.example) {
+                    this.example.dispose();
+                }
+                
+                this.stopPerformanceMonitoring();
+            }
+        }
+        
+        // Initialize demo when page loads
+        let demo = null;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            demo = new WebGLDemo();
+            console.log('WebGL Demo initialized');
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (demo) {
+                demo.dispose();
+            }
+        });
+    </script>
+</body>
+</html>

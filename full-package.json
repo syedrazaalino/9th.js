@@ -1,0 +1,178 @@
+{
+  "name": "9th.js-full",
+  "version": "0.1.0",
+  "description": "Complete 3D graphics library with all features and extensions",
+  "type": "module",
+  "main": "dist/full/cjs/index.js",
+  "module": "dist/full/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/full/esm/index.js",
+      "require": "./dist/full/cjs/index.js",
+      "types": "./dist/full/esm/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/full/esm/core/index.js",
+      "require": "./dist/full/cjs/core/index.js",
+      "types": "./dist/full/esm/core/index.d.ts"
+    },
+    "./geometry": {
+      "import": "./dist/full/esm/geometry/index.js",
+      "require": "./dist/full/cjs/geometry/index.js",
+      "types": "./dist/full/esm/geometry/index.d.ts"
+    },
+    "./materials": {
+      "import": "./dist/full/esm/materials/index.js",
+      "require": "./dist/full/cjs/materials/index.js",
+      "types": "./dist/full/esm/materials/index.d.ts"
+    },
+    "./rendering": {
+      "import": "./dist/full/esm/rendering/index.js",
+      "require": "./dist/full/cjs/rendering/index.js",
+      "types": "./dist/full/esm/rendering/index.d.ts"
+    },
+    "./animation": {
+      "import": "./dist/full/esm/animation/index.js",
+      "require": "./dist/full/cjs/animation/index.js",
+      "types": "./dist/full/esm/animation/index.d.ts"
+    },
+    "./loaders": {
+      "import": "./dist/full/esm/loaders/index.js",
+      "require": "./dist/full/cjs/loaders/index.js",
+      "types": "./dist/full/esm/loaders/index.d.ts"
+    },
+    "./lights": {
+      "import": "./dist/full/esm/lights/index.js",
+      "require": "./dist/full/cjs/lights/index.js",
+      "types": "./dist/full/esm/lights/index.d.ts"
+    },
+    "./particles": {
+      "import": "./dist/full/esm/particles/index.js",
+      "require": "./dist/full/cjs/particles/index.js",
+      "types": "./dist/full/esm/particles/index.d.ts"
+    },
+    "./physics": {
+      "import": "./dist/full/esm/physics/index.js",
+      "require": "./dist/full/cjs/physics/index.js",
+      "types": "./dist/full/esm/physics/index.d.ts"
+    },
+    "./controls": {
+      "import": "./dist/full/esm/controls/index.js",
+      "require": "./dist/full/cjs/controls/index.js",
+      "types": "./dist/full/esm/controls/index.d.ts"
+    },
+    "./textures": {
+      "import": "./dist/full/esm/textures/index.js",
+      "require": "./dist/full/cjs/textures/index.js",
+      "types": "./dist/full/esm/textures/index.d.ts"
+    },
+    "./bundle": {
+      "import": "./dist/full/umd/9th.js",
+      "types": "./dist/full/umd/9th.d.ts"
+    }
+  },
+  "files": [
+    "dist/full",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:full && npm run build:types",
+    "build:full": "node build-full.js",
+    "build:esm": "node build-full.js --esm",
+    "build:umd": "node build-full.js --umd",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/full/esm --project tsconfig.json",
+    "dev": "node build-full.js --watch",
+    "test": "jest --testPathPattern=full",
+    "test:integration": "jest --testPathPattern=\"full.*integration\"",
+    "validate": "npm run type-check && npm run lint && npm run test:integration",
+    "prepublishOnly": "npm run validate && npm run build",
+    "clean": "rm -rf dist/full",
+    "release:patch": "npm version patch --channel full && npm publish --tag latest-full",
+    "release:minor": "npm version minor --channel full && npm publish --tag latest-full",
+    "release:major": "npm version major --channel full && npm publish --tag latest-full",
+    "size": "npm run build && npx vite-bundle-analyzer dist/full/**/*.js",
+    "analyze": "npm run build && open dist/full/bundle-analysis.html"
+  },
+  "keywords": [
+    "3d",
+    "graphics",
+    "full",
+    "complete",
+    "webgl",
+    "visualization",
+    "library",
+    "javascript",
+    "typescript",
+    "three-dimensional",
+    "rendering",
+    "animation",
+    "shader",
+    "mesh",
+    "texture",
+    "material",
+    "light",
+    "camera",
+    "physics",
+    "particles"
+  ],
+  "author": {
+    "name": "9th.js Team",
+    "email": "team@9thjs.com",
+    "url": "https://github.com/9thjs"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/9th.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/9th.js/issues"
+  },
+  "homepage": "https://github.com/username/9th.js#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/9thjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "tag": "latest-full"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "size-limit": [
+    {
+      "name": "Full UMD Production",
+      "path": "dist/full/umd/9th.umd.min.js",
+      "limit": "250 KB"
+    },
+    {
+      "name": "Full ES Module Minified",
+      "path": "dist/full/esm/9th.esm.min.js",
+      "limit": "200 KB"
+    },
+    {
+      "name": "Full CommonJS Production",
+      "path": "dist/full/cjs/9th.prod.js",
+      "limit": "180 KB"
+    }
+  ]
+}

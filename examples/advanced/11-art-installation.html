@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Art Installation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: 'Arial', sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #art-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 20px; border-radius: 12px;
+            color: #fff; min-width: 280px; border: 1px solid #333;
+        }
+        #art-controls h3 { color: #ff6b6b; margin-bottom: 15px; text-align: center; }
+        #art-controls select, #art-controls input {
+            width: 100%; padding: 8px; margin: 8px 0;
+            background: rgba(255,255,255,0.1); border: 1px solid #333; color: #fff;
+        }
+        #art-controls button {
+            width: 100%; padding: 10px; margin: 5px 0;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            border: none; border-radius: 6px; color: white; cursor: pointer;
+        }
+        #art-stats {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="art-controls">
+        <h3>🎨 Interactive Art</h3>
+        <label>Art Style:</label>
+        <select id="art-style">
+            <option value="mandala">Sacred Geometry</option>
+            <option value="particles">Particle Flow</option>
+            <option value="fractals">Fractal Garden</option>
+            <option value="responsive">Reactive Waves</option>
+            <option value="kaleidoscope">Kaleidoscope</option>
+        </select>
+        
+        <label>Color Palette:</label>
+        <select id="color-palette">
+            <option value="rainbow">Rainbow</option>
+            <option value="fire">Fire</option>
+            <option value="ocean">Ocean</option>
+            <option value="cosmic">Cosmic</option>
+            <option value="monochrome">Monochrome</option>
+        </select>
+        
+        <label>Animation Speed:</label>
+        <input type="range" id="animation-speed" min="0.1" max="3" step="0.1" value="1">
+        
+        <div>
+            <input type="checkbox" id="sound-reactive">
+            <label for="sound-reactive">Sound Reactive</label>
+        </div>
+        
+        <button id="new-creation">🌟 New Creation</button>
+        <button id="save-art">💾 Save Art</button>
+        <button id="reset-art">🔄 Reset</button>
+    </div>
+    
+    <div id="art-stats">
+        <div><strong>Art Metrics</strong></div>
+        <div>Particles: <span id="particle-count">0</span></div>
+        <div>FPS: <span id="art-fps">60</span></div>
+        <div>Complexity: <span id="complexity">Medium</span></div>
+        <div>Interactions: <span id="interaction-count">0</span></div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class InteractiveArtInstallation {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                this.particles = [];
+                this.geometricShapes = [];
+                this.fractals = [];
+                this.time = 0;
+                this.interactionCount = 0;
+                
+                this.setupCamera();
+                this.setupControls();
+                this.createBaseEnvironment();
+                
+                this.animate();
+            }
+            
+            setupCamera() {
+                this.camera.position.set(0, 0, 50);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Mouse interaction
+                this.mouse = new Engine.Vector2();
+                this.isMouseDown = false;
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    this.interactionCount++;
+                    
+                    if (this.isMouseDown) {
+                        this.createInteractionEffect();
+                    }
+                });
+                
+                this.canvas.addEventListener('mousedown', () => {
+                    this.isMouseDown = true;
+                    this.createInteractionEffect();
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+            }
+            
+            setupControls() {
+                document.getElementById('art-style').addEventListener('change', (e) => {
+                    this.changeArtStyle(e.target.value);
+                });
+                
+                document.getElementById('color-palette').addEventListener('change', (e) => {
+                    this.changeColorPalette(e.target.value);
+                });
+                
+                document.getElementById('animation-speed').addEventListener('input', (e) => {
+                    this.animationSpeed = parseFloat(e.target.value);
+                });
+                
+                document.getElementById('new-creation').addEventListener('click', () => {
+                    this.generateNewArt();
+                });
+                
+                document.getElementById('save-art').addEventListener('click', () => {
+                    this.saveArtwork();
+                });
+                
+                document.getElementById('reset-art').addEventListener('click', () => {
+                    this.resetArt();
+                });
+            }
+            
+            createBaseEnvironment() {
+                this.createSacredGeometry();
+            }
+            
+            createSacredGeometry() {
+                const layers = 8;
+                const baseRadius = 20;
+                
+                for (let layer = 0; layer < layers; layer++) {
+                    const radius = baseRadius * (1 - layer / layers);
+                    const points = (layer + 3) * 6;
+                    
+                    for (let i = 0; i < points; i++) {
+                        const angle = (i / points) * Math.PI * 2;
+                        const x = Math.cos(angle) * radius;
+                        const y = Math.sin(angle) * radius;
+                        
+                        this.createGeometricPoint(x, y, layer, i);
+                    }
+                }
+                
+                // Connect points with lines
+                this.createSacredConnections();
+            }
+            
+            createGeometricPoint(x, y, layer, index) {
+                const geometry = new Engine.SphereGeometry(0.5 + layer * 0.1, 8, 6);
+                const material = new Engine.MeshBasicMaterial({
+                    color: this.getArtColor(layer, index),
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const point = new Engine.Mesh(geometry, material);
+                point.position.set(x, y, layer * 2);
+                
+                point.userData = {
+                    layer: layer,
+                    index: index,
+                    basePosition: new Engine.Vector3(x, y, layer * 2),
+                    rotationSpeed: Math.random() * 0.02 + 0.01,
+                    pulsePhase: Math.random() * Math.PI * 2
+                };
+                
+                this.geometricShapes.push(point);
+                this.scene.add(point);
+            }
+            
+            createSacredConnections() {
+                const connections = [];
+                
+                for (let layer = 0; layer < this.geometricShapes.length; layer += 6) {
+                    if (layer + 6 < this.geometricShapes.length) {
+                        const points = this.geometricShapes.slice(layer, layer + 6);
+                        for (let i = 0; i < points.length; i++) {
+                            const start = points[i].position;
+                            const end = points[(i + 1) % points.length].position;
+                            
+                            const geometry = new Engine.BufferGeometry().setFromPoints([start, end]);
+                            const material = new Engine.LineBasicMaterial({
+                                color: 0xffffff,
+                                transparent: true,
+                                opacity: 0.3
+                            });
+                            
+                            const line = new Engine.Line(geometry, material);
+                            connections.push(line);
+                            this.scene.add(line);
+                        }
+                    }
+                }
+            }
+            
+            createParticleFlow() {
+                for (let i = 0; i < 200; i++) {
+                    const geometry = new Engine.SphereGeometry(0.2, 6, 4);
+                    const material = new Engine.MeshBasicMaterial({
+                        color: this.getRandomArtColor(),
+                        transparent: true,
+                        opacity: 0.6
+                    });
+                    
+                    const particle = new Engine.Mesh(geometry, material);
+                    particle.position.set(
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 20
+                    );
+                    
+                    particle.userData = {
+                        velocity: new Engine.Vector3(
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.05
+                        ),
+                        originalColor: this.getRandomArtColor()
+                    };
+                    
+                    this.particles.push(particle);
+                    this.scene.add(particle);
+                }
+                
+                document.getElementById('particle-count').textContent = this.particles.length;
+            }
+            
+            createFractalGarden() {
+                this.createFractalTree(0, -15, 0, 20, 0, 5);
+                this.createFractalTree(15, -10, 0, 15, Math.PI/3, 4);
+                this.createFractalTree(-15, -10, 0, 15, -Math.PI/3, 4);
+            }
+            
+            createFractalTree(x, y, z, length, angle, depth) {
+                if (depth === 0) return;
+                
+                const endX = x + Math.cos(angle) * length;
+                const endY = y + Math.sin(angle) * length;
+                
+                const geometry = new Engine.BufferGeometry().setFromPoints([
+                    new Engine.Vector3(x, y, z),
+                    new Engine.Vector3(endX, endY, z)
+                ]);
+                
+                const color = this.getFractalColor(depth);
+                const material = new Engine.LineBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: depth * 0.2
+                });
+                
+                const branch = new Engine.Line(geometry, material);
+                this.fractals.push(branch);
+                this.scene.add(branch);
+                
+                // Recursive branches
+                const newLength = length * 0.7;
+                this.createFractalTree(endX, endY, z, newLength, angle + Math.PI/6, depth - 1);
+                this.createFractalTree(endX, endY, z, newLength, angle - Math.PI/6, depth - 1);
+            }
+            
+            createReactiveWaves() {
+                this.waveParticles = [];
+                
+                for (let i = 0; i < 50; i++) {
+                    const geometry = new Engine.SphereGeometry(1, 8, 6);
+                    const material = new Engine.MeshBasicMaterial({
+                        color: this.getRandomArtColor(),
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    
+                    const particle = new Engine.Mesh(geometry, material);
+                    particle.position.set(
+                        (i - 25) * 2,
+                        Math.sin(i * 0.5) * 10,
+                        0
+                    );
+                    
+                    particle.userData = {
+                        index: i,
+                        baseY: Math.sin(i * 0.5) * 10,
+                        frequency: 0.02 + Math.random() * 0.02
+                    };
+                    
+                    this.waveParticles.push(particle);
+                    this.scene.add(particle);
+                }
+            }
+            
+            createKaleidoscope() {
+                this.kaleidoscopeShapes = [];
+                const shapes = 12;
+                
+                for (let i = 0; i < shapes; i++) {
+                    const geometry = new Engine.TorusGeometry(5, 1, 8, 6);
+                    const material = new Engine.MeshBasicMaterial({
+                        color: this.getRandomArtColor(),
+                        transparent: true,
+                        opacity: 0.6,
+                        wireframe: true
+                    });
+                    
+                    const torus = new Engine.Mesh(geometry, material);
+                    torus.position.set(0, 0, i * 3 - 15);
+                    torus.rotation.x = i * 0.5;
+                    torus.rotation.y = i * 0.3;
+                    
+                    torus.userData = {
+                        rotationSpeed: 0.01 + Math.random() * 0.02,
+                        shapeIndex: i
+                    };
+                    
+                    this.kaleidoscopeShapes.push(torus);
+                    this.scene.add(torus);
+                }
+            }
+            
+            createInteractionEffect() {
+                const geometry = new Engine.SphereGeometry(2, 12, 8);
+                const material = new Engine.MeshBasicMaterial({
+                    color: this.getRandomArtColor(),
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const effect = new Engine.Mesh(geometry, material);
+                effect.position.set(
+                    this.mouse.x * 30,
+                    this.mouse.y * 20,
+                    0
+                );
+                
+                this.scene.add(effect);
+                
+                // Animate and remove
+                let scale = 1;
+                let opacity = 0.8;
+                
+                const animate = () => {
+                    scale += 0.1;
+                    opacity -= 0.05;
+                    
+                    effect.scale.setScalar(scale);
+                    effect.material.opacity = opacity;
+                    
+                    if (opacity > 0) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        this.scene.remove(effect);
+                    }
+                };
+                
+                animate();
+            }
+            
+            changeArtStyle(style) {
+                // Clear existing art
+                [...this.particles, ...this.geometricShapes, ...this.fractals, ...this.waveParticles, ...this.kaleidoscopeShapes].forEach(obj => {
+                    if (this.scene.children.includes(obj)) {
+                        this.scene.remove(obj);
+                    }
+                });
+                
+                this.particles = [];
+                this.geometricShapes = [];
+                this.fractals = [];
+                this.waveParticles = [];
+                this.kaleidoscopeShapes = [];
+                
+                // Create new art style
+                switch (style) {
+                    case 'mandala':
+                        this.createSacredGeometry();
+                        break;
+                    case 'particles':
+                        this.createParticleFlow();
+                        break;
+                    case 'fractals':
+                        this.createFractalGarden();
+                        break;
+                    case 'responsive':
+                        this.createReactiveWaves();
+                        break;
+                    case 'kaleidoscope':
+                        this.createKaleidoscope();
+                        break;
+                }
+                
+                document.getElementById('complexity').textContent = 
+                    style === 'particles' ? 'High' : 
+                    style === 'fractals' ? 'Medium' : 'Low';
+            }
+            
+            changeColorPalette(palette) {
+                this.colorPalette = palette;
+                this.updateColors();
+            }
+            
+            updateColors() {
+                const objects = [...this.particles, ...this.geometricShapes, ...this.waveParticles, ...this.kaleidoscopeShapes];
+                
+                objects.forEach((obj, index) => {
+                    if (obj.material && obj.material.color) {
+                        obj.material.color = this.getArtColor(index, obj.userData?.layer || 0);
+                    }
+                });
+            }
+            
+            getArtColor(layer, index) {
+                const palette = this.colorPalette || 'rainbow';
+                const t = (layer + index) / 10;
+                
+                switch (palette) {
+                    case 'rainbow':
+                        const hue = (t * 360) % 360;
+                        return new Engine.Color().setHSL(hue / 360, 0.8, 0.6);
+                    case 'fire':
+                        return new Engine.Color().setHSL(t * 0.1, 1, 0.5 + t * 0.3);
+                    case 'ocean':
+                        return new Engine.Color().setHSL(0.5 + t * 0.2, 0.8, 0.6);
+                    case 'cosmic':
+                        return new Engine.Color().setHSL(t * 0.6, 0.7, 0.5 + Math.sin(t * 10) * 0.2);
+                    case 'monochrome':
+                        return new Engine.Color().setHSL(0, 0, 0.3 + t * 0.4);
+                    default:
+                        return new Engine.Color().setHSL(t, 0.8, 0.6);
+                }
+            }
+            
+            getRandomArtColor() {
+                const palette = this.colorPalette || 'rainbow';
+                const random = Math.random();
+                
+                switch (palette) {
+                    case 'rainbow':
+                        return new Engine.Color().setHSL(random, 0.8, 0.6);
+                    case 'fire':
+                        return new Engine.Color().setHSL(random * 0.1, 1, 0.5 + random * 0.3);
+                    case 'ocean':
+                        return new Engine.Color().setHSL(0.5 + random * 0.2, 0.8, 0.6);
+                    case 'cosmic':
+                        return new Engine.Color().setHSL(random * 0.6, 0.7, 0.5 + Math.sin(random * 10) * 0.2);
+                    case 'monochrome':
+                        return new Engine.Color().setHSL(0, 0, 0.3 + random * 0.4);
+                    default:
+                        return new Engine.Color().setHSL(random, 0.8, 0.6);
+                }
+            }
+            
+            getFractalColor(depth) {
+                const maxDepth = 5;
+                const t = (maxDepth - depth) / maxDepth;
+                return this.getArtColor(0, t * 10);
+            }
+            
+            generateNewArt() {
+                const styles = ['mandala', 'particles', 'fractals', 'responsive', 'kaleidoscope'];
+                const palettes = ['rainbow', 'fire', 'ocean', 'cosmic', 'monochrome'];
+                
+                const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+                const randomPalette = palettes[Math.floor(Math.random() * palettes.length)];
+                
+                document.getElementById('art-style').value = randomStyle;
+                document.getElementById('color-palette').value = randomPalette;
+                
+                this.colorPalette = randomPalette;
+                this.changeArtStyle(randomStyle);
+            }
+            
+            saveArtwork() {
+                // Simulate saving artwork
+                const data = {
+                    style: document.getElementById('art-style').value,
+                    palette: this.colorPalette,
+                    timestamp: Date.now(),
+                    interactions: this.interactionCount
+                };
+                
+                console.log('Artwork saved:', data);
+                alert('Artwork saved successfully! 🎨');
+            }
+            
+            resetArt() {
+                this.time = 0;
+                this.interactionCount = 0;
+                this.changeArtStyle('mandala');
+                document.getElementById('art-style').value = 'mandala';
+                document.getElementById('color-palette').value = 'rainbow';
+                document.getElementById('animation-speed').value = '1';
+                this.animationSpeed = 1;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.time += 0.016 * (this.animationSpeed || 1);
+                
+                // Update geometric shapes
+                this.geometricShapes.forEach(shape => {
+                    shape.rotation.z += shape.userData.rotationSpeed;
+                    
+                    const pulse = Math.sin(this.time + shape.userData.pulsePhase) * 0.1 + 1;
+                    shape.scale.setScalar(pulse);
+                    
+                    const offset = Math.sin(this.time * 2 + shape.userData.index) * 2;
+                    shape.position.z = shape.userData.basePosition.z + offset;
+                });
+                
+                // Update particles
+                this.particles.forEach(particle => {
+                    particle.position.add(particle.userData.velocity);
+                    
+                    // Wrap around screen
+                    if (Math.abs(particle.position.x) > 25) particle.position.x *= -1;
+                    if (Math.abs(particle.position.y) > 20) particle.position.y *= -1;
+                    
+                    // Color cycling
+                    const hue = (this.time * 50 + particle.position.x) % 360;
+                    particle.material.color.setHSL(hue / 360, 0.8, 0.6);
+                });
+                
+                // Update wave particles
+                this.waveParticles.forEach(particle => {
+                    const wave = Math.sin(this.time * 3 + particle.userData.index * 0.2) * 5;
+                    const mouseEffect = Math.sin(this.time * 5 + particle.userData.index) * 
+                                       Math.exp(-Math.abs(this.mouse.x * 10)) * 3;
+                    
+                    particle.position.y = particle.userData.baseY + wave + mouseEffect;
+                    
+                    const intensity = Math.abs(wave + mouseEffect) / 10;
+                    particle.material.opacity = 0.3 + intensity * 0.7;
+                });
+                
+                // Update kaleidoscope
+                this.kaleidoscopeShapes.forEach(shape => {
+                    shape.rotation.x += shape.userData.rotationSpeed;
+                    shape.rotation.y += shape.userData.rotationSpeed * 0.7;
+                    shape.rotation.z += shape.userData.rotationSpeed * 0.5;
+                    
+                    const scale = 1 + Math.sin(this.time * 2 + shape.userData.shapeIndex) * 0.2;
+                    shape.scale.setScalar(scale);
+                });
+                
+                // Camera movement
+                this.camera.position.x = Math.sin(this.time * 0.5) * 10;
+                this.camera.position.y = Math.cos(this.time * 0.3) * 5;
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer.render(this.scene, this.camera);
+                
+                // Update stats
+                document.getElementById('art-fps').textContent = Math.round(1 / 0.016);
+                document.getElementById('interaction-count').textContent = this.interactionCount;
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            new InteractiveArtInstallation();
+        });
+        
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

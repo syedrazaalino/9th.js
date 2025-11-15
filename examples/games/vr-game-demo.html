@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Game Demo - WebXR Integration</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00FFFF;
+            max-width: 300px;
+        }
+        #vrButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background: linear-gradient(45deg, #00FFFF, #0080FF);
+            border: none;
+            color: #000;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 0 30px #00FFFF;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        #vrButton:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 50px #00FFFF;
+        }
+        #vrButton:disabled {
+            background: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #vrInfo {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.2);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #00FFFF;
+        }
+        #stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        #error {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #FF4444;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #FF4444;
+            display: none;
+        }
+        #performance {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <button id="vrButton">🕶️ ENTER VR</button>
+    
+    <div id="ui">
+        <h2>🌌 VR SPACE GAME 🌌</h2>
+        <div id="vrInfo">
+            <div><strong>Status:</strong> <span id="vrStatus">Not Connected</span></div>
+            <div><strong>Score:</strong> <span id="score">0</span></div>
+            <div><strong>Level:</strong> <span id="level">1</span></div>
+            <div><strong>Energy:</strong> <span id="energy">100</span></div>
+        </div>
+        <div id="stats">
+            <div class="stat">
+                <div>🎯 Accuracy</div>
+                <div id="accuracy">100%</div>
+            </div>
+            <div class="stat">
+                <div>🚀 Speed</div>
+                <div id="speed">0</div>
+            </div>
+            <div class="stat">
+                <div>⭐ Collected</div>
+                <div id="collected">0</div>
+            </div>
+            <div class="stat">
+                <div>⚡ Power</div>
+                <div id="power">100%</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="error"></div>
+    
+    <div id="controls">
+        <div><strong>VR Controls:</strong></div>
+        <div>🎮 Trigger: Shoot | Grip: Move | Thumbstick: Navigate</div>
+        <div>🖱️ Desktop: Mouse to look, Click to shoot</div>
+    </div>
+    
+    <div id="performance">
+        FPS: <span id="fps">0</span> | 
+        Objects: <span id="objects">0</span> | 
+        Frame Time: <span id="frametime">0</span>ms
+    </div>
+
+    <script>
+        class VRGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+                
+                // WebXR variables
+                this.xrSession = null;
+                this.xrReferenceSpace = null;
+                this.xrViewerSpace = null;
+                this.xrHitTestSource = null;
+                this.isInVR = false;
+                this.vrSupported = false;
+                
+                // Game state
+                this.score = 0;
+                this.level = 1;
+                this.energy = 100;
+                this.lastShot = 0;
+                this.accuracy = 100;
+                this.totalShots = 0;
+                this.hits = 0;
+                this.collected = 0;
+                
+                // Game objects
+                this.player = {
+                    x: this.width / 2,
+                    y: this.height / 2,
+                    z: 0,
+                    vx: 0,
+                    vy: 0,
+                    vz: 0,
+                    radius: 20,
+                    maxSpeed: 10,
+                    acceleration: 0.5
+                };
+                
+                this.targets = [];
+                this.projectiles = [];
+                this.particles = [];
+                this.collectibles = [];
+                this.obstacles = [];
+                this.stars = [];
+                
+                // VR controller state
+                this.controllers = [];
+                this.controllerModels = [];
+                
+                // Input handling
+                this.keys = {};
+                this.mouse = { x: this.width / 2, y: this.height / 2 };
+                this.mouseDown = false;
+                
+                // Performance tracking
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.frameTimeSum = 0;
+                
+                // Initialize
+                this.checkVRSupport();
+                this.setupControls();
+                this.initializeGame();
+                this.start();
+            }
+            
+            async checkVRSupport() {
+                if ('xr' in navigator) {
+                    try {
+                        this.vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
+                        this.updateVRStatus();
+                    } catch (error) {
+                        console.error('Error checking VR support:', error);
+                        this.showError('VR support check failed');
+                    }
+                } else {
+                    this.showError('WebXR not supported in this browser');
+                }
+            }
+            
+            updateVRStatus() {
+                const status = document.getElementById('vrStatus');
+                const button = document.getElementById('vrButton');
+                
+                if (this.vrSupported) {
+                    status.textContent = 'Ready';
+                    status.style.color = '#00FF00';
+                    button.disabled = false;
+                    button.textContent = '🕶️ ENTER VR';
+                } else {
+                    status.textContent = 'Not Available';
+                    status.style.color = '#FF4444';
+                    button.disabled = true;
+                    button.textContent = 'VR Not Available';
+                }
+            }
+            
+            async startVR() {
+                if (!this.vrSupported) return;
+                
+                try {
+                    const session = await navigator.xr.requestSession('immersive-vr', {
+                        requiredFeatures: ['local-floor'],
+                        optionalFeatures: ['hand-tracking', 'layers']
+                    });
+                    
+                    this.xrSession = session;
+                    this.isInVR = true;
+                    
+                    // Set up session
+                    this.xrSession.addEventListener('end', () => this.onVREnd());
+                    this.xrSession.addEventListener('select', (e) => this.onVRSelect(e));
+                    
+                    // Create reference spaces
+                    this.xrReferenceSpace = await this.xrSession.requestReferenceSpace('local-floor');
+                    
+                    // Set up controllers
+                    this.setupVRControllers();
+                    
+                    // Start render loop
+                    await this.xrSession.requestAnimationFrame((time, frame) => this.onXRFrame(time, frame));
+                    
+                    document.getElementById('vrButton').style.display = 'none';
+                    document.getElementById('ui').style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Error starting VR:', error);
+                    this.showError('Failed to start VR session');
+                }
+            }
+            
+            onVREnd() {
+                this.xrSession = null;
+                this.isInVR = false;
+                this.controllers = [];
+                this.controllerModels = [];
+                
+                document.getElementById('vrButton').style.display = 'block';
+                document.getElementById('ui').style.display = 'block';
+                
+                this.updateVRStatus();
+            }
+            
+            onVRSelect(event) {
+                const controller = event.inputSource;
+                if (controller && controller.gamepad) {
+                    // Shooting in VR
+                    if (this.lastShot === 0) {
+                        this.shoot();
+                        this.lastShot = 10; // Cooldown
+                    }
+                }
+            }
+            
+            setupVRControllers() {
+                for (let i = 0; i < 2; i++) {
+                    const controller = this.xrSession.inputSources[i];
+                    if (controller) {
+                        this.controllers.push({
+                            inputSource: controller,
+                            gamepad: controller.gamepad,
+                            handedness: controller.handedness
+                        });
+                    }
+                }
+            }
+            
+            setupControls() {
+                // VR button
+                document.getElementById('vrButton').addEventListener('click', () => {
+                    this.startVR();
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Mouse controls
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.mouse.x = e.clientX;
+                    this.mouse.y = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mousedown', () => {
+                    this.mouseDown = true;
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.mouseDown = false;
+                });
+            }
+            
+            initializeGame() {
+                // Initialize stars for background
+                for (let i = 0; i < 200; i++) {
+                    this.stars.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        z: Math.random() * 1000,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2
+                    });
+                }
+                
+                // Spawn initial objects
+                this.spawnTargets();
+                this.spawnCollectibles();
+                this.spawnObstacles();
+            }
+            
+            spawnTargets() {
+                for (let i = 0; i < 10; i++) {
+                    this.targets.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        z: Math.random() * 500 - 250,
+                        radius: 15 + Math.random() * 10,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        vz: (Math.random() - 0.5) * 2,
+                        health: 1,
+                        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        value: 100
+                    });
+                }
+            }
+            
+            spawnCollectibles() {
+                for (let i = 0; i < 5; i++) {
+                    this.collectibles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        z: Math.random() * 400 - 200,
+                        radius: 10,
+                        vx: (Math.random() - 0.5),
+                        vy: (Math.random() - 0.5),
+                        vz: (Math.random() - 0.5),
+                        type: Math.random() > 0.5 ? 'energy' : 'power',
+                        value: Math.random() > 0.5 ? 50 : 100
+                    });
+                }
+            }
+            
+            spawnObstacles() {
+                for (let i = 0; i < 8; i++) {
+                    this.obstacles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        z: Math.random() * 300 - 150,
+                        width: 50 + Math.random() * 100,
+                        height: 50 + Math.random() * 100,
+                        depth: 20 + Math.random() * 40,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        vz: (Math.random() - 0.5) * 0.5
+                    });
+                }
+            }
+            
+            update() {
+                if (this.gameOver) return;
+                
+                this.updatePlayer();
+                this.updateObjects();
+                this.handleInput();
+                this.checkCollisions();
+                this.updateStats();
+                
+                this.frameCount++;
+                const now = performance.now();
+                const frameTime = now - this.lastTime;
+                this.frameTimeSum += frameTime;
+                this.lastTime = now;
+                
+                if (this.frameCount >= 30) {
+                    this.fps = Math.round(1000 / (this.frameTimeSum / this.frameCount));
+                    this.frameCount = 0;
+                    this.frameTimeSum = 0;
+                }
+            }
+            
+            updatePlayer() {
+                // Desktop movement
+                if (!this.isInVR) {
+                    const accel = this.player.acceleration;
+                    
+                    if (this.keys['w'] || this.keys['arrowup']) this.player.vy -= accel;
+                    if (this.keys['s'] || this.keys['arrowdown']) this.player.vy += accel;
+                    if (this.keys['a'] || this.keys['arrowleft']) this.player.vx -= accel;
+                    if (this.keys['d'] || this.keys['arrowright']) this.player.vx += accel;
+                    
+                    // VR-like movement with QE for depth
+                    if (this.keys['q']) this.player.vz -= accel;
+                    if (this.keys['e']) this.player.vz += accel;
+                }
+                
+                // Apply velocity with damping
+                this.player.x += this.player.vx;
+                this.player.y += this.player.vy;
+                this.player.z += this.player.vz;
+                
+                this.player.vx *= 0.9;
+                this.player.vy *= 0.9;
+                this.player.vz *= 0.9;
+                
+                // Keep player in bounds
+                this.player.x = Math.max(-400, Math.min(400, this.player.x));
+                this.player.y = Math.max(-300, Math.min(300, this.player.y));
+                this.player.z = Math.max(-200, Math.min(200, this.player.z));
+                
+                // Auto shooting
+                if ((this.mouseDown || this.keys[' ']) && this.lastShot === 0) {
+                    this.shoot();
+                    this.lastShot = 10;
+                }
+                
+                if (this.lastShot > 0) {
+                    this.lastShot--;
+                }
+            }
+            
+            handleInput() {
+                // VR controller input
+                if (this.isInVR) {
+                    for (let controller of this.controllers) {
+                        if (controller.gamepad) {
+                            const gamepad = controller.gamepad;
+                            
+                            // Thumbstick movement
+                            if (gamepad.axes.length >= 2) {
+                                this.player.vx += gamepad.axes[0] * this.player.acceleration;
+                                this.player.vy -= gamepad.axes[1] * this.player.acceleration;
+                            }
+                            
+                            // Trigger shooting
+                            if (gamepad.buttons[0] && gamepad.buttons[0].pressed) {
+                                if (this.lastShot === 0) {
+                                    this.shoot();
+                                    this.lastShot = 10;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            shoot() {
+                const speed = 15;
+                let direction;
+                
+                if (this.isInVR) {
+                    // Shoot from camera position in VR
+                    direction = { x: 0, y: 0, z: -1 };
+                } else {
+                    // Shoot towards mouse position
+                    const dx = this.mouse.x - this.width / 2;
+                    const dy = this.mouse.y - this.height / 2;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    direction = { x: dx / length, y: dy / length, z: 0 };
+                }
+                
+                this.projectiles.push({
+                    x: this.player.x,
+                    y: this.player.y,
+                    z: this.player.z,
+                    vx: direction.x * speed,
+                    vy: direction.y * speed,
+                    vz: direction.z * speed,
+                    radius: 5,
+                    life: 60,
+                    color: '#00FFFF'
+                });
+                
+                this.totalShots++;
+            }
+            
+            updateObjects() {
+                // Update targets
+                for (let i = this.targets.length - 1; i >= 0; i--) {
+                    const target = this.targets[i];
+                    target.x += target.vx;
+                    target.y += target.vy;
+                    target.z += target.vz;
+                    
+                    // Bounce off bounds
+                    if (Math.abs(target.x) > 500) target.vx *= -1;
+                    if (Math.abs(target.y) > 400) target.vy *= -1;
+                    if (Math.abs(target.z) > 300) target.vz *= -1;
+                }
+                
+                // Update projectiles
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const proj = this.projectiles[i];
+                    proj.x += proj.vx;
+                    proj.y += proj.vy;
+                    proj.z += proj.vz;
+                    proj.life--;
+                    
+                    if (proj.life <= 0 || 
+                        Math.abs(proj.x) > 600 || 
+                        Math.abs(proj.y) > 500 || 
+                        Math.abs(proj.z) > 400) {
+                        this.projectiles.splice(i, 1);
+                    }
+                }
+                
+                // Update collectibles
+                for (let collectible of this.collectibles) {
+                    collectible.x += collectible.vx;
+                    collectible.y += collectible.vy;
+                    collectible.z += collectible.vz;
+                    
+                    if (Math.abs(collectible.x) > 500) collectible.vx *= -1;
+                    if (Math.abs(collectible.y) > 400) collectible.vy *= -1;
+                    if (Math.abs(collectible.z) > 300) collectible.vz *= -1;
+                }
+                
+                // Update obstacles
+                for (let obstacle of this.obstacles) {
+                    obstacle.x += obstacle.vx;
+                    obstacle.y += obstacle.vy;
+                    obstacle.z += obstacle.vz;
+                    
+                    if (Math.abs(obstacle.x) > 500) obstacle.vx *= -1;
+                    if (Math.abs(obstacle.y) > 400) obstacle.vy *= -1;
+                    if (Math.abs(obstacle.z) > 300) obstacle.vz *= -1;
+                }
+                
+                // Update particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const particle = this.particles[i];
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.z += particle.vz;
+                    particle.life--;
+                    
+                    if (particle.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            checkCollisions() {
+                // Projectiles vs targets
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const proj = this.projectiles[i];
+                    
+                    for (let j = this.targets.length - 1; j >= 0; j--) {
+                        const target = this.targets[j];
+                        const dist = Math.sqrt(
+                            Math.pow(proj.x - target.x, 2) +
+                            Math.pow(proj.y - target.y, 2) +
+                            Math.pow(proj.z - target.z, 2)
+                        );
+                        
+                        if (dist < proj.radius + target.radius) {
+                            // Hit!
+                            this.createExplosion(target.x, target.y, target.z, target.color);
+                            this.score += target.value;
+                            this.hits++;
+                            this.targets.splice(j, 1);
+                            this.projectiles.splice(i, 1);
+                            
+                            // Respawn new target
+                            setTimeout(() => {
+                                this.spawnTargets();
+                            }, 2000);
+                            break;
+                        }
+                    }
+                }
+                
+                // Player vs collectibles
+                for (let i = this.collectibles.length - 1; i >= 0; i--) {
+                    const collectible = this.collectibles[i];
+                    const dist = Math.sqrt(
+                        Math.pow(this.player.x - collectible.x, 2) +
+                        Math.pow(this.player.y - collectible.y, 2) +
+                        Math.pow(this.player.z - collectible.z, 2)
+                    );
+                    
+                    if (dist < this.player.radius + collectible.radius) {
+                        if (collectible.type === 'energy') {
+                            this.energy = Math.min(100, this.energy + 20);
+                        } else {
+                            this.score += collectible.value;
+                        }
+                        this.collected++;
+                        this.createCollectEffect(collectible.x, collectible.y, collectible.z);
+                        this.collectibles.splice(i, 1);
+                        
+                        // Respawn new collectible
+                        setTimeout(() => {
+                            this.spawnCollectibles();
+                        }, 3000);
+                    }
+                }
+                
+                // Player vs obstacles
+                for (let obstacle of this.obstacles) {
+                    const dist = Math.sqrt(
+                        Math.pow(this.player.x - obstacle.x, 2) +
+                        Math.pow(this.player.y - obstacle.y, 2) +
+                        Math.pow(this.player.z - obstacle.z, 2)
+                    );
+                    
+                    if (dist < this.player.radius + Math.max(obstacle.width, obstacle.height) / 2) {
+                        this.energy -= 5;
+                        this.createExplosion(this.player.x, this.player.y, this.player.z, '#FF4444');
+                        
+                        if (this.energy <= 0) {
+                            this.gameOver = true;
+                        }
+                    }
+                }
+            }
+            
+            createExplosion(x, y, z, color) {
+                for (let i = 0; i < 15; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 5;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        z: z,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        vz: (Math.random() - 0.5) * speed,
+                        life: 30 + Math.random() * 20,
+                        color: color,
+                        size: 3 + Math.random() * 3
+                    });
+                }
+            }
+            
+            createCollectEffect(x, y, z) {
+                for (let i = 0; i < 10; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        z: z,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        vz: (Math.random() - 0.5) * speed,
+                        life: 40 + Math.random() * 20,
+                        color: '#00FF00',
+                        size: 2 + Math.random() * 2
+                    });
+                }
+            }
+            
+            updateStats() {
+                if (this.totalShots > 0) {
+                    this.accuracy = Math.round((this.hits / this.totalShots) * 100);
+                }
+                
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('energy').textContent = Math.round(this.energy);
+                document.getElementById('accuracy').textContent = this.accuracy + '%';
+                
+                const speed = Math.sqrt(
+                    this.player.vx * this.player.vx + 
+                    this.player.vy * this.player.vy + 
+                    this.player.vz * this.player.vz
+                );
+                document.getElementById('speed').textContent = Math.round(speed * 10);
+                document.getElementById('collected').textContent = this.collected;
+                document.getElementById('power').textContent = Math.round((this.score % 1000) / 10) + '%';
+                
+                document.getElementById('fps').textContent = this.fps;
+                document.getElementById('objects').textContent = 
+                    this.targets.length + this.projectiles.length + this.particles.length;
+                document.getElementById('frametime').textContent = 
+                    Math.round(1000 / Math.max(1, this.fps));
+            }
+            
+            render() {
+                // Clear with space gradient
+                const gradient = this.ctx.createRadialGradient(
+                    this.width / 2, this.height / 2, 0,
+                    this.width / 2, this.height / 2, Math.max(this.width, this.height)
+                );
+                gradient.addColorStop(0, '#000011');
+                gradient.addColorStop(0.5, '#000033');
+                gradient.addColorStop(1, '#000066');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Update camera for 3D effect
+                const cameraX = this.player.x;
+                const cameraY = this.player.y;
+                const cameraZ = this.player.z;
+                
+                // Draw stars with parallax
+                this.drawStars(cameraX, cameraY, cameraZ);
+                
+                // Draw objects with 3D projection
+                this.drawObjects(cameraX, cameraY, cameraZ);
+                
+                // Draw particles
+                this.drawParticles(cameraX, cameraY, cameraZ);
+                
+                // Draw player
+                this.drawPlayer(cameraX, cameraY, cameraZ);
+                
+                // Draw crosshair
+                this.drawCrosshair();
+            }
+            
+            drawStars(cameraX, cameraY, cameraZ) {
+                this.ctx.fillStyle = '#FFFFFF';
+                for (let star of this.stars) {
+                    const screenX = (star.x - cameraX) * (this.width / 800) + this.width / 2;
+                    const screenY = (star.y - cameraY) * (this.height / 600) + this.height / 2;
+                    
+                    if (screenX >= 0 && screenX < this.width && 
+                        screenY >= 0 && screenY < this.height) {
+                        const size = Math.max(1, 3 - (star.z - cameraZ) / 100);
+                        this.ctx.globalAlpha = Math.max(0.1, 1 - Math.abs(star.z - cameraZ) / 500);
+                        this.ctx.fillRect(screenX, screenY, size, size);
+                    }
+                }
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawObjects(cameraX, cameraY, cameraZ) {
+                // Draw targets
+                for (let target of this.targets) {
+                    this.draw3DCircle(target, cameraX, cameraY, cameraZ, target.color);
+                }
+                
+                // Draw collectibles
+                for (let collectible of this.collectibles) {
+                    const color = collectible.type === 'energy' ? '#00FF00' : '#FFFF00';
+                    this.draw3DCircle(collectible, cameraX, cameraY, cameraZ, color, true);
+                }
+                
+                // Draw obstacles
+                for (let obstacle of this.obstacles) {
+                    this.draw3DRect(obstacle, cameraX, cameraY, cameraZ);
+                }
+                
+                // Draw projectiles
+                for (let projectile of this.projectiles) {
+                    this.draw3DCircle(projectile, cameraX, cameraY, cameraZ, projectile.color);
+                }
+            }
+            
+            draw3DCircle(obj, cameraX, cameraY, cameraZ, color, glow = false) {
+                const screenX = (obj.x - cameraX) * (this.width / 800) + this.width / 2;
+                const screenY = (obj.y - cameraY) * (this.height / 600) + this.height / 2;
+                const depth = obj.z - cameraZ;
+                const scale = Math.max(0.1, 1 - Math.abs(depth) / 500);
+                const radius = obj.radius * scale;
+                
+                if (screenX >= -radius && screenX < this.width + radius &&
+                    screenY >= -radius && screenY < this.height + radius) {
+                    
+                    if (glow) {
+                        const gradient = this.ctx.createRadialGradient(
+                            screenX, screenY, 0,
+                            screenX, screenY, radius * 2
+                        );
+                        gradient.addColorStop(0, color + '80');
+                        gradient.addColorStop(1, 'transparent');
+                        this.ctx.fillStyle = gradient;
+                        this.ctx.beginPath();
+                        this.ctx.arc(screenX, screenY, radius * 2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                    
+                    this.ctx.fillStyle = color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.strokeStyle = color;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            draw3DRect(obj, cameraX, cameraY, cameraZ) {
+                const screenX = (obj.x - cameraX) * (this.width / 800) + this.width / 2;
+                const screenY = (obj.y - cameraY) * (this.height / 600) + this.height / 2;
+                const depth = obj.z - cameraZ;
+                const scale = Math.max(0.1, 1 - Math.abs(depth) / 500);
+                
+                const width = obj.width * scale;
+                const height = obj.height * scale;
+                
+                if (screenX + width/2 >= 0 && screenX - width/2 < this.width &&
+                    screenY + height/2 >= 0 && screenY - height/2 < this.height) {
+                    
+                    this.ctx.fillStyle = '#FF4444';
+                    this.ctx.fillRect(screenX - width/2, screenY - height/2, width, height);
+                    
+                    this.ctx.strokeStyle = '#FF6666';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(screenX - width/2, screenY - height/2, width, height);
+                }
+            }
+            
+            drawParticles(cameraX, cameraY, cameraZ) {
+                for (let particle of this.particles) {
+                    const screenX = (particle.x - cameraX) * (this.width / 800) + this.width / 2;
+                    const screenY = (particle.y - cameraY) * (this.height / 600) + this.height / 2;
+                    
+                    const alpha = particle.life / 50;
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, particle.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawPlayer(cameraX, cameraY, cameraZ) {
+                const screenX = this.width / 2;
+                const screenY = this.height / 2;
+                
+                // Player ship
+                this.ctx.fillStyle = '#00FFFF';
+                this.ctx.beginPath();
+                this.ctx.moveTo(screenX, screenY - this.player.radius);
+                this.ctx.lineTo(screenX - this.player.radius * 0.7, screenY + this.player.radius);
+                this.ctx.lineTo(screenX + this.player.radius * 0.7, screenY + this.player.radius);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // Player glow
+                if (this.energy < 30) {
+                    this.ctx.strokeStyle = '#FF4444';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, this.player.radius + 5, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawCrosshair() {
+                if (this.isInVR) return;
+                
+                this.ctx.strokeStyle = '#00FFFF';
+                this.ctx.lineWidth = 2;
+                
+                const centerX = this.width / 2;
+                const centerY = this.height / 2;
+                const size = 20;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX - size, centerY);
+                this.ctx.lineTo(centerX + size, centerY);
+                this.ctx.moveTo(centerX, centerY - size);
+                this.ctx.lineTo(centerX, centerY + size);
+                this.ctx.stroke();
+            }
+            
+            async onXRFrame(time, frame) {
+                if (!this.xrSession) return;
+                
+                this.xrSession.requestAnimationFrame((time, frame) => this.onXRFrame(time, frame));
+                
+                const pose = frame.getViewerPose(this.xrReferenceSpace);
+                if (pose) {
+                    // Update VR camera position
+                    for (const view of pose.views) {
+                        // Use view transform for accurate VR rendering
+                        const transform = view.transform;
+                        this.player.x = -transform.position.x * 100;
+                        this.player.y = -transform.position.y * 100;
+                        this.player.z = -transform.position.z * 100;
+                    }
+                }
+                
+                // Update game logic
+                this.update();
+                
+                // Render for VR
+                this.render();
+            }
+            
+            showError(message) {
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+            
+            gameLoop() {
+                if (!this.isInVR) {
+                    this.update();
+                    this.render();
+                    requestAnimationFrame(() => this.gameLoop());
+                }
+            }
+            
+            start() {
+                if (!this.isInVR) {
+                    this.gameLoop();
+                }
+            }
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            new VRGame();
+        });
+    </script>
+</body>
+</html>

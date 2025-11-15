@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Platformer - Mario-Style Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            font-family: 'Courier New', monospace;
+        }
+        #gameContainer {
+            text-align: center;
+            background: #8B4513;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        canvas {
+            border: 3px solid #000;
+            background: #90EE90;
+            image-rendering: pixelated;
+        }
+        #ui {
+            margin-top: 15px;
+            color: white;
+            font-size: 18px;
+        }
+        .controls {
+            margin-top: 10px;
+            color: #FFD700;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1 style="color: white; margin: 0 0 10px 0;">Super Platformer</h1>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="ui">
+            <div>Score: <span id="score">0</span></div>
+            <div>Lives: <span id="lives">3</span></div>
+            <div>Level: <span id="level">1</span></div>
+        </div>
+        <div class="controls">
+            ← → Move | ↑ Jump | Space: Attack | R: Restart
+        </div>
+    </div>
+
+    <script>
+        class PlatformerGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+                
+                this.game = {
+                    score: 0,
+                    lives: 3,
+                    level: 1,
+                    gameOver: false,
+                    won: false
+                };
+                
+                this.camera = { x: 0, y: 0 };
+                this.keys = {};
+                
+                this.initLevel();
+                this.setupControls();
+                this.start();
+            }
+            
+            initLevel() {
+                // Player
+                this.player = {
+                    x: 50,
+                    y: 300,
+                    width: 32,
+                    height: 32,
+                    vx: 0,
+                    vy: 0,
+                    speed: 5,
+                    jumpPower: 15,
+                    grounded: false,
+                    direction: 1,
+                    attacking: false,
+                    attackTimer: 0
+                };
+                
+                // Platforms
+                this.platforms = [
+                    { x: 0, y: 350, width: 200, height: 50 },
+                    { x: 250, y: 300, width: 150, height: 20 },
+                    { x: 450, y: 250, width: 100, height: 20 },
+                    { x: 600, y: 200, width: 200, height: 20 },
+                    { x: 850, y: 350, width: 300, height: 50 },
+                    { x: 1200, y: 280, width: 150, height: 20 },
+                    { x: 1400, y: 200, width: 100, height: 20 },
+                    { x: 1550, y: 150, width: 200, height: 20 },
+                    { x: 1800, y: 350, width: 200, height: 50 }
+                ];
+                
+                // Coins
+                this.coins = [
+                    { x: 275, y: 270, collected: false },
+                    { x: 475, y: 220, collected: false },
+                    { x: 650, y: 170, collected: false },
+                    { x: 1275, y: 250, collected: false },
+                    { x: 1425, y: 170, collected: false },
+                    { x: 1575, y: 120, collected: false },
+                    { x: 950, y: 320, collected: false },
+                    { x: 1350, y: 320, collected: false },
+                    { x: 1850, y: 320, collected: false }
+                ];
+                
+                // Enemies
+                this.enemies = [
+                    { x: 300, y: 268, width: 30, height: 30, vx: 1, direction: 1 },
+                    { x: 625, y: 168, width: 30, height: 30, vx: -1, direction: -1 },
+                    { x: 1225, y: 248, width: 30, height: 30, vx: 1.5, direction: 1 },
+                    { x: 1425, y: 168, width: 30, height: 30, vx: -1, direction: -1 }
+                ];
+                
+                // Goal
+                this.goal = { x: 1900, y: 300, width: 30, height: 50 };
+                
+                this.enemyPlatform = {};
+            }
+            
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key] = true;
+                    if (e.key === 'r' || e.key === 'R') {
+                        this.restart();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key] = false;
+                    if (e.key === ' ') {
+                        this.player.attacking = true;
+                        this.player.attackTimer = 15;
+                    }
+                });
+            }
+            
+            start() {
+                this.gameLoop();
+            }
+            
+            update() {
+                if (this.game.gameOver || this.game.won) return;
+                
+                // Player movement
+                this.handlePlayerMovement();
+                
+                // Update player physics
+                this.updatePlayerPhysics();
+                
+                // Check collisions
+                this.checkCollisions();
+                
+                // Update enemies
+                this.updateEnemies();
+                
+                // Update camera
+                this.updateCamera();
+                
+                // Check win condition
+                this.checkWinCondition();
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            handlePlayerMovement() {
+                // Horizontal movement
+                if (this.keys['ArrowLeft']) {
+                    this.player.vx = -this.player.speed;
+                    this.player.direction = -1;
+                } else if (this.keys['ArrowRight']) {
+                    this.player.vx = this.player.speed;
+                    this.player.direction = 1;
+                } else {
+                    this.player.vx *= 0.8;
+                }
+                
+                // Jump
+                if (this.keys['ArrowUp'] && this.player.grounded) {
+                    this.player.vy = -this.player.jumpPower;
+                    this.player.grounded = false;
+                }
+                
+                // Attack
+                if (this.player.attackTimer > 0) {
+                    this.player.attackTimer--;
+                    if (this.player.attackTimer <= 0) {
+                        this.player.attacking = false;
+                    }
+                }
+            }
+            
+            updatePlayerPhysics() {
+                // Apply gravity
+                this.player.vy += 0.8;
+                
+                // Update position
+                this.player.x += this.player.vx;
+                this.player.y += this.player.vy;
+                
+                // World bounds
+                if (this.player.x < 0) this.player.x = 0;
+                if (this.player.x + this.player.width > 2000) {
+                    this.player.x = 2000 - this.player.width;
+                }
+                
+                // Ground
+                if (this.player.y > this.height - this.player.height) {
+                    this.player.y = this.height - this.player.height;
+                    this.player.vy = 0;
+                    this.player.grounded = true;
+                }
+            }
+            
+            checkCollisions() {
+                // Platform collisions
+                this.player.grounded = false;
+                for (let platform of this.platforms) {
+                    if (this.rectCollision(this.player, platform)) {
+                        if (this.player.vy > 0 && this.player.y < platform.y) {
+                            this.player.y = platform.y - this.player.height;
+                            this.player.vy = 0;
+                            this.player.grounded = true;
+                        }
+                    }
+                }
+                
+                // Coin collection
+                for (let coin of this.coins) {
+                    if (!coin.collected && this.rectCollision(this.player, coin)) {
+                        coin.collected = true;
+                        this.game.score += 100;
+                    }
+                }
+                
+                // Enemy collision
+                for (let enemy of this.enemies) {
+                    if (this.rectCollision(this.player, enemy)) {
+                        if (this.player.attacking && this.player.attackTimer > 10) {
+                            // Defeat enemy
+                            const index = this.enemies.indexOf(enemy);
+                            this.enemies.splice(index, 1);
+                            this.game.score += 200;
+                        } else if (!this.player.invulnerable) {
+                            // Player takes damage
+                            this.game.lives--;
+                            this.player.invulnerable = true;
+                            setTimeout(() => this.player.invulnerable = false, 2000);
+                            
+                            if (this.game.lives <= 0) {
+                                this.game.gameOver = true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            updateEnemies() {
+                for (let enemy of this.enemies) {
+                    enemy.x += enemy.vx * enemy.direction;
+                    
+                    // Simple AI - reverse direction at edges
+                    if (enemy.x <= 0 || enemy.x >= this.width) {
+                        enemy.direction *= -1;
+                    }
+                }
+            }
+            
+            updateCamera() {
+                this.camera.x = this.player.x - this.width / 2 + this.player.width / 2;
+                if (this.camera.x < 0) this.camera.x = 0;
+                if (this.camera.x > 2000 - this.width) {
+                    this.camera.x = 2000 - this.width;
+                }
+            }
+            
+            checkWinCondition() {
+                if (this.rectCollision(this.player, this.goal)) {
+                    this.game.won = true;
+                    this.game.score += 1000;
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('score').textContent = this.game.score;
+                document.getElementById('lives').textContent = this.game.lives;
+                document.getElementById('level').textContent = this.game.level;
+            }
+            
+            rectCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+            
+            restart() {
+                this.game = { score: 0, lives: 3, level: 1, gameOver: false, won: false };
+                this.initLevel();
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#90EE90';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Save context for camera
+                this.ctx.save();
+                this.ctx.translate(-this.camera.x, -this.camera.y);
+                
+                // Draw background elements
+                this.drawBackground();
+                
+                // Draw platforms
+                this.ctx.fillStyle = '#8B4513';
+                for (let platform of this.platforms) {
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    this.ctx.strokeStyle = '#654321';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                }
+                
+                // Draw coins
+                for (let coin of this.coins) {
+                    if (!coin.collected) {
+                        this.ctx.fillStyle = '#FFD700';
+                        this.ctx.beginPath();
+                        this.ctx.arc(coin.x + 10, coin.y + 10, 8, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.strokeStyle = '#FFA500';
+                        this.ctx.stroke();
+                    }
+                }
+                
+                // Draw enemies
+                for (let enemy of this.enemies) {
+                    this.ctx.fillStyle = '#FF4444';
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    this.ctx.fillStyle = '#000';
+                    this.ctx.fillRect(enemy.x + 5, enemy.y + 5, 5, 5);
+                    this.ctx.fillRect(enemy.x + 15, enemy.y + 5, 5, 5);
+                }
+                
+                // Draw goal
+                this.ctx.fillStyle = '#FF69B4';
+                this.ctx.fillRect(this.goal.x, this.goal.y, this.goal.width, this.goal.height);
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.font = '16px Arial';
+                this.ctx.fillText('GOAL', this.goal.x - 10, this.goal.y - 10);
+                
+                // Draw player
+                this.ctx.fillStyle = this.player.invulnerable ? '#FFFF00' : '#4169E1';
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                // Draw player direction indicator
+                if (this.player.direction === -1) {
+                    this.ctx.fillStyle = '#FFFF00';
+                    this.ctx.fillRect(this.player.x, this.player.y + 10, 5, 5);
+                } else {
+                    this.ctx.fillStyle = '#FFFF00';
+                    this.ctx.fillRect(this.player.x + this.player.width - 5, this.player.y + 10, 5, 5);
+                }
+                
+                // Draw attack effect
+                if (this.player.attacking) {
+                    this.ctx.fillStyle = '#FF4500';
+                    const attackX = this.player.direction === 1 ? 
+                        this.player.x + this.player.width : 
+                        this.player.x - 15;
+                    this.ctx.fillRect(attackX, this.player.y, 15, this.player.height);
+                }
+                
+                this.ctx.restore();
+                
+                // Draw UI overlays
+                if (this.game.gameOver) {
+                    this.drawGameOver();
+                } else if (this.game.won) {
+                    this.drawWin();
+                }
+            }
+            
+            drawBackground() {
+                // Simple parallax background
+                this.ctx.fillStyle = '#87CEEB';
+                this.ctx.fillRect(0, 0, this.width, 100);
+                
+                // Clouds
+                this.ctx.fillStyle = '#FFFFFF';
+                for (let i = 0; i < 5; i++) {
+                    const x = (i * 400 - this.camera.x * 0.5) % (this.width + 200);
+                    this.drawCloud(x, 50);
+                    this.drawCloud(x + 300, 80);
+                }
+            }
+            
+            drawCloud(x, y) {
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 20, 0, Math.PI * 2);
+                this.ctx.arc(x + 25, y, 30, 0, Math.PI * 2);
+                this.ctx.arc(x + 50, y, 20, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            drawGameOver() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.font = '48px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('GAME OVER', this.width / 2, this.height / 2);
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText('Press R to restart', this.width / 2, this.height / 2 + 50);
+                this.ctx.textAlign = 'left';
+            }
+            
+            drawWin() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.font = '48px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('YOU WIN!', this.width / 2, this.height / 2);
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText('Final Score: ' + this.game.score, this.width / 2, this.height / 2 + 50);
+                this.ctx.fillText('Press R to play again', this.width / 2, this.height / 2 + 80);
+                this.ctx.textAlign = 'left';
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            new PlatformerGame();
+        });
+    </script>
+</body>
+</html>

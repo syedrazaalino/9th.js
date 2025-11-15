@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>04 - Materials: Appearance and Properties</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 320px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #3498db;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+        }
+        
+        .material-demo {
+            margin: 8px 0;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .material-demo:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .material-demo.basic { border-left-color: #e74c3c; }
+        .material-demo.lambert { border-left-color: #2ecc71; }
+        .material-demo.phong { border-left-color: #f39c12; }
+        .material-demo.standard { border-left-color: #9b59b6; }
+        .material-demo.physical { border-left-color: #1abc9c; }
+        
+        code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #81c784;
+            font-size: 11px;
+        }
+        
+        .highlight {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls label {
+            display: block;
+            margin: 6px 0;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .controls input[type="range"] {
+            width: 100px;
+            margin-right: 10px;
+        }
+        
+        .material-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            max-width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎨 Tutorial 04: Materials</h1>
+        <div class="step">
+            <strong>Goal:</strong> Learn different material types and properties
+        </div>
+        <div class="step">
+            <strong>Material Types:</strong>
+            <div class="material-demo basic" onclick="focusOnMaterial('basic')">
+                <strong>Basic</strong> - Simple colored or textured<br>
+                <small>No lighting, always bright</small>
+            </div>
+            <div class="material-demo lambert" onclick="focusOnMaterial('lambert')">
+                <strong>Lambert</strong> - Simple diffuse lighting<br>
+                <small>Matte, non-reflective surfaces</small>
+            </div>
+            <div class="material-demo phong" onclick="focusOnMaterial('phong')">
+                <strong>Phong</strong> - Diffuse + specular highlights<br>
+                <small>Shiny surfaces with reflections</small>
+            </div>
+            <div class="material-demo standard" onclick="focusOnMaterial('standard')">
+                <strong>Standard</strong> - PBR (Physically Based)<br>
+                <small>Realistic metalness/roughness</small>
+            </div>
+            <div class="material-demo physical" onclick="focusOnMaterial('physical')">
+                <strong>Physical</strong> - Advanced PBR<br>
+                <small>Most realistic, advanced features</small>
+            </div>
+        </div>
+        <div class="controls">
+            <strong>Adjust Properties:</strong><br>
+            <label>Metalness: <input type="range" id="metalness" min="0" max="1" step="0.1" value="0.5"></label>
+            <label>Roughness: <input type="range" id="roughness" min="0" max="1" step="0.1" value="0.5"></label>
+            <label>Shininess: <input type="range" id="shininess" min="0" max="100" value="30"></label>
+        </div>
+        <div class="step">
+            <span class="highlight">🖱️ Click material types to focus on them!</span>
+        </div>
+    </div>
+    
+    <div class="material-info">
+        <strong>Current Material:</strong> <span id="current-material">Standard</span><br>
+        <strong>Properties:</strong><br>
+        Metalness: <span id="current-metalness">0.5</span><br>
+        Roughness: <span id="current-roughness">0.5</span><br>
+        Color: <span id="current-color">#8b5cf6</span>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 04: MATERIALS AND APPEARANCE
+         * ==========================================
+         * 
+         * Materials define how objects look in 3D space:
+         * - Color (diffuse/albedo)
+         * - How they react to light
+         * - Surface properties (shiny, matte, metallic)
+         * - Texture mapping
+         * 
+         * MATERIAL PROGRESSION (from simple to advanced):
+         * 1. BasicMaterial - No lighting, just color
+         * 2. LambertMaterial - Simple diffuse lighting
+         * 3. PhongMaterial - Diffuse + specular highlights
+         * 4. StandardMaterial - PBR with metalness/roughness
+         * 5. PhysicalMaterial - Advanced PBR
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let materialObjects = {};
+        let currentFocusedMaterial = null;
+        let animationId;
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+            
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 5, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+        }
+        
+        // ==========================================
+        // CREATE DIFFERENT MATERIAL TYPES
+        // ==========================================
+        function createMaterialObjects() {
+            const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const positions = [
+                { x: -8, name: 'basic' },
+                { x: -4, name: 'lambert' },
+                { x: 0, name: 'phong' },
+                { x: 4, name: 'standard' },
+                { x: 8, name: 'physical' }
+            ];
+            
+            positions.forEach((pos, index) => {
+                let material, object;
+                const color = new THREE.Color().setHSL(index / positions.length, 0.7, 0.6);
+                
+                switch (pos.name) {
+                    case 'basic':
+                        // BasicMaterial: No lighting calculations, always visible
+                        material = new THREE.MeshBasicMaterial({ color: color });
+                        break;
+                        
+                    case 'lambert':
+                        // LambertMaterial: Simple diffuse lighting (matte surfaces)
+                        material = new THREE.MeshLambertMaterial({ color: color });
+                        break;
+                        
+                    case 'phong':
+                        // PhongMaterial: Diffuse + specular highlights
+                        material = new THREE.MeshPhongMaterial({ 
+                            color: color,
+                            shininess: 30,
+                            specular: new THREE.Color(0x111111)
+                        });
+                        break;
+                        
+                    case 'standard':
+                        // StandardMaterial: PBR (Physically Based Rendering)
+                        material = new THREE.MeshStandardMaterial({ 
+                            color: color,
+                            metalness: 0.5,
+                            roughness: 0.5
+                        });
+                        break;
+                        
+                    case 'physical':
+                        // PhysicalMaterial: Advanced PBR with clearcoat, etc.
+                        material = new THREE.MeshPhysicalMaterial({ 
+                            color: color,
+                            metalness: 0.5,
+                            roughness: 0.5,
+                            clearcoat: 0.3,
+                            clearcoatRoughness: 0.1
+                        });
+                        break;
+                }
+                
+                object = new THREE.Mesh(geometry, material);
+                object.position.x = pos.x;
+                object.castShadow = true;
+                object.receiveShadow = true;
+                
+                // Add a glowing sphere behind for lighting effects
+                const lightSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.3, 16, 16),
+                    new THREE.MeshBasicMaterial({ 
+                        color: color,
+                        transparent: true,
+                        opacity: 0.8
+                    })
+                );
+                lightSphere.position.set(pos.x, 3, -2);
+                
+                scene.add(object);
+                scene.add(lightSphere);
+                
+                materialObjects[pos.name] = {
+                    mesh: object,
+                    light: lightSphere,
+                    material: material,
+                    name: pos.name.charAt(0).toUpperCase() + pos.name.slice(1)
+                };
+            });
+            
+            // Add ground plane
+            const groundGeometry = new THREE.PlaneGeometry(30, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                roughness: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+        }
+        
+        // ==========================================
+        // LIGHTING SETUP
+        // ==========================================
+        function setupLighting() {
+            // Ambient light - base illumination
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            // Directional light - main light source (like the sun)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            scene.add(directionalLight);
+            
+            // Point light - moving point light for dynamic highlights
+            const pointLight = new THREE.PointLight(0xffffff, 0.5, 100);
+            pointLight.position.set(0, 5, 5);
+            scene.add(pointLight);
+            
+            return pointLight;
+        }
+        
+        // ==========================================
+        // FOCUS ON SPECIFIC MATERIAL
+        // ==========================================
+        function focusOnMaterial(materialName) {
+            // Reset all objects
+            Object.values(materialObjects).forEach(obj => {
+                obj.mesh.position.y = 0;
+                obj.mesh.scale.set(1, 1, 1);
+            });
+            
+            // Focus on selected material
+            const selected = materialObjects[materialName];
+            if (selected) {
+                selected.mesh.position.y = 2;
+                selected.mesh.scale.set(1.3, 1.3, 1.3);
+                currentFocusedMaterial = materialName;
+                
+                updateMaterialInfo(materialName);
+            }
+        }
+        
+        // ==========================================
+        // UPDATE MATERIAL INFORMATION DISPLAY
+        // ==========================================
+        function updateMaterialInfo(materialName) {
+            const material = materialObjects[materialName].material;
+            
+            document.getElementById('current-material').textContent = 
+                materialObjects[materialName].name;
+            
+            if (material.metalness !== undefined) {
+                document.getElementById('current-metalness').textContent = 
+                    material.metalness.toFixed(1);
+            }
+            
+            if (material.roughness !== undefined) {
+                document.getElementById('current-roughness').textContent = 
+                    material.roughness.toFixed(1);
+            }
+            
+            document.getElementById('current-color').textContent = 
+                '#' + material.color.getHexString();
+        }
+        
+        // ==========================================
+        // MATERIAL PROPERTY CONTROLS
+        // ==========================================
+        function setupMaterialControls() {
+            const metalnessSlider = document.getElementById('metalness');
+            const roughnessSlider = document.getElementById('roughness');
+            const shininessSlider = document.getElementById('shininess');
+            
+            function updateMaterialProperties() {
+                const metalness = parseFloat(metalnessSlider.value);
+                const roughness = parseFloat(roughnessSlider.value);
+                const shininess = parseInt(shininessSlider.value);
+                
+                // Update all materials that support these properties
+                Object.values(materialObjects).forEach(obj => {
+                    const material = obj.material;
+                    
+                    if (material.metalness !== undefined) {
+                        material.metalness = metalness;
+                    }
+                    
+                    if (material.roughness !== undefined) {
+                        material.roughness = roughness;
+                    }
+                    
+                    if (material.shininess !== undefined) {
+                        material.shininess = shininess;
+                    }
+                    
+                    material.needsUpdate = true;
+                });
+                
+                // Update display if we have a focused material
+                if (currentFocusedMaterial) {
+                    updateMaterialInfo(currentFocusedMaterial);
+                }
+            }
+            
+            metalnessSlider.addEventListener('input', updateMaterialProperties);
+            roughnessSlider.addEventListener('input', updateMaterialProperties);
+            shininessSlider.addEventListener('input', updateMaterialProperties);
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate(pointLight) {
+            animationId = requestAnimationFrame(() => animate(pointLight));
+            
+            const time = Date.now() * 0.001;
+            
+            // Rotate all spheres
+            Object.values(materialObjects).forEach((obj, index) => {
+                obj.mesh.rotation.y += 0.01;
+                obj.mesh.rotation.x = Math.sin(time + index) * 0.1;
+                
+                // Gentle floating motion
+                obj.mesh.position.y = Math.sin(time * 0.5 + index) * 0.5;
+                
+                // Rotate the light spheres
+                obj.light.rotation.y += 0.02;
+            });
+            
+            // Move the point light in a circle
+            pointLight.position.x = Math.cos(time * 0.5) * 5;
+            pointLight.position.z = Math.sin(time * 0.5) * 5;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🎨 Starting Materials Demo...');
+            
+            setupScene();
+            createMaterialObjects();
+            const pointLight = setupLighting();
+            setupMaterialControls();
+            
+            // Start focused on standard material
+            setTimeout(() => focusOnMaterial('standard'), 500);
+            
+            window.addEventListener('resize', handleResize);
+            animate(pointLight);
+            
+            console.log('✅ Materials demo initialized!');
+        }
+        
+        // Make focusOnMaterial globally available for onclick handlers
+        window.focusOnMaterial = focusOnMaterial;
+        
+        init();
+        
+        // ==========================================
+        // EXPERIMENT IDEAS:
+        // ==========================================
+        // 1. Try different colors for each material type
+        // 2. Experiment with extreme values (0 or 1 for metalness/roughness)
+        // 3. Add textures to materials
+        // 4. Create transparent materials with opacity < 1
+        // 5. Add emissive properties for glowing effects
+        // 6. Try combining different material properties
+        // 7. Create a material library with preset combinations
+    </script>
+</body>
+</html>

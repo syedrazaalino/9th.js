@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stealth Game - Shadows and Infiltration</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+        }
+        #stealthMeter {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        #stealthFill {
+            height: 100%;
+            background: linear-gradient(90deg, #00FF00, #FFFF00, #FF0000);
+            width: 100%;
+            transition: width 0.3s;
+        }
+        #alertLevel {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #FF4444;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        #alertFill {
+            height: 100%;
+            background: linear-gradient(90deg, #00FF00, #FFFF00, #FF0000);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        #mission {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 5px;
+        }
+        #objectives {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+            max-width: 250px;
+        }
+        .objective {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .objective.completed {
+            background: rgba(0, 255, 0, 0.3);
+            text-decoration: line-through;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #4CAF50;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            color: #FF4444;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #FF4444;
+            display: none;
+        }
+        #winScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            color: #00FF00;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #00FF00;
+            display: none;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <h2>STEALTH AGENT</h2>
+        <div>
+            <div>Stealth Level:</div>
+            <div id="stealthMeter">
+                <div id="stealthFill"></div>
+            </div>
+        </div>
+        <div>
+            <div>Alert Level:</div>
+            <div id="alertLevel">
+                <div id="alertFill"></div>
+            </div>
+        </div>
+        <div>Score: <span id="score">0</span></div>
+        <div>Time: <span id="time">0</span>s</div>
+        <div>Documents Collected: <span id="documents">0</span>/5</div>
+    </div>
+    
+    <div id="objectives">
+        <h3>MISSION OBJECTIVES</h3>
+        <div class="objective" id="obj1">1. Infiltrate the facility</div>
+        <div class="objective" id="obj2">2. Collect 5 classified documents</div>
+        <div class="objective" id="obj3">3. Avoid security cameras</div>
+        <div class="objective" id="obj4">4. Evacuate without detection</div>
+    </div>
+    
+    <div id="controls">
+        <div><strong>Controls:</strong></div>
+        <div>WASD: Move | Shift: Sneak | Space: Hide | Mouse: Look</div>
+        <div>Click to lock mouse for first-person view</div>
+    </div>
+    
+    <div id="gameOver">
+        <h2>DETECTED!</h2>
+        <p>You were spotted by security. Mission failed.</p>
+        <button onclick="restartGame()">Try Again</button>
+    </div>
+    
+    <div id="winScreen">
+        <h2>MISSION COMPLETE!</h2>
+        <p>Excellent work, agent. All objectives completed.</p>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        class StealthGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+                
+                // Player state
+                this.player = {
+                    x: 100,
+                    y: 100,
+                    angle: 0,
+                    radius: 15,
+                    speed: 2,
+                    sneaking: false,
+                    hidden: false,
+                    visible: true
+                };
+                
+                // Game state
+                this.stealthLevel = 100;
+                this.alertLevel = 0;
+                this.score = 0;
+                this.startTime = Date.now();
+                this.documentsCollected = 0;
+                this.gameOver = false;
+                this.gameWon = false;
+                this.cameraLocked = false;
+                
+                // World
+                this.walls = [];
+                this.cameras = [];
+                this.guards = [];
+                this.documents = [];
+                this.lightSources = [];
+                this.shadows = [];
+                
+                // Input
+                this.keys = {};
+                this.mouseX = this.width / 2;
+                this.mouseY = this.height / 2;
+                
+                // Objectives
+                this.objectives = {
+                    infiltrated: false,
+                    documentsCollected: false,
+                    camerasAvoided: false,
+                    evacuated: false
+                };
+                
+                this.setupControls();
+                this.generateLevel();
+                this.start();
+            }
+            
+            setupControls() {
+                // Keyboard
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Mouse
+                this.canvas.addEventListener('click', () => {
+                    if (!this.cameraLocked) {
+                        this.canvas.requestPointerLock();
+                        this.cameraLocked = true;
+                    }
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (this.cameraLocked) {
+                        this.player.angle += e.movementX * 0.01;
+                    } else {
+                        this.mouseX = e.clientX;
+                        this.mouseY = e.clientY;
+                    }
+                });
+                
+                document.addEventListener('pointerlockchange', () => {
+                    this.cameraLocked = document.pointerLockElement === this.canvas;
+                });
+            }
+            
+            generateLevel() {
+                // Create walls for facility layout
+                this.walls = [
+                    // Outer walls
+                    { x: 0, y: 0, width: 2000, height: 20 },
+                    { x: 0, y: 1980, width: 2000, height: 20 },
+                    { x: 0, y: 0, width: 20, height: 2000 },
+                    { x: 1980, y: 0, width: 20, height: 2000 },
+                    
+                    // Internal walls
+                    { x: 300, y: 300, width: 1400, height: 20 },
+                    { x: 300, y: 300, width: 20, height: 800 },
+                    { x: 1680, y: 300, width: 20, height: 800 },
+                    { x: 300, y: 1080, width: 1400, height: 20 },
+                    
+                    { x: 500, y: 500, width: 20, height: 300 },
+                    { x: 500, y: 800, width: 400, height: 20 },
+                    { x: 880, y: 500, width: 20, height: 320 },
+                    
+                    { x: 1100, y: 500, width: 20, height: 300 },
+                    { x: 1100, y: 500, width: 400, height: 20 },
+                    { x: 1480, y: 500, width: 20, height: 320 },
+                    
+                    { x: 600, y: 1200, width: 800, height: 20 },
+                    { x: 600, y: 1200, width: 20, height: 300 },
+                    { x: 1380, y: 1200, width: 20, height: 300 }
+                ];
+                
+                // Security cameras
+                this.cameras = [
+                    { x: 400, y: 250, angle: 0, range: 200, rotation: 0, rotationSpeed: 0.01 },
+                    { x: 900, y: 450, angle: 0, range: 180, rotation: 0, rotationSpeed: -0.015 },
+                    { x: 1300, y: 450, angle: 0, range: 200, rotation: 0, rotationSpeed: 0.02 },
+                    { x: 900, y: 750, angle: 0, range: 220, rotation: 0, rotationSpeed: -0.01 },
+                    { x: 900, y: 1100, angle: 0, range: 250, rotation: 0, rotationSpeed: 0.012 }
+                ];
+                
+                // Guards
+                this.guards = [
+                    { 
+                        x: 600, y: 600, radius: 15, speed: 1.5,
+                        waypoints: [
+                            { x: 600, y: 600 },
+                            { x: 800, y: 600 },
+                            { x: 800, y: 750 },
+                            { x: 600, y: 750 }
+                        ],
+                        currentWaypoint: 0,
+                        detectionRange: 100,
+                        angle: 0
+                    },
+                    {
+                        x: 1200, y: 600, radius: 15, speed: 1.2,
+                        waypoints: [
+                            { x: 1200, y: 600 },
+                            { x: 1400, y: 600 },
+                            { x: 1400, y: 750 },
+                            { x: 1200, y: 750 }
+                        ],
+                        currentWaypoint: 0,
+                        detectionRange: 120,
+                        angle: 0
+                    },
+                    {
+                        x: 900, y: 1300, radius: 15, speed: 1.8,
+                        waypoints: [
+                            { x: 700, y: 1300 },
+                            { x: 1100, y: 1300 },
+                            { x: 1100, y: 1400 },
+                            { x: 700, y: 1400 }
+                        ],
+                        currentWaypoint: 0,
+                        detectionRange: 110,
+                        angle: 0
+                    }
+                ];
+                
+                // Documents to collect
+                this.documents = [
+                    { x: 450, y: 550, collected: false },
+                    { x: 950, y: 550, collected: false },
+                    { x: 1350, y: 550, collected: false },
+                    { x: 950, y: 850, collected: false },
+                    { x: 950, y: 1350, collected: false }
+                ];
+                
+                // Light sources
+                this.lightSources = [
+                    { x: 700, y: 450, intensity: 100, radius: 80 },
+                    { x: 1200, y: 450, intensity: 100, radius: 80 },
+                    { x: 900, y: 900, intensity: 120, radius: 100 },
+                    { x: 900, y: 1350, intensity: 100, radius: 80 }
+                ];
+                
+                // Shadow zones
+                this.shadows = [
+                    { x: 400, y: 400, width: 200, height: 150 },
+                    { x: 800, y: 400, width: 200, height: 150 },
+                    { x: 1200, y: 400, width: 200, height: 150 },
+                    { x: 800, y: 800, width: 200, height: 200 },
+                    { x: 800, y: 1300, width: 200, height: 150 }
+                ];
+            }
+            
+            update() {
+                if (this.gameOver || this.gameWon) return;
+                
+                this.updatePlayer();
+                this.updateGuards();
+                this.updateCameras();
+                this.checkDetection();
+                this.checkDocumentCollection();
+                this.checkObjectives();
+                this.updateUI();
+            }
+            
+            updatePlayer() {
+                let speed = this.player.sneaking ? this.player.speed * 0.5 : this.player.speed;
+                
+                // Movement
+                if (this.keys['w']) {
+                    const newX = this.player.x + Math.cos(this.player.angle) * speed;
+                    const newY = this.player.y + Math.sin(this.player.angle) * speed;
+                    if (!this.checkWallCollision(newX, this.player.y)) this.player.x = newX;
+                    if (!this.checkWallCollision(this.player.x, newY)) this.player.y = newY;
+                }
+                
+                if (this.keys['s']) {
+                    const newX = this.player.x - Math.cos(this.player.angle) * speed;
+                    const newY = this.player.y - Math.sin(this.player.angle) * speed;
+                    if (!this.checkWallCollision(newX, this.player.y)) this.player.x = newX;
+                    if (!this.checkWallCollision(this.player.x, newY)) this.player.y = newY;
+                }
+                
+                if (this.keys['a']) {
+                    this.player.angle -= 0.1;
+                }
+                
+                if (this.keys['d']) {
+                    this.player.angle += 0.1;
+                }
+                
+                // Sneaking
+                this.player.sneaking = this.keys['shift'];
+                
+                // Hiding
+                this.player.hidden = this.keys[' '];
+                
+                // Calculate visibility
+                this.calculateVisibility();
+            }
+            
+            updateGuards() {
+                for (let guard of this.guards) {
+                    const waypoint = guard.waypoints[guard.currentWaypoint];
+                    const dx = waypoint.x - guard.x;
+                    const dy = waypoint.y - guard.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 10) {
+                        guard.currentWaypoint = (guard.currentWaypoint + 1) % guard.waypoints.length;
+                    } else {
+                        guard.x += (dx / distance) * guard.speed;
+                        guard.y += (dy / distance) * guard.speed;
+                        guard.angle = Math.atan2(dy, dx);
+                    }
+                }
+            }
+            
+            updateCameras() {
+                for (let camera of this.cameras) {
+                    camera.rotation += camera.rotationSpeed;
+                }
+            }
+            
+            checkWallCollision(x, y) {
+                for (let wall of this.walls) {
+                    if (x > wall.x && x < wall.x + wall.width &&
+                        y > wall.y && y < wall.y + wall.height) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            calculateVisibility() {
+                this.player.visible = true;
+                
+                // Check shadow zones
+                for (let shadow of this.shadows) {
+                    if (this.player.x > shadow.x && this.player.x < shadow.x + shadow.width &&
+                        this.player.y > shadow.y && this.player.y < shadow.y + shadow.height) {
+                        this.player.visible = false;
+                        break;
+                    }
+                }
+                
+                // Check light sources
+                if (this.player.visible) {
+                    for (let light of this.lightSources) {
+                        const dist = Math.sqrt(
+                            Math.pow(this.player.x - light.x, 2) +
+                            Math.pow(this.player.y - light.y, 2)
+                        );
+                        
+                        if (dist < light.radius) {
+                            this.player.visible = true;
+                            this.stealthLevel -= (1 - dist / light.radius) * 2;
+                        }
+                    }
+                }
+                
+                // Passive stealth regeneration
+                if (this.player.hidden && this.player.visible) {
+                    this.stealthLevel = Math.min(100, this.stealthLevel + 2);
+                } else if (this.player.visible) {
+                    this.stealthLevel = Math.min(100, this.stealthLevel + 0.5);
+                }
+                
+                this.stealthLevel = Math.max(0, this.stealthLevel);
+            }
+            
+            checkDetection() {
+                if (this.player.hidden || this.stealthLevel <= 0) return;
+                
+                // Check guard detection
+                for (let guard of this.guards) {
+                    const dist = Math.sqrt(
+                        Math.pow(this.player.x - guard.x, 2) +
+                        Math.pow(this.player.y - guard.y, 2)
+                    );
+                    
+                    if (dist < guard.detectionRange && this.player.visible) {
+                        this.alertLevel += 2;
+                        this.score -= 10;
+                    }
+                }
+                
+                // Check camera detection
+                for (let camera of this.cameras) {
+                    const angleToPlayer = Math.atan2(
+                        this.player.y - camera.y,
+                        this.player.x - camera.x
+                    );
+                    let angleDiff = angleToPlayer - camera.rotation;
+                    
+                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    
+                    const dist = Math.sqrt(
+                        Math.pow(this.player.x - camera.x, 2) +
+                        Math.pow(this.player.y - camera.y, 2)
+                    );
+                    
+                    if (dist < camera.range && 
+                        Math.abs(angleDiff) < Math.PI / 6 && 
+                        this.player.visible) {
+                        this.alertLevel += 3;
+                        this.score -= 15;
+                    }
+                }
+                
+                this.alertLevel = Math.max(0, Math.min(100, this.alertLevel));
+                
+                if (this.alertLevel >= 100) {
+                    this.gameOver = true;
+                    document.getElementById('gameOver').style.display = 'block';
+                }
+            }
+            
+            checkDocumentCollection() {
+                for (let document of this.documents) {
+                    if (!document.collected) {
+                        const dist = Math.sqrt(
+                            Math.pow(this.player.x - document.x, 2) +
+                            Math.pow(this.player.y - document.y, 2)
+                        );
+                        
+                        if (dist < 30) {
+                            document.collected = true;
+                            this.documentsCollected++;
+                            this.score += 500;
+                            this.stealthLevel = Math.min(100, this.stealthLevel + 20);
+                        }
+                    }
+                }
+            }
+            
+            checkObjectives() {
+                // Objective 1: Infiltrate facility (reach center area)
+                if (!this.objectives.infiltrated && 
+                    this.player.x > 500 && this.player.x < 1500 &&
+                    this.player.y > 500 && this.player.y < 1500) {
+                    this.objectives.infiltrated = true;
+                    this.score += 1000;
+                }
+                
+                // Objective 2: Collect documents
+                if (!this.objectives.documentsCollected && this.documentsCollected >= 5) {
+                    this.objectives.documentsCollected = true;
+                    this.score += 2000;
+                }
+                
+                // Objective 3: Avoid cameras (maintain low alert)
+                if (!this.objectives.camerasAvoided && this.alertLevel < 50) {
+                    this.objectives.camerasAvoided = true;
+                    this.score += 1500;
+                }
+                
+                // Objective 4: Evacuate (reach exit area)
+                if (!this.objectives.evacuated && 
+                    this.player.x < 100 && this.player.y > 1800) {
+                    this.objectives.evacuated = true;
+                    this.score += 3000;
+                    
+                    if (this.objectives.infiltrated && 
+                        this.objectives.documentsCollected && 
+                        this.objectives.camerasAvoided) {
+                        this.gameWon = true;
+                        document.getElementById('finalScore').textContent = this.score;
+                        document.getElementById('winScreen').style.display = 'block';
+                    }
+                }
+            }
+            
+            updateUI() {
+                // Update stealth meter
+                const stealthPercent = this.stealthLevel;
+                document.getElementById('stealthFill').style.width = stealthPercent + '%';
+                
+                // Update alert meter
+                const alertPercent = this.alertLevel;
+                document.getElementById('alertFill').style.width = alertPercent + '%';
+                
+                // Update score and time
+                document.getElementById('score').textContent = Math.max(0, this.score);
+                document.getElementById('time').textContent = Math.floor((Date.now() - this.startTime) / 1000);
+                document.getElementById('documents').textContent = this.documentsCollected;
+                
+                // Update objectives
+                document.getElementById('obj1').className = this.objectives.infiltrated ? 'objective completed' : 'objective';
+                document.getElementById('obj2').className = this.objectives.documentsCollected ? 'objective completed' : 'objective';
+                document.getElementById('obj3').className = this.objectives.camerasAvoided ? 'objective completed' : 'objective';
+                document.getElementById('obj4').className = this.objectives.evacuated ? 'objective completed' : 'objective';
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#1a1a1a';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Draw facility floor pattern
+                this.drawFloorPattern();
+                
+                // Draw walls
+                this.drawWalls();
+                
+                // Draw documents
+                this.drawDocuments();
+                
+                // Draw shadows
+                this.drawShadows();
+                
+                // Draw light sources
+                this.drawLightSources();
+                
+                // Draw cameras
+                this.drawCameras();
+                
+                // Draw guards
+                this.drawGuards();
+                
+                // Draw player
+                this.drawPlayer();
+                
+                // Draw detection zones
+                this.drawDetectionZones();
+                
+                // Draw exit area
+                this.drawExit();
+            }
+            
+            drawFloorPattern() {
+                this.ctx.fillStyle = '#2a2a2a';
+                this.ctx.fillRect(20, 20, 1960, 1960);
+                
+                this.ctx.strokeStyle = '#3a3a3a';
+                this.ctx.lineWidth = 1;
+                
+                // Grid pattern
+                for (let x = 20; x <= 1980; x += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 20);
+                    this.ctx.lineTo(x, 1980);
+                    this.ctx.stroke();
+                }
+                
+                for (let y = 20; y <= 1980; y += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(20, y);
+                    this.ctx.lineTo(1980, y);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawWalls() {
+                this.ctx.fillStyle = '#4a4a4a';
+                for (let wall of this.walls) {
+                    this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                    
+                    // Wall border
+                    this.ctx.strokeStyle = '#666';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+                }
+            }
+            
+            drawDocuments() {
+                for (let document of this.documents) {
+                    if (!document.collected) {
+                        // Glow effect
+                        const gradient = this.ctx.createRadialGradient(
+                            document.x, document.y, 0,
+                            document.x, document.y, 20
+                        );
+                        gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
+                        gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
+                        
+                        this.ctx.fillStyle = gradient;
+                        this.ctx.beginPath();
+                        this.ctx.arc(document.x, document.y, 20, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // Document
+                        this.ctx.fillStyle = '#FFFF00';
+                        this.ctx.fillRect(document.x - 8, document.y - 6, 16, 12);
+                        this.ctx.strokeStyle = '#FFA500';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.strokeRect(document.x - 8, document.y - 6, 16, 12);
+                    }
+                }
+            }
+            
+            drawShadows() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                for (let shadow of this.shadows) {
+                    this.ctx.fillRect(shadow.x, shadow.y, shadow.width, shadow.height);
+                }
+            }
+            
+            drawLightSources() {
+                for (let light of this.lightSources) {
+                    const gradient = this.ctx.createRadialGradient(
+                        light.x, light.y, 0,
+                        light.x, light.y, light.radius
+                    );
+                    gradient.addColorStop(0, `rgba(255, 255, 200, ${light.intensity / 200})`);
+                    gradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+                    
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Light source indicator
+                    this.ctx.fillStyle = '#FFFFAA';
+                    this.ctx.beginPath();
+                    this.ctx.arc(light.x, light.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+            
+            drawCameras() {
+                for (let camera of this.cameras) {
+                    // Camera body
+                    this.ctx.fillStyle = '#666';
+                    this.ctx.fillRect(camera.x - 10, camera.y - 5, 20, 10);
+                    
+                    // Camera lens
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.fillRect(camera.x + 10, camera.y - 3, 15, 6);
+                    
+                    // Detection cone
+                    this.ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(camera.x + 25, camera.y);
+                    this.ctx.arc(
+                        camera.x + 25, camera.y, 
+                        camera.range, 
+                        camera.rotation - Math.PI / 6, 
+                        camera.rotation + Math.PI / 6
+                    );
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                }
+            }
+            
+            drawGuards() {
+                for (let guard of this.guards) {
+                    // Guard body
+                    this.ctx.fillStyle = '#8B4513';
+                    this.ctx.beginPath();
+                    this.ctx.arc(guard.x, guard.y, guard.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Direction indicator
+                    this.ctx.strokeStyle = '#FFFF00';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(guard.x, guard.y);
+                    this.ctx.lineTo(
+                        guard.x + Math.cos(guard.angle) * 20,
+                        guard.y + Math.sin(guard.angle) * 20
+                    );
+                    this.ctx.stroke();
+                    
+                    // Detection radius (subtle)
+                    this.ctx.strokeStyle = 'rgba(255, 0, 0, 0.1)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.beginPath();
+                    this.ctx.arc(guard.x, guard.y, guard.detectionRange, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawPlayer() {
+                const alpha = this.player.hidden ? 0.3 : (this.player.visible ? 1.0 : 0.5);
+                this.ctx.globalAlpha = alpha;
+                
+                // Player body
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Direction indicator
+                this.ctx.strokeStyle = '#FFFFFF';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.player.x, this.player.y);
+                this.ctx.lineTo(
+                    this.player.x + Math.cos(this.player.angle) * 25,
+                    this.player.y + Math.sin(this.player.angle) * 25
+                );
+                this.ctx.stroke();
+                
+                this.ctx.globalAlpha = 1.0;
+            }
+            
+            drawDetectionZones() {
+                // Show current detection status
+                if (this.alertLevel > 0) {
+                    this.ctx.fillStyle = `rgba(255, 0, 0, ${this.alertLevel / 500})`;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                }
+            }
+            
+            drawExit() {
+                // Exit area
+                this.ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                this.ctx.fillRect(20, 1880, 60, 100);
+                
+                this.ctx.strokeStyle = '#00FF00';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(20, 1880, 60, 100);
+                
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.font = '16px Arial';
+                this.ctx.fillText('EXIT', 30, 1935);
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            start() {
+                this.gameLoop();
+            }
+        }
+        
+        // Global function for restarting
+        function restartGame() {
+            window.location.reload();
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            new StealthGame();
+        });
+    </script>
+</body>
+</html>

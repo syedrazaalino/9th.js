@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>15 - UI Controls: dat.GUI Interface</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #e1bee7;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #e1bee7;
+        }
+        
+        .dat-gui-container {
+            position: absolute !important;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎛️ Tutorial 15: UI Controls</h1>
+        <div class="step">
+            <strong>Goal:</strong> Create interactive parameter controls
+        </div>
+        <div class="step">
+            <strong>dat.GUI Features:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li>Real-time parameter adjustment</li>
+                <li>Slider controls (numbers)</li>
+                <li>Dropdown menus (select)</li>
+                <li>Boolean toggles (checkbox)</li>
+                <li>Color pickers</li>
+                <li>Folder organization</li>
+            </ul>
+        </div>
+        <div class="step">
+            <strong>💡 The GUI panel is on the right!</strong>
+        </div>
+        <div class="controls">
+            <strong>Demo Features:</strong><br>
+            <button onclick="resetSettings()">Reset Settings</button><br>
+            <button onclick="saveSettings()">Save Settings</button><br>
+            <button onclick="loadSettings()">Load Settings</button><br>
+            <span>Use the GUI to control everything!</span>
+        </div>
+    </div>
+    
+    <div class="dat-gui-container"></div>
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 15: UI CONTROLS WITH DAT.GUI
+         * ==========================================
+         * 
+         * dat.GUI provides an easy way to add interactive controls:
+         * 
+         * 1. PARAMETER TYPES:
+         *    - Sliders: number values with min/max
+         *    - Dropdowns: predefined options
+         *    - Toggles: boolean values
+         *    - Color pickers: color values
+         *    - Buttons: trigger functions
+         * 
+         * 2. ORGANIZATION:
+         *    - Folders for grouping related settings
+         *    - Nested folders for complex UIs
+         *    - Automatic GUI layout
+         * 
+         * 3. REAL-TIME UPDATES:
+         *    - Values update instantly
+         *    - No manual event handling
+         *    - Perfect for experimentation
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let objects = [];
+        let gui, controls;
+        let animationId;
+        
+        // ==========================================
+        // SETTINGS OBJECT
+        // ==========================================
+        const settings = {
+            // Scene settings
+            backgroundColor: '#667eea',
+            ambientLight: 0.6,
+            directionalLight: 0.8,
+            
+            // Object settings
+            objectCount: 8,
+            objectSize: 1.5,
+            rotationSpeed: 0.02,
+            floatSpeed: 0.5,
+            
+            // Animation settings
+            enableRotation: true,
+            enableFloat: true,
+            enablePulse: false,
+            pulseSpeed: 2.0,
+            
+            // Color settings
+            colorMode: 'random',
+            hueOffset: 0,
+            saturation: 0.8,
+            lightness: 0.6,
+            
+            // Effects
+            enableWireframe: false,
+            enableTransparency: false,
+            opacity: 0.8,
+            
+            // Animation types
+            animationType: 'rotation',
+            customFunction: function() {
+                console.log('Custom function triggered!');
+                // Trigger a special effect
+                objects.forEach(obj => {
+                    obj.material.emissive.setHex(Math.random() * 0xffffff);
+                });
+            },
+            
+            resetScene: function() {
+                resetSettings();
+            },
+            
+            randomizeColors: function() {
+                randomizeColors();
+            }
+        };
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(settings.backgroundColor);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 8, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lights
+            setupLighting();
+            
+            // Add ground
+            createGround();
+            
+            // Create GUI
+            createGUI();
+        }
+        
+        // ==========================================
+        // LIGHTING SETUP
+        // ==========================================
+        function setupLighting() {
+            // Remove existing lights
+            while(scene.children.length > 0 && scene.children[0].isLight) {
+                scene.remove(scene.children[0]);
+            }
+            
+            // Add new lights based on settings
+            const ambientLight = new THREE.AmbientLight(0xffffff, settings.ambientLight);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, settings.directionalLight);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Add point lights for each object
+            objects.forEach(obj => {
+                if (obj.userData.pointLight) {
+                    scene.remove(obj.userData.pointLight);
+                }
+                
+                const pointLight = new THREE.PointLight(obj.material.color, 0.5, 10);
+                pointLight.position.copy(obj.position);
+                scene.add(pointLight);
+                obj.userData.pointLight = pointLight;
+            });
+        }
+        
+        // ==========================================
+        // CREATE GROUND
+        // ==========================================
+        function createGround() {
+            const groundGeometry = new THREE.PlaneGeometry(30, 30);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+        }
+        
+        // ==========================================
+        // CREATE OBJECTS
+        // ==========================================
+        function createObjects() {
+            // Clear existing objects
+            objects.forEach(obj => {
+                scene.remove(obj);
+                if (obj.userData.pointLight) {
+                    scene.remove(obj.userData.pointLight);
+                }
+            });
+            objects = [];
+            
+            const geometries = [
+                new THREE.BoxGeometry(settings.objectSize, settings.objectSize, settings.objectSize),
+                new THREE.SphereGeometry(settings.objectSize * 0.8, 32, 32),
+                new THREE.ConeGeometry(settings.objectSize * 0.8, settings.objectSize * 1.5, 8),
+                new THREE.CylinderGeometry(settings.objectSize * 0.8, settings.objectSize * 0.8, settings.objectSize * 1.5, 8),
+                new THREE.TorusGeometry(settings.objectSize * 0.8, settings.objectSize * 0.3, 8, 16),
+                new THREE.TorusKnotGeometry(settings.objectSize * 0.6, settings.objectSize * 0.2, 100, 16)
+            ];
+            
+            for (let i = 0; i < settings.objectCount; i++) {
+                const geometry = geometries[i % geometries.length];
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: getColorForIndex(i),
+                    roughness: 0.3,
+                    metalness: 0.2,
+                    transparent: settings.enableTransparency,
+                    opacity: settings.opacity,
+                    wireframe: settings.enableWireframe
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    (i % 4 - 1.5) * 4,
+                    Math.floor(i / 4) * 4 - 2,
+                    Math.random() * 2 - 1
+                );
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                mesh.userData.originalPosition = mesh.position.clone();
+                mesh.userData.index = i;
+                
+                scene.add(mesh);
+                objects.push(mesh);
+            }
+            
+            // Update lighting
+            setupLighting();
+        }
+        
+        // ==========================================
+        // COLOR UTILITIES
+        // ==========================================
+        function getColorForIndex(index) {
+            switch (settings.colorMode) {
+                case 'random':
+                    return new THREE.Color().setHSL(Math.random(), settings.saturation, settings.lightness);
+                case 'gradient':
+                    const hue = (index / settings.objectCount + settings.hueOffset) % 1;
+                    return new THREE.Color().setHSL(hue, settings.saturation, settings.lightness);
+                case 'spectrum':
+                    return new THREE.Color().setHSL(index / settings.objectCount, settings.saturation, settings.lightness);
+                default:
+                    return 0xffffff;
+            }
+        }
+        
+        function randomizeColors() {
+            objects.forEach((obj, index) => {
+                obj.material.color.copy(getColorForIndex(index));
+            });
+        }
+        
+        // ==========================================
+        // CREATE DAT.GUI INTERFACE
+        // ==========================================
+        function createGUI() {
+            // Remove existing GUI
+            if (gui) {
+                gui.destroy();
+            }
+            
+            gui = new dat.GUI({ autoPlace: false });
+            document.querySelector('.dat-gui-container').appendChild(gui.domElement);
+            
+            // Scene folder
+            const sceneFolder = gui.addFolder('Scene Settings');
+            sceneFolder.addColor(settings, 'backgroundColor').name('Background Color').onChange(() => {
+                scene.background = new THREE.Color(settings.backgroundColor);
+            });
+            sceneFolder.add(settings, 'ambientLight', 0, 2, 0.1).name('Ambient Light').onChange(setupLighting);
+            sceneFolder.add(settings, 'directionalLight', 0, 2, 0.1).name('Directional Light').onChange(setupLighting);
+            
+            // Objects folder
+            const objectsFolder = gui.addFolder('Objects');
+            objectsFolder.add(settings, 'objectCount', 1, 20, 1).name('Object Count').onChange(createObjects);
+            objectsFolder.add(settings, 'objectSize', 0.5, 3, 0.1).name('Object Size').onChange(createObjects);
+            objectsFolder.add(settings, 'colorMode', ['random', 'gradient', 'spectrum']).name('Color Mode');
+            objectsFolder.add(settings, 'hueOffset', 0, 1, 0.01).name('Hue Offset').onChange(randomizeColors);
+            objectsFolder.add(settings, 'saturation', 0, 1, 0.01).name('Saturation').onChange(randomizeColors);
+            objectsFolder.add(settings, 'lightness', 0, 1, 0.01).name('Lightness').onChange(randomizeColors);
+            objectsFolder.add(settings, 'enableWireframe').name('Wireframe').onChange(() => {
+                objects.forEach(obj => obj.material.wireframe = settings.enableWireframe);
+            });
+            objectsFolder.add(settings, 'enableTransparency').name('Transparency').onChange(() => {
+                objects.forEach(obj => {
+                    obj.material.transparent = settings.enableTransparency;
+                    obj.material.opacity = settings.opacity;
+                });
+            });
+            objectsFolder.add(settings, 'opacity', 0.1, 1, 0.01).name('Opacity').onChange(() => {
+                objects.forEach(obj => obj.material.opacity = settings.opacity);
+            });
+            
+            // Animation folder
+            const animationFolder = gui.addFolder('Animation');
+            animationFolder.add(settings, 'enableRotation').name('Enable Rotation');
+            animationFolder.add(settings, 'enableFloat').name('Enable Float');
+            animationFolder.add(settings, 'enablePulse').name('Enable Pulse');
+            animationFolder.add(settings, 'rotationSpeed', 0, 0.1, 0.001).name('Rotation Speed');
+            animationFolder.add(settings, 'floatSpeed', 0, 2, 0.1).name('Float Speed');
+            animationFolder.add(settings, 'pulseSpeed', 0.1, 5, 0.1).name('Pulse Speed');
+            animationFolder.add(settings, 'animationType', ['rotation', 'float', 'pulse', 'custom']).name('Animation Type');
+            
+            // Actions folder
+            const actionsFolder = gui.addFolder('Actions');
+            actionsFolder.add(settings, 'customFunction').name('🎆 Special Effect');
+            actionsFolder.add(settings, 'resetScene').name('🔄 Reset Scene');
+            actionsFolder.add(settings, 'randomizeColors').name('🎨 Randomize Colors');
+            
+            // Save/Load folder
+            const storageFolder = gui.addFolder('Storage');
+            storageFolder.add({ save: saveSettings }, 'save').name('💾 Save Settings');
+            storageFolder.add({ load: loadSettings }, 'load').name('📂 Load Settings');
+            
+            // Expand all folders by default
+            sceneFolder.open();
+            objectsFolder.open();
+            animationFolder.open();
+        }
+        
+        // ==========================================
+        // SETTINGS MANAGEMENT
+        // ==========================================
+        function saveSettings() {
+            const settingsToSave = { ...settings };
+            // Remove functions from settings object
+            delete settingsToSave.customFunction;
+            delete settingsToSave.resetScene;
+            delete settingsToSave.randomizeColors;
+            
+            localStorage.setItem('threeJS_demo_settings', JSON.stringify(settingsToSave));
+            console.log('Settings saved!');
+        }
+        
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('threeJS_demo_settings');
+            if (savedSettings) {
+                const loadedSettings = JSON.parse(savedSettings);
+                Object.assign(settings, loadedSettings);
+                
+                // Recreate objects and GUI
+                createObjects();
+                createGUI();
+                setupLighting();
+                
+                console.log('Settings loaded!');
+            } else {
+                console.log('No saved settings found!');
+            }
+        }
+        
+        function resetSettings() {
+            // Reset to default values
+            Object.assign(settings, {
+                backgroundColor: '#667eea',
+                ambientLight: 0.6,
+                directionalLight: 0.8,
+                objectCount: 8,
+                objectSize: 1.5,
+                rotationSpeed: 0.02,
+                floatSpeed: 0.5,
+                enableRotation: true,
+                enableFloat: true,
+                enablePulse: false,
+                pulseSpeed: 2.0,
+                colorMode: 'random',
+                hueOffset: 0,
+                saturation: 0.8,
+                lightness: 0.6,
+                enableWireframe: false,
+                enableTransparency: false,
+                opacity: 0.8,
+                animationType: 'rotation'
+            });
+            
+            createObjects();
+            createGUI();
+            setupLighting();
+            scene.background = new THREE.Color(settings.backgroundColor);
+            
+            console.log('Settings reset!');
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Update all objects based on animation settings
+            objects.forEach((obj, index) => {
+                if (settings.enableRotation) {
+                    switch (settings.animationType) {
+                        case 'rotation':
+                            obj.rotation.x += settings.rotationSpeed;
+                            obj.rotation.y += settings.rotationSpeed * 1.5;
+                            break;
+                        case 'float':
+                            obj.position.y = obj.userData.originalPosition.y + Math.sin(time * settings.floatSpeed + index) * 2;
+                            break;
+                        case 'pulse':
+                            const pulse = Math.sin(time * settings.pulseSpeed + index) * 0.3 + 1;
+                            obj.scale.setScalar(pulse);
+                            break;
+                        case 'custom':
+                            obj.rotation.x += settings.rotationSpeed;
+                            obj.rotation.y += settings.rotationSpeed * 0.5;
+                            obj.position.y = obj.userData.originalPosition.y + Math.sin(time * settings.floatSpeed + index) * 1;
+                            break;
+                    }
+                }
+                
+                // Update point light positions
+                if (obj.userData.pointLight) {
+                    obj.userData.pointLight.position.copy(obj.position);
+                    obj.userData.pointLight.position.y += 2;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🎛️ Starting UI Controls Demo...');
+            
+            setupScene();
+            createObjects();
+            
+            window.addEventListener('resize', handleResize);
+            animate();
+            
+            console.log('✅ UI Controls demo initialized!');
+            console.log('💡 Use the dat.GUI panel on the right to control all settings!');
+        }
+        
+        // Make functions globally available
+        window.resetSettings = resetSettings;
+        window.saveSettings = saveSettings;
+        window.loadSettings = loadSettings;
+        
+        init();
+    </script>
+</body>
+</html>

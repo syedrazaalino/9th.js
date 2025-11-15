@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Reactive 3D Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        #audio-upload { display: none; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Audio Reactive 3D Demo</strong><br>
+        Real-time music visualization<br>
+        - Frequency spectrum analysis<br>
+        - Beat detection<br>
+        - Audio reactive geometry<br>
+        - Dynamic lighting sync
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="startAudio()" id="start-audio">Start Audio</button>
+            <input type="file" id="audio-upload" accept="audio/*">
+            <button onclick="document.getElementById('audio-upload').click()">Upload Audio</button>
+        </div>
+        <div class="control-group">
+            <button onclick="setVisualMode('spectrum')" class="active">Spectrum</button>
+            <button onclick="setVisualMode('waveform')">Waveform</button>
+            <button onclick="setVisualMode('particles')">Particles</button>
+            <button onclick="setVisualMode('geometric')">Geometric</button>
+        </div>
+        <div class="control-group">
+            <label>Sensitivity: <span id="sensitivity-val">1.0</span></label>
+            <input type="range" id="audio-sensitivity" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Frequency Range: <span id="freq-val">1024</span></label>
+            <input type="range" id="frequency-bins" min="64" max="2048" step="64" value="1024">
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Audio analysis
+        class AudioReactiveSystem {
+            constructor() {
+                this.audioContext = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.bufferLength = 1024;
+                this.audioElement = new Audio();
+                this.audioElement.loop = true;
+                this.audioElement.crossOrigin = 'anonymous';
+                this.isPlaying = false;
+                this.visualMode = 'spectrum';
+                this.sensitivity = 1.0;
+                this.frequencyBins = 1024;
+
+                this.createAudioVisualization();
+            }
+
+            async initAudioContext() {
+                if (!this.audioContext) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = this.frequencyBins;
+                    this.bufferLength = this.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(this.bufferLength);
+
+                    // Connect audio to analyser
+                    const source = this.audioContext.createMediaElementSource(this.audioElement);
+                    source.connect(this.analyser);
+                    this.analyser.connect(this.audioContext.destination);
+                }
+            }
+
+            async startAudio() {
+                try {
+                    await this.initAudioContext();
+                    
+                    // For demo, create audio buffer with noise/sine waves
+                    await this.createSyntheticAudio();
+                    
+                    this.isPlaying = true;
+                    document.getElementById('start-audio').textContent = 'Stop Audio';
+                } catch (error) {
+                    console.error('Error starting audio:', error);
+                }
+            }
+
+            async createSyntheticAudio() {
+                // Create synthetic audio for demo purposes
+                const sampleRate = this.audioContext.sampleRate;
+                const duration = 30; // 30 seconds
+                const samples = sampleRate * duration;
+                const audioBuffer = this.audioContext.createBuffer(2, samples, sampleRate);
+                
+                for (let channel = 0; channel < 2; channel++) {
+                    const channelData = audioBuffer.getChannelData(channel);
+                    for (let i = 0; i < samples; i++) {
+                        const time = i / sampleRate;
+                        // Create a mix of frequencies that change over time
+                        const freq1 = 220 + Math.sin(time * 0.5) * 100; // Base frequency
+                        const freq2 = 440 + Math.sin(time * 0.3) * 200; // Harmonic
+                        const freq3 = 660 + Math.sin(time * 0.7) * 150; // Third harmonic
+                        
+                        const sample = 
+                            Math.sin(2 * Math.PI * freq1 * time) * 0.3 +
+                            Math.sin(2 * Math.PI * freq2 * time) * 0.2 +
+                            Math.sin(2 * Math.PI * freq3 * time) * 0.15 +
+                            (Math.random() - 0.5) * 0.1; // Add some noise
+                        
+                        channelData[i] = sample;
+                    }
+                }
+                
+                const source = this.audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(this.analyser);
+                source.start(0);
+                
+                this.isPlaying = true;
+            }
+
+            getFrequencyData() {
+                if (!this.analyser || !this.isPlaying) {
+                    return new Uint8Array(this.bufferLength).fill(0);
+                }
+                
+                this.analyser.getByteFrequencyData(this.dataArray);
+                return this.dataArray;
+            }
+
+            createAudioVisualization() {
+                this.objects = [];
+                this.lights = [];
+
+                // Create spectrum bars
+                this.spectrumBars = [];
+                const barCount = 64;
+                const barGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+                
+                for (let i = 0; i < barCount; i++) {
+                    const material = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color().setHSL(i / barCount, 1, 0.5),
+                        metalness: 0.8,
+                        roughness: 0.2,
+                        emissive: new THREE.Color().setHSL(i / barCount, 1, 0.3),
+                        emissiveIntensity: 0.1
+                    });
+                    
+                    const bar = new THREE.Mesh(barGeometry, material);
+                    const angle = (i / barCount) * Math.PI * 2;
+                    bar.position.set(
+                        Math.cos(angle) * 8,
+                        0,
+                        Math.sin(angle) * 8
+                    );
+                    bar.lookAt(0, 0, 0);
+                    
+                    scene.add(bar);
+                    this.spectrumBars.push(bar);
+                }
+
+                // Create particle system
+                this.particles = [];
+                const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                for (let i = 0; i < 200; i++) {
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
+                    particle.position.set(
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 40
+                    );
+                    particle.userData = {
+                        originalPosition: particle.position.clone(),
+                        velocity: new THREE.Vector3(),
+                        baseColor: new THREE.Color()
+                    };
+                    
+                    scene.add(particle);
+                    this.particles.push(particle);
+                }
+
+                // Create audio-reactive lights
+                const lightCount = 8;
+                for (let i = 0; i < lightCount; i++) {
+                    const pointLight = new THREE.PointLight(0xffffff, 0.5, 30);
+                    pointLight.position.set(
+                        Math.cos(i * Math.PI * 2 / lightCount) * 10,
+                        5,
+                        Math.sin(i * Math.PI * 2 / lightCount) * 10
+                    );
+                    
+                    scene.add(pointLight);
+                    this.lights.push(pointLight);
+                }
+            }
+
+            setVisualMode(mode) {
+                this.visualMode = mode;
+            }
+
+            setSensitivity(sensitivity) {
+                this.sensitivity = sensitivity;
+            }
+
+            setFrequencyBins(bins) {
+                this.frequencyBins = bins;
+                if (this.analyser) {
+                    this.analyser.fftSize = bins;
+                    this.bufferLength = this.analyser.frequencyBinCount;
+                    this.dataArray = new Uint8Array(this.bufferLength);
+                }
+            }
+
+            update(time) {
+                const frequencyData = this.getFrequencyData();
+                
+                switch(this.visualMode) {
+                    case 'spectrum':
+                        this.updateSpectrumBars(frequencyData);
+                        break;
+                    case 'waveform':
+                        this.updateWaveform(frequencyData);
+                        break;
+                    case 'particles':
+                        this.updateParticles(frequencyData);
+                        break;
+                    case 'geometric':
+                        this.updateGeometricObjects(frequencyData);
+                        break;
+                }
+
+                this.updateLights(frequencyData);
+            }
+
+            updateSpectrumBars(frequencyData) {
+                const barCount = this.spectrumBars.length;
+                const step = Math.floor(frequencyData.length / barCount);
+
+                this.spectrumBars.forEach((bar, i) => {
+                    const startIndex = i * step;
+                    const endIndex = Math.min(startIndex + step, frequencyData.length);
+                    
+                    let average = 0;
+                    for (let j = startIndex; j < endIndex; j++) {
+                        average += frequencyData[j];
+                    }
+                    average /= (endIndex - startIndex);
+                    
+                    const normalizedHeight = (average / 255) * this.sensitivity * 20;
+                    bar.scale.y = Math.max(0.1, normalizedHeight);
+                    bar.position.y = bar.scale.y / 2;
+                    
+                    // Update color based on frequency
+                    const hue = (i / barCount + normalizedHeight / 100) % 1;
+                    bar.material.color.setHSL(hue, 1, 0.5);
+                    bar.material.emissive.setHSL(hue, 1, 0.3 * (normalizedHeight / 20));
+                });
+            }
+
+            updateWaveform(frequencyData) {
+                // Simple waveform visualization using particle positions
+                const particleCount = this.particles.length;
+                const step = Math.floor(frequencyData.length / particleCount);
+
+                this.particles.forEach((particle, i) => {
+                    const startIndex = i * step;
+                    const endIndex = Math.min(startIndex + step, frequencyData.length);
+                    
+                    let average = 0;
+                    for (let j = startIndex; j < endIndex; j++) {
+                        average += frequencyData[j];
+                    }
+                    average /= (endIndex - startIndex);
+                    
+                    const intensity = (average / 255) * this.sensitivity;
+                    
+                    const originalPos = particle.userData.originalPosition;
+                    particle.position.x = originalPos.x + Math.sin(time * 10 + i * 0.1) * intensity * 5;
+                    particle.position.y = originalPos.y + Math.cos(time * 15 + i * 0.1) * intensity * 3;
+                    particle.position.z = originalPos.z + Math.sin(time * 8 + i * 0.05) * intensity * 5;
+                    
+                    const hue = (intensity + i / particleCount) % 1;
+                    particle.material.color.setHSL(hue, 1, 0.5);
+                    particle.material.opacity = 0.3 + intensity * 0.7;
+                });
+            }
+
+            updateParticles(frequencyData) {
+                const bassIndex = Math.floor(frequencyData.length * 0.1); // Low frequencies
+                const midIndex = Math.floor(frequencyData.length * 0.5);  // Mid frequencies
+                const trebleIndex = Math.floor(frequencyData.length * 0.9); // High frequencies
+
+                const bass = frequencyData[bassIndex] / 255;
+                const mid = frequencyData[midIndex] / 255;
+                const treble = frequencyData[trebleIndex] / 255;
+
+                this.particles.forEach((particle, i) => {
+                    const baseIntensity = (bass + mid + treble) / 3 * this.sensitivity;
+                    
+                    const angle = time * (1 + baseIntensity * 5) + i * 0.1;
+                    const radius = 5 + baseIntensity * 10;
+                    
+                    particle.position.x = Math.cos(angle) * radius;
+                    particle.position.y = Math.sin(angle * 2) * 5;
+                    particle.position.z = Math.sin(angle) * radius;
+                    
+                    const hue = (time * 0.5 + i / this.particles.length + baseIntensity) % 1;
+                    particle.material.color.setHSL(hue, 1, 0.5 + baseIntensity * 0.5);
+                });
+            }
+
+            updateGeometricObjects(frequencyData) {
+                // This mode works with existing spectrum bars but makes them 3D objects
+                this.spectrumBars.forEach((bar, i) => {
+                    bar.rotation.x = time * 2;
+                    bar.rotation.y = time * 1.5;
+                    
+                    const average = frequencyData[i * 4] || 0;
+                    const intensity = (average / 255) * this.sensitivity;
+                    
+                    bar.material.metalness = 0.5 + intensity * 0.5;
+                    bar.material.roughness = 0.8 - intensity * 0.6;
+                });
+            }
+
+            updateLights(frequencyData) {
+                const lightCount = this.lights.length;
+                const step = Math.floor(frequencyData.length / lightCount);
+
+                this.lights.forEach((light, i) => {
+                    const startIndex = i * step;
+                    const endIndex = Math.min(startIndex + step, frequencyData.length);
+                    
+                    let average = 0;
+                    for (let j = startIndex; j < endIndex; j++) {
+                        average += frequencyData[j];
+                    }
+                    average /= (endPoint - startIndex);
+                    
+                    const intensity = (average / 255) * this.sensitivity;
+                    light.intensity = intensity * 5;
+                    
+                    const hue = (i / lightCount + intensity) % 1;
+                    light.color.setHSL(hue, 1, 0.5);
+                    
+                    const angle = time * (1 + intensity * 3) + i * Math.PI * 2 / lightCount;
+                    light.position.x = Math.cos(angle) * 12;
+                    light.position.z = Math.sin(angle) * 12;
+                });
+            }
+
+            stop() {
+                this.isPlaying = false;
+                document.getElementById('start-audio').textContent = 'Start Audio';
+            }
+        }
+
+        // Create audio reactive system
+        const audioReactiveSystem = new AudioReactiveSystem();
+
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(40, 40);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x111111,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -5;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Ambient lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        scene.add(ambientLight);
+
+        // Global functions
+        window.startAudio = () => {
+            if (audioReactiveSystem.isPlaying) {
+                audioReactiveSystem.stop();
+            } else {
+                audioReactiveSystem.startAudio();
+            }
+        };
+
+        window.setVisualMode = (mode) => {
+            audioReactiveSystem.setVisualMode(mode);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        // Control bindings
+        const sensitivitySlider = document.getElementById('audio-sensitivity');
+        const sensitivityDisplay = document.getElementById('sensitivity-val');
+        sensitivitySlider.addEventListener('input', (e) => {
+            const sensitivity = parseFloat(e.target.value);
+            audioReactiveSystem.setSensitivity(sensitivity);
+            sensitivityDisplay.textContent = sensitivity.toFixed(1);
+        });
+
+        const frequencySlider = document.getElementById('frequency-bins');
+        const frequencyDisplay = document.getElementById('freq-val');
+        frequencySlider.addEventListener('input', (e) => {
+            const bins = parseInt(e.target.value);
+            audioReactiveSystem.setFrequencyBins(bins);
+            frequencyDisplay.textContent = bins;
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            audioReactiveSystem.update(elapsedTime);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

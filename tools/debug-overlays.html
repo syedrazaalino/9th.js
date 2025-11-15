@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Overlays - Developer Tools Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toolbar h1 {
+            font-size: 18px;
+            color: #00ff88;
+            margin-right: 30px;
+        }
+
+        .tool-btn {
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #505050;
+            border-color: #00ff88;
+        }
+
+        .tool-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            color: #00ff88;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 15px 15px 0 15px;
+        }
+
+        .debug-controls {
+            padding: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .debug-toggle {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #3a3a3a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .debug-toggle:hover {
+            background: #454545;
+        }
+
+        .debug-toggle.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .toggle-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .toggle-indicator.active {
+            background: #00ff88;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        #debugCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .overlay-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            background: rgba(45, 45, 45, 0.9);
+            border-radius: 4px;
+            border: 1px solid #444;
+            padding: 15px;
+            z-index: 1000;
+        }
+
+        .overlay-title {
+            color: #00ff88;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .overlay-content {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            background: #2a2a2a;
+            padding: 8px;
+            border-radius: 3px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .console-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 320px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 4px;
+            border: 1px solid #444;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .console-title {
+            color: #00ff88;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .console-entry {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin-bottom: 4px;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        .console-entry.log {
+            color: #ffffff;
+        }
+
+        .console-entry.warn {
+            color: #ffaa00;
+        }
+
+        .console-entry.error {
+            color: #ff4444;
+        }
+
+        .console-entry.info {
+            color: #0088ff;
+        }
+
+        .property-panel {
+            width: 300px;
+            background: #2d2d2d;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .properties-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .property-group {
+            margin-bottom: 15px;
+        }
+
+        .property-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .property-input {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .property-input[type="color"] {
+            height: 30px;
+            padding: 2px;
+        }
+
+        .property-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .property-row .property-input {
+            flex: 1;
+        }
+
+        .axis-helper {
+            position: absolute;
+            bottom: 10px;
+            right: 320px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            z-index: 1000;
+        }
+
+        .axis-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3px;
+            font-size: 10px;
+        }
+
+        .axis-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+        }
+
+        .axis-x { background: #ff0000; }
+        .axis-y { background: #00ff00; }
+        .axis-z { background: #0000ff; }
+
+        .collision-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 999;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+        }
+
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .object-labels {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .object-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff88;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-family: monospace;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            border: 1px solid #00ff88;
+        }
+
+        .frustum-culling-visualizer {
+            position: absolute;
+            border: 2px solid #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .performance-monitor {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .performance-monitor .warning {
+            color: #ffaa00;
+        }
+
+        .performance-monitor .critical {
+            color: #ff4444;
+        }
+
+        .light-visualizer {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, rgba(255, 255, 0, 0.8), rgba(255, 255, 0, 0.2));
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 998;
+        }
+
+        .light-visualizer.point {
+            background: radial-gradient(circle, rgba(255, 255, 0, 0.8), rgba(255, 255, 0, 0.2));
+        }
+
+        .light-visualizer.directional {
+            background: linear-gradient(45deg, rgba(255, 255, 0, 0.8), rgba(255, 255, 0, 0.2));
+        }
+
+        .wireframe-toggle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 2000;
+            display: none;
+        }
+
+        .wireframe-toggle.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>🔍 Debug Overlays</h1>
+        <button class="tool-btn" onclick="debugger.loadDemoScene()">Load Demo</button>
+        <button class="tool-btn" onclick="debugger.toggleWireframe()">Wireframe</button>
+        <button class="tool-btn" onclick="debugger.showConsole()">Console</button>
+        <button class="tool-btn" onclick="debugger.captureScreenshot()">Screenshot</button>
+        <button class="tool-btn" onclick="debugger.recordDebug()">Record</button>
+        <button class="tool-btn" onclick="debugger.resetView()">Reset View</button>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="section-title">Debug Tools</div>
+            <div class="debug-controls">
+                <div class="control-group">
+                    <label class="control-label">Visualization Overlays</label>
+                    <div class="debug-toggle active" onclick="debugger.toggleOverlay('wireframe')">
+                        <div class="toggle-indicator active"></div>
+                        <span>Wireframe</span>
+                    </div>
+                    <div class="debug-toggle active" onclick="debugger.toggleOverlay('normals')">
+                        <div class="toggle-indicator active"></div>
+                        <span>Normals</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('boundingBoxes')">
+                        <div class="toggle-indicator"></div>
+                        <span>Bounding Boxes</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('axisHelper')">
+                        <div class="toggle-indicator"></div>
+                        <span>Axis Helper</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('gridHelper')">
+                        <div class="toggle-indicator"></div>
+                        <span>Grid Helper</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Performance</label>
+                    <div class="debug-toggle active" onclick="debugger.toggleOverlay('fpsCounter')">
+                        <div class="toggle-indicator active"></div>
+                        <span>FPS Counter</span>
+                    </div>
+                    <div class="debug-toggle active" onclick="debugger.toggleOverlay('drawCalls')">
+                        <div class="toggle-indicator active"></div>
+                        <span>Draw Calls</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('memoryUsage')">
+                        <div class="toggle-indicator"></div>
+                        <span>Memory Usage</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('renderStats')">
+                        <div class="toggle-indicator"></div>
+                        <span>Render Stats</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Physics & Collision</label>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('collisionBoxes')">
+                        <div class="toggle-indicator"></div>
+                        <span>Collision Boxes</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('physicsDebug')">
+                        <div class="toggle-indicator"></div>
+                        <span>Physics Debug</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('frustumCulling')">
+                        <div class="toggle-indicator"></div>
+                        <span>Frustum Culling</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Lighting</label>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('lightHelpers')">
+                        <div class="toggle-indicator"></div>
+                        <span>Light Helpers</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('shadowMap')">
+                        <div class="toggle-indicator"></div>
+                        <span>Shadow Maps</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('lightVolumes')">
+                        <div class="toggle-indicator"></div>
+                        <span>Light Volumes</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Scene Analysis</label>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('objectLabels')">
+                        <div class="toggle-indicator"></div>
+                        <span>Object Labels</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('vertexCount')">
+                        <div class="toggle-indicator"></div>
+                        <span>Vertex Count</span>
+                    </div>
+                    <div class="debug-toggle" onclick="debugger.toggleOverlay('materialInfo')">
+                        <div class="toggle-indicator"></div>
+                        <span>Material Info</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="axis-helper">
+                <div class="axis-item">
+                    <div class="axis-color axis-x"></div>
+                    <span>X-Axis</span>
+                </div>
+                <div class="axis-item">
+                    <div class="axis-color axis-y"></div>
+                    <span>Y-Axis</span>
+                </div>
+                <div class="axis-item">
+                    <div class="axis-color axis-z"></div>
+                    <span>Z-Axis</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="debugCanvas"></canvas>
+            <div class="grid-overlay" id="gridOverlay" style="display: none;"></div>
+            <div class="object-labels" id="objectLabels"></div>
+
+            <div class="overlay-panel" id="statsPanel">
+                <div class="overlay-title">Debug Statistics</div>
+                <div class="overlay-content">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="fpsStat">60</div>
+                            <div class="stat-label">FPS</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="frameTimeStat">16.7</div>
+                            <div class="stat-label">Frame (ms)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="drawCallsStat">1</div>
+                            <div class="stat-label">Draw Calls</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="trianglesStat">0</div>
+                            <div class="stat-label">Triangles</div>
+                        </div>
+                    </div>
+                    <div id="performanceMonitor" class="performance-monitor">
+                        <div>Memory: <span id="memoryStat">0 MB</span></div>
+                        <div>Geometries: <span id="geometryStat">0</span></div>
+                        <div>Textures: <span id="textureStat">0</span></div>
+                        <div>Objects: <span id="objectStat">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="console-panel" id="consolePanel" style="display: none;">
+                <div class="console-title">Debug Console</div>
+                <div id="consoleEntries"></div>
+            </div>
+
+            <div class="wireframe-toggle" id="wireframeToggle">
+                <h3>Wireframe Mode</h3>
+                <p>All objects rendered as wireframe</p>
+                <button onclick="debugger.hideWireframeToggle()" style="margin-top: 10px; padding: 8px 16px; background: #00ff88; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+
+        <div class="property-panel">
+            <div class="section-title">Scene Inspector</div>
+            <div class="properties-container" id="inspectorPanel">
+                <div style="color: #666; font-style: italic;">Select an object to inspect</div>
+            </div>
+
+            <div class="section-title">Quick Actions</div>
+            <div style="padding: 15px;">
+                <button onclick="debugger.benchmarkPerformance()" style="width: 100%; margin-bottom: 10px; padding: 8px; background: #3a3a3a; border: 1px solid #555; color: #fff; border-radius: 4px; cursor: pointer;">Benchmark</button>
+                <button onclick="debugger.analyzePerformance()" style="width: 100%; margin-bottom: 10px; padding: 8px; background: #3a3a3a; border: 1px solid #555; color: #fff; border-radius: 4px; cursor: pointer;">Performance Analysis</button>
+                <button onclick="debugger.validateScene()" style="width: 100%; margin-bottom: 10px; padding: 8px; background: #3a3a3a; border: 1px solid #555; color: #fff; border-radius: 4px; cursor: pointer;">Validate Scene</button>
+                <button onclick="debugger.exportDebugData()" style="width: 100%; margin-bottom: 10px; padding: 8px; background: #3a3a3a; border: 1px solid #555; color: #fff; border-radius: 4px; cursor: pointer;">Export Debug Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class DebugOverlays {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: document.getElementById('debugCanvas'),
+                    antialias: true,
+                    wireframe: false
+                });
+
+                this.overlays = {
+                    wireframe: false,
+                    normals: false,
+                    boundingBoxes: false,
+                    axisHelper: false,
+                    gridHelper: false,
+                    fpsCounter: true,
+                    drawCalls: true,
+                    memoryUsage: false,
+                    renderStats: false,
+                    collisionBoxes: false,
+                    physicsDebug: false,
+                    frustumCulling: false,
+                    lightHelpers: false,
+                    shadowMap: false,
+                    lightVolumes: false,
+                    objectLabels: false,
+                    vertexCount: false,
+                    materialInfo: false
+                };
+
+                this.selectedObject = null;
+                this.debugHelpers = [];
+                this.wireframeMode = false;
+                this.isRecording = false;
+                this.recordingData = [];
+
+                this.frameCount = 0;
+                this.lastFpsUpdate = Date.now();
+                this.currentFPS = 60;
+                this.consoleEntries = [];
+
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            init() {
+                // Set up renderer
+                this.resize();
+                
+                // Set up camera
+                this.camera.position.set(5, 5, 5);
+                this.camera.lookAt(0, 0, 0);
+
+                // Set up scene
+                this.scene.background = new THREE.Color(0x222222);
+
+                // Add controls (simple mouse control)
+                this.setupControls();
+
+                this.loadDemoScene();
+            }
+
+            setupControls() {
+                const canvas = this.renderer.domElement;
+                let isDragging = false;
+                let previousMousePosition = { x: 0, y: 0 };
+
+                canvas.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                });
+
+                canvas.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+
+                canvas.addEventListener('mousemove', (e) => {
+                    if (isDragging && !e.shiftKey) {
+                        const deltaMove = {
+                            x: e.clientX - previousMousePosition.x,
+                            y: e.clientY - previousMousePosition.y
+                        };
+
+                        // Rotate camera
+                        const sphericalCoords = new THREE.Spherical();
+                        sphericalCoords.setFromVector3(this.camera.position);
+                        sphericalCoords.theta -= deltaMove.x * 0.01;
+                        sphericalCoords.phi += deltaMove.y * 0.01;
+                        sphericalCoords.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalCoords.phi));
+                        
+                        this.camera.position.setFromSpherical(sphericalCoords);
+                        this.camera.lookAt(0, 0, 0);
+
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                    }
+                });
+
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const scale = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(scale);
+                });
+
+                canvas.addEventListener('click', (e) => {
+                    this.selectObject(e);
+                });
+
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            loadDemoScene() {
+                // Clear existing scene
+                this.scene.clear();
+                this.debugHelpers.forEach(helper => {
+                    this.scene.remove(helper);
+                });
+                this.debugHelpers = [];
+
+                // Add lights
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.name = 'MainLight';
+                this.scene.add(directionalLight);
+
+                const pointLight = new THREE.PointLight(0x00ffff, 1, 100);
+                pointLight.position.set(0, 5, 0);
+                pointLight.name = 'PointLight';
+                this.scene.add(pointLight);
+
+                // Add demo objects
+                const materials = [
+                    new THREE.MeshLambertMaterial({ color: 0xff0000 }),
+                    new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
+                    new THREE.MeshLambertMaterial({ color: 0x0000ff }),
+                    new THREE.MeshPhongMaterial({ color: 0xffff00, shininess: 100 }),
+                    new THREE.MeshPhongMaterial({ color: 0xff00ff, shininess: 50 })
+                ];
+
+                const geometries = [
+                    new THREE.BoxGeometry(1, 1, 1),
+                    new THREE.SphereGeometry(0.5, 32, 16),
+                    new THREE.ConeGeometry(0.5, 1, 8),
+                    new THREE.CylinderGeometry(0.5, 0.5, 1, 8),
+                    new THREE.TorusGeometry(0.5, 0.2, 8, 16)
+                ];
+
+                for (let i = 0; i < 5; i++) {
+                    const mesh = new THREE.Mesh(geometries[i], materials[i]);
+                    mesh.position.set((i - 2) * 2, 0.5, 0);
+                    mesh.name = `Object${i + 1}`;
+                    mesh.userData = {
+                        id: i + 1,
+                        type: geometries[i].type,
+                        vertices: geometries[i].attributes.position.count,
+                        material: materials[i].type
+                    };
+                    this.scene.add(mesh);
+                }
+
+                // Add a ground plane
+                const planeGeometry = new THREE.PlaneGeometry(20, 20);
+                const planeMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x333333,
+                    side: THREE.DoubleSide 
+                });
+                const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+                plane.rotation.x = -Math.PI / 2;
+                plane.position.y = -0.5;
+                plane.name = 'Ground';
+                this.scene.add(plane);
+
+                this.log('info', 'Demo scene loaded with 5 objects, 2 lights, and ground plane');
+                this.updateStats();
+            }
+
+            toggleOverlay(overlay) {
+                this.overlays[overlay] = !this.overlays[overlay];
+                
+                const toggle = event.currentTarget;
+                const indicator = toggle.querySelector('.toggle-indicator');
+                
+                if (this.overlays[overlay]) {
+                    toggle.classList.add('active');
+                    indicator.classList.add('active');
+                } else {
+                    toggle.classList.remove('active');
+                    indicator.classList.remove('active');
+                }
+                
+                this.updateDebugOverlays();
+            }
+
+            updateDebugOverlays() {
+                // Clear previous helpers
+                this.debugHelpers.forEach(helper => {
+                    this.scene.remove(helper);
+                });
+                this.debugHelpers = [];
+
+                if (this.overlays.axisHelper) {
+                    const axesHelper = new THREE.AxesHelper(3);
+                    this.scene.add(axesHelper);
+                    this.debugHelpers.push(axesHelper);
+                }
+
+                if (this.overlays.gridHelper) {
+                    const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+                    this.scene.add(gridHelper);
+                    this.debugHelpers.push(gridHelper);
+                    document.getElementById('gridOverlay').style.display = 'block';
+                } else {
+                    document.getElementById('gridOverlay').style.display = 'none';
+                }
+
+                if (this.overlays.lightHelpers) {
+                    this.scene.traverse((child) => {
+                        if (child.isLight) {
+                            const helper = new THREE.LightHelper(child, 1);
+                            this.scene.add(helper);
+                            this.debugHelpers.push(helper);
+                        }
+                    });
+                }
+
+                if (this.overlays.boundingBoxes) {
+                    this.scene.traverse((child) => {
+                        if (child.isMesh) {
+                            const boxHelper = new THREE.BoxHelper(child, 0xffff00);
+                            this.scene.add(boxHelper);
+                            this.debugHelpers.push(boxHelper);
+                        }
+                    });
+                }
+
+                if (this.overlays.objectLabels) {
+                    this.updateObjectLabels();
+                } else {
+                    document.getElementById('objectLabels').innerHTML = '';
+                }
+
+                if (this.overlays.normals) {
+                    // Add normal helpers
+                    this.scene.traverse((child) => {
+                        if (child.isMesh && child.geometry.attributes.normal) {
+                            const normalHelper = new THREE.VertexNormalsHelper(child, 0.1, 0xff0000);
+                            this.scene.add(normalHelper);
+                            this.debugHelpers.push(normalHelper);
+                        }
+                    });
+                }
+
+                this.log('info', `Updated debug overlays: ${Object.keys(this.overlays).filter(key => this.overlays[key]).length} active`);
+            }
+
+            updateObjectLabels() {
+                const labelsContainer = document.getElementById('objectLabels');
+                labelsContainer.innerHTML = '';
+
+                this.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        const label = document.createElement('div');
+                        label.className = 'object-label';
+                        label.textContent = `${child.name} (${child.userData.type})`;
+                        
+                        // Project 3D position to 2D
+                        const vector = child.position.clone();
+                        vector.project(this.camera);
+                        
+                        const x = (vector.x * 0.5 + 0.5) * this.renderer.domElement.clientWidth;
+                        const y = (-vector.y * 0.5 + 0.5) * this.renderer.domElement.clientHeight;
+                        
+                        label.style.left = x + 'px';
+                        label.style.top = y + 'px';
+                        
+                        labelsContainer.appendChild(label);
+                    }
+                });
+            }
+
+            toggleWireframe() {
+                this.wireframeMode = !this.wireframeMode;
+                
+                this.scene.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        child.material.wireframe = this.wireframeMode;
+                    }
+                });
+                
+                if (this.wireframeMode) {
+                    document.getElementById('wireframeToggle').classList.add('show');
+                } else {
+                    document.getElementById('wireframeToggle').classList.remove('show');
+                }
+                
+                this.log('info', `Wireframe mode ${this.wireframeMode ? 'enabled' : 'disabled'}`);
+            }
+
+            hideWireframeToggle() {
+                document.getElementById('wireframeToggle').classList.remove('show');
+            }
+
+            selectObject(event) {
+                const mouse = new THREE.Vector2(
+                    (event.clientX / this.renderer.domElement.clientWidth) * 2 - 1,
+                    -(event.clientY / this.renderer.domElement.clientHeight) * 2 + 1
+                );
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+
+                const intersects = raycaster.intersectObjects(this.scene.children, true);
+
+                if (intersects.length > 0) {
+                    this.selectedObject = intersects[0].object;
+                    this.updateInspector();
+                    this.log('info', `Selected object: ${this.selectedObject.name || 'Unnamed'}`);
+                } else {
+                    this.selectedObject = null;
+                    this.updateInspector();
+                }
+            }
+
+            updateInspector() {
+                const panel = document.getElementById('inspectorPanel');
+                
+                if (!this.selectedObject) {
+                    panel.innerHTML = '<div style="color: #666; font-style: italic;">Select an object to inspect</div>';
+                    return;
+                }
+
+                const obj = this.selectedObject;
+                const userData = obj.userData || {};
+                
+                let html = `
+                    <div class="property-group">
+                        <div class="property-label">Object Information</div>
+                        <div style="background: #2a2a2a; padding: 10px; border-radius: 3px; font-size: 11px;">
+                            <div>Name: <strong>${obj.name || 'Unnamed'}</strong></div>
+                            <div>Type: <strong>${obj.type}</strong></div>
+                            <div>ID: <strong>${userData.id || 'N/A'}</strong></div>
+                            <div>Vertices: <strong>${userData.vertices || obj.geometry?.attributes?.position?.count || 0}</strong></div>
+                            <div>Material: <strong>${userData.material || obj.material?.type || 'None'}</strong></div>
+                        </div>
+                    </div>
+                `;
+
+                // Transform properties
+                html += `
+                    <div class="property-group">
+                        <div class="property-label">Transform</div>
+                        <div class="property-row">
+                            <input type="number" class="property-input" value="${obj.position.x.toFixed(2)}" 
+                                   step="0.1" placeholder="X" onchange="debugger.updateTransform('position', 'x', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.position.y.toFixed(2)}" 
+                                   step="0.1" placeholder="Y" onchange="debugger.updateTransform('position', 'y', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.position.z.toFixed(2)}" 
+                                   step="0.1" placeholder="Z" onchange="debugger.updateTransform('position', 'z', parseFloat(this.value))">
+                        </div>
+                        <div class="property-row" style="margin-top: 5px;">
+                            <input type="number" class="property-input" value="${(obj.rotation.x * 57.2958).toFixed(1)}" 
+                                   step="1" placeholder="Rot X" onchange="debugger.updateTransform('rotation', 'x', parseFloat(this.value) * 0.0174533)">
+                            <input type="number" class="property-input" value="${(obj.rotation.y * 57.2958).toFixed(1)}" 
+                                   step="1" placeholder="Rot Y" onchange="debugger.updateTransform('rotation', 'y', parseFloat(this.value) * 0.0174533)">
+                            <input type="number" class="property-input" value="${(obj.rotation.z * 57.2958).toFixed(1)}" 
+                                   step="1" placeholder="Rot Z" onchange="debugger.updateTransform('rotation', 'z', parseFloat(this.value) * 0.0174533)">
+                        </div>
+                        <div class="property-row" style="margin-top: 5px;">
+                            <input type="number" class="property-input" value="${obj.scale.x.toFixed(2)}" 
+                                   step="0.1" placeholder="Scale X" onchange="debugger.updateTransform('scale', 'x', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.scale.y.toFixed(2)}" 
+                                   step="0.1" placeholder="Scale Y" onchange="debugger.updateTransform('scale', 'y', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.scale.z.toFixed(2)}" 
+                                   step="0.1" placeholder="Scale Z" onchange="debugger.updateTransform('scale', 'z', parseFloat(this.value))">
+                        </div>
+                    </div>
+                `;
+
+                // Material properties
+                if (obj.material) {
+                    html += `
+                        <div class="property-group">
+                            <div class="property-label">Material</div>
+                            <div class="property-row">
+                                <input type="color" class="property-input" 
+                                       value="#${obj.material.color.getHexString()}" 
+                                       onchange="debugger.updateMaterialColor(parseInt(this.value.replace('#', '0x')))">
+                            </div>
+                            <div class="property-row" style="margin-top: 5px;">
+                                <label style="font-size: 11px; color: #999;">
+                                    <input type="checkbox" ${obj.material.wireframe ? 'checked' : ''} 
+                                           onchange="debugger.updateMaterialWireframe(this.checked)"> Wireframe
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                panel.innerHTML = html;
+            }
+
+            updateTransform(type, axis, value) {
+                if (!this.selectedObject) return;
+                this.selectedObject[type][axis] = value;
+            }
+
+            updateMaterialColor(color) {
+                if (!this.selectedObject || !this.selectedObject.material) return;
+                this.selectedObject.material.color.setHex(color);
+            }
+
+            updateMaterialWireframe(wireframe) {
+                if (!this.selectedObject || !this.selectedObject.material) return;
+                this.selectedObject.material.wireframe = wireframe;
+            }
+
+            updateStats() {
+                // FPS calculation
+                this.frameCount++;
+                const now = Date.now();
+                const delta = now - this.lastFpsUpdate;
+                
+                if (delta >= 1000) {
+                    this.currentFPS = Math.round((this.frameCount * 1000) / delta);
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                }
+
+                // Update UI
+                document.getElementById('fpsStat').textContent = this.currentFPS;
+                document.getElementById('frameTimeStat').textContent = (1000 / this.currentFPS).toFixed(1);
+
+                // Draw calls (simulated)
+                const drawCalls = this.scene.children.filter(child => child.isMesh).length;
+                document.getElementById('drawCallsStat').textContent = drawCalls;
+
+                // Triangle count
+                let triangleCount = 0;
+                this.scene.traverse((child) => {
+                    if (child.isMesh && child.geometry) {
+                        const geom = child.geometry;
+                        if (geom.index) {
+                            triangleCount += geom.index.count / 3;
+                        } else if (geom.attributes.position) {
+                            triangleCount += geom.attributes.position.count / 3;
+                        }
+                    }
+                });
+                document.getElementById('trianglesStat').textContent = Math.round(triangleCount);
+
+                // Memory usage
+                const memoryUsage = this.getMemoryUsage();
+                document.getElementById('memoryStat').textContent = memoryUsage.toFixed(1) + ' MB';
+
+                // Object count
+                const objectCount = this.scene.children.length;
+                document.getElementById('objectStat').textContent = objectCount;
+
+                // Geometry count
+                const geometryCount = this.scene.children.filter(child => child.geometry).length;
+                document.getElementById('geometryStat').textContent = geometryCount;
+            }
+
+            getMemoryUsage() {
+                if (performance.memory) {
+                    return performance.memory.usedJSHeapSize / 1024 / 1024;
+                }
+                return 50 + Math.sin(Date.now() / 1000) * 10; // Simulated
+            }
+
+            log(type, message) {
+                const entry = {
+                    time: new Date(),
+                    type: type,
+                    message: message
+                };
+                
+                this.consoleEntries.unshift(entry);
+                
+                // Keep only last 50 entries
+                if (this.consoleEntries.length > 50) {
+                    this.consoleEntries = this.consoleEntries.slice(0, 50);
+                }
+                
+                this.updateConsoleDisplay();
+            }
+
+            updateConsoleDisplay() {
+                const container = document.getElementById('consoleEntries');
+                container.innerHTML = '';
+                
+                this.consoleEntries.forEach(entry => {
+                    const div = document.createElement('div');
+                    div.className = `console-entry ${entry.type}`;
+                    div.textContent = `[${entry.time.toLocaleTimeString()}] ${entry.message}`;
+                    container.appendChild(div);
+                });
+            }
+
+            showConsole() {
+                const panel = document.getElementById('consolePanel');
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            }
+
+            captureScreenshot() {
+                const canvas = this.renderer.domElement;
+                const link = document.createElement('a');
+                link.download = `debug-screenshot-${Date.now()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                this.log('info', 'Screenshot captured and downloaded');
+            }
+
+            recordDebug() {
+                this.isRecording = !this.isRecording;
+                
+                if (this.isRecording) {
+                    this.recordingData = [];
+                    this.log('info', 'Debug recording started');
+                } else {
+                    this.exportRecording();
+                    this.log('info', 'Debug recording stopped and exported');
+                }
+            }
+
+            exportRecording() {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    duration: this.recordingData.length,
+                    frames: this.recordingData,
+                    stats: {
+                        avgFPS: this.calculateAverage(this.recordingData.map(f => f.fps)),
+                        maxFPS: Math.max(...this.recordingData.map(f => f.fps)),
+                        minFPS: Math.min(...this.recordingData.map(f => f.fps)),
+                        avgMemory: this.calculateAverage(this.recordingData.map(f => f.memory)),
+                        maxDrawCalls: Math.max(...this.recordingData.map(f => f.drawCalls))
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `debug-recording-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            calculateAverage(arr) {
+                return arr.length > 0 ? arr.reduce((sum, val) => sum + val, 0) / arr.length : 0;
+            }
+
+            resetView() {
+                this.camera.position.set(5, 5, 5);
+                this.camera.lookAt(0, 0, 0);
+                this.log('info', 'Camera reset to default position');
+            }
+
+            benchmarkPerformance() {
+                this.log('info', 'Starting performance benchmark...');
+                
+                const startTime = performance.now();
+                let frameCount = 0;
+                
+                const benchmarkLoop = () => {
+                    frameCount++;
+                    
+                    if (performance.now() - startTime < 5000) { // Run for 5 seconds
+                        requestAnimationFrame(benchmarkLoop);
+                    } else {
+                        const endTime = performance.now();
+                        const duration = endTime - startTime;
+                        const avgFPS = frameCount / (duration / 1000);
+                        
+                        this.log('info', `Benchmark completed: ${avgFPS.toFixed(1)} FPS over ${duration.toFixed(0)}ms`);
+                        
+                        if (avgFPS < 30) {
+                            this.log('warn', 'Performance warning: Average FPS below 30');
+                        }
+                    }
+                };
+                
+                benchmarkLoop();
+            }
+
+            analyzePerformance() {
+                this.log('info', 'Analyzing scene performance...');
+                
+                const analysis = {
+                    totalObjects: this.scene.children.length,
+                    meshCount: this.scene.children.filter(child => child.isMesh).length,
+                    lightCount: this.scene.children.filter(child => child.isLight).length,
+                    totalVertices: 0,
+                    totalTriangles: 0,
+                    materialCount: new Set(),
+                    textureCount: 0
+                };
+                
+                this.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry?.attributes?.position) {
+                            analysis.totalVertices += child.geometry.attributes.position.count;
+                        }
+                        
+                        if (child.geometry?.index) {
+                            analysis.totalTriangles += child.geometry.index.count / 3;
+                        }
+                        
+                        if (child.material) {
+                            analysis.materialCount.add(child.material.type);
+                        }
+                    }
+                });
+                
+                this.log('info', `Scene Analysis: ${analysis.meshCount} meshes, ${analysis.totalVertices} vertices, ${analysis.totalTriangles} triangles`);
+                
+                if (analysis.totalTriangles > 100000) {
+                    this.log('warn', 'High triangle count detected - consider optimization');
+                }
+                
+                if (analysis.lightCount > 4) {
+                    this.log('warn', 'Many lights detected - performance may be impacted');
+                }
+            }
+
+            validateScene() {
+                this.log('info', 'Validating scene...');
+                
+                const issues = [];
+                
+                this.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        if (!child.material) {
+                            issues.push(`${child.name}: Missing material`);
+                        }
+                        
+                        if (!child.geometry) {
+                            issues.push(`${child.name}: Missing geometry`);
+                        }
+                        
+                        if (child.position.y < -10) {
+                            issues.push(`${child.name}: Far below ground plane`);
+                        }
+                    }
+                    
+                    if (child.isLight && child.intensity === 0) {
+                        issues.push(`${child.name}: Light with zero intensity`);
+                    }
+                });
+                
+                if (issues.length === 0) {
+                    this.log('info', 'Scene validation: No issues found');
+                } else {
+                    issues.forEach(issue => this.log('warn', `Issue: ${issue}`));
+                }
+            }
+
+            exportDebugData() {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    scene: {
+                        objectCount: this.scene.children.length,
+                        meshCount: this.scene.children.filter(child => child.isMesh).length,
+                        lightCount: this.scene.children.filter(child => child.isLight).length
+                    },
+                    performance: {
+                        currentFPS: this.currentFPS,
+                        memoryUsage: this.getMemoryUsage(),
+                        drawCalls: this.scene.children.filter(child => child.isMesh).length
+                    },
+                    overlays: this.overlays,
+                    selectedObject: this.selectedObject ? {
+                        name: this.selectedObject.name,
+                        type: this.selectedObject.type,
+                        position: this.selectedObject.position.toArray(),
+                        rotation: this.selectedObject.rotation.toArray(),
+                        scale: this.selectedObject.scale.toArray()
+                    } : null,
+                    consoleLog: this.consoleEntries
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `debug-data-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.log('info', 'Debug data exported');
+            }
+
+            resize() {
+                const container = this.renderer.domElement.parentElement;
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                
+                this.renderer.setSize(width, height);
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update performance stats
+                this.updateStats();
+                
+                // Record if needed
+                if (this.isRecording) {
+                    this.recordingData.push({
+                        fps: this.currentFPS,
+                        memory: this.getMemoryUsage(),
+                        drawCalls: this.scene.children.filter(child => child.isMesh).length,
+                        timestamp: Date.now()
+                    });
+                }
+                
+                // Update object labels if visible
+                if (this.overlays.objectLabels) {
+                    this.updateObjectLabels();
+                }
+                
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize debugger
+        const debugger = new DebugOverlays();
+        window.debugger = debugger;
+    </script>
+</body>
+</html>

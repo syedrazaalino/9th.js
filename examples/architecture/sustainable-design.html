@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sustainable Design - Eco-Friendly Architecture</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #sustainability-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 360px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #sustainability-panel h3 {
+            margin: 0 0 12px 0;
+            color: #4caf50;
+            font-size: 18px;
+        }
+        
+        #sustainability-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 10px 0;
+            color: #8bc34a;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .eco-feature {
+            display: inline-block;
+            margin: 3px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 70px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .eco-feature.solar { background-color: #ff9800; }
+        .eco-feature.green-roof { background-color: #4caf50; }
+        .eco-feature.water { background-color: #2196f3; }
+        .eco-feature.insulation { background-color: #9c27b0; }
+        .eco-feature.ventilation { background-color: #607d8b; }
+        .eco-feature.lighting { background-color: #ffeb3b; }
+        .eco-feature.recycling { background-color: #795548; }
+        .eco-feature.geothermal { background-color: #e91e63; }
+        
+        .eco-feature:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.2);
+        }
+        
+        .eco-feature.active {
+            border: 3px solid #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .sustainability-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .metric-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        
+        .metric-label {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 2px;
+        }
+        
+        .energy-flow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+        
+        .flow-indicator {
+            flex: 1;
+            height: 8px;
+            background-color: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .flow-fill {
+            height: 100%;
+            background: linear-gradient(to right, #f44336, #ff9800, #4caf50);
+            transition: width 0.3s;
+        }
+        
+        .flow-label {
+            font-size: 11px;
+            min-width: 80px;
+        }
+        
+        .slider-group {
+            margin: 8px 0;
+        }
+        
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            outline: none;
+        }
+        
+        .button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #388e3c;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background-color: #607d8b;
+        }
+        
+        .button.secondary:hover {
+            background-color: #455a64;
+        }
+        
+        .button.danger {
+            background-color: #f44336;
+        }
+        
+        .button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #metrics-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 10;
+            min-width: 240px;
+        }
+        
+        #metrics-panel h4 {
+            margin: 0 0 10px 0;
+            color: #4caf50;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric-name {
+            font-size: 12px;
+            color: #333;
+        }
+        
+        .metric-value-small {
+            font-size: 12px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        
+        .certification-badge {
+            background-color: #4caf50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            text-align: center;
+            margin: 5px 0;
+        }
+        
+        #environmental-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 25px;
+            z-index: 10;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .env-metric {
+            text-align: center;
+        }
+        
+        .env-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        
+        .env-label {
+            font-size: 11px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="sustainability-panel">
+        <h3>Sustainable Design Studio</h3>
+        <p>Eco-friendly architecture system</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Building Type: <span id="building-type">Residential</span></p>
+        <p>LEED Score: <span id="leed-score">0</span>/110</p>
+        
+        <div class="control-section">
+            <h4>Green Technologies</h4>
+            <div class="eco-feature solar active" data-feature="solar">Solar Panels</div>
+            <div class="eco-feature green-roof" data-feature="green-roof">Green Roof</div>
+            <div class="eco-feature water" data-feature="water">Water Mgmt</div>
+            <div class="eco-feature insulation" data-feature="insulation">Insulation</div>
+            <div class="eco-feature ventilation" data-feature="ventilation">Ventilation</div>
+            <div class="eco-feature lighting" data-feature="lighting">LED Lighting</div>
+            <div class="eco-feature recycling" data-feature="recycling">Waste Mgmt</div>
+            <div class="eco-feature geothermal" data-feature="geothermal">Geothermal</div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Energy Systems</h4>
+            <div class="control-group">
+                <label>Solar Panel Efficiency:</label>
+                <div class="slider-group">
+                    <input type="range" id="solar-efficiency" min="0" max="100" value="85">
+                    <span id="solar-value">85%</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Insulation Rating (R-Value):</label>
+                <div class="slider-group">
+                    <input type="range" id="insulation-value" min="10" max="50" value="25">
+                    <span id="insulation-display">R-25</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Water Recycling:</label>
+                <div class="slider-group">
+                    <input type="range" id="water-recycling" min="0" max="100" value="60">
+                    <span id="water-value">60%</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Wind Energy:</label>
+                <div class="slider-group">
+                    <input type="range" id="wind-energy" min="0" max="100" value="30">
+                    <span id="wind-value">30%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sustainability-metrics">
+            <div class="metric-box">
+                <div class="metric-value" id="energy-efficiency">78</div>
+                <div class="metric-label">Energy Eff.</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value" id="carbon-footprint">-45</div>
+                <div class="metric-label">CO₂ (tons)</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value" id="water-savings">2.3K</div>
+                <div class="metric-label">Water (gal/yr)</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value" id="cost-savings">$3.2K</div>
+                <div class="metric-label">Annual Savings</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Simulation</h4>
+            <button class="button" onclick="runSimulation()">Run Simulation</button>
+            <button class="button" onclick="optimizeDesign()">Optimize</button>
+            <button class="button secondary" onclick="compareOptions()">Compare</button>
+            <button class="button secondary" onclick="generateReport()">LEED Report</button>
+            <button class="button danger" onclick="resetDesign()">Reset</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Click features to toggle • Adjust sliders for optimization
+            </p>
+        </div>
+    </div>
+    
+    <div id="metrics-panel">
+        <h4>Real-time Metrics</h4>
+        
+        <div class="metric-row">
+            <span class="metric-name">Energy Generation</span>
+            <span class="metric-value-small"><span id="energy-gen">12.5</span> kW</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-name">Energy Consumption</span>
+            <span class="metric-value-small"><span id="energy-cons">8.2</span> kW</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-name">Net Energy</span>
+            <span class="metric-value-small"><span id="net-energy">+4.3</span> kW</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-name">Water Collection</span>
+            <span class="metric-value-small"><span id="water-collected">245</span> gal/day</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-name">Waste Recycled</span>
+            <span class="metric-value-small"><span id="waste-recycled">78</span>%</span>
+        </div>
+        <div class="metric-row">
+            <span class="metric-name">Air Quality</span>
+            <span class="metric-value-small" style="color: #4caf50;">Excellent</span>
+        </div>
+        
+        <div class="certification-badge" id="leed-badge">
+            LEED Silver Certified
+        </div>
+        
+        <div class="energy-flow">
+            <span class="flow-label">Solar</span>
+            <div class="flow-indicator">
+                <div class="flow-fill" id="solar-flow" style="width: 60%"></div>
+            </div>
+            <span>60%</span>
+        </div>
+        
+        <div class="energy-flow">
+            <span class="flow-label">Wind</span>
+            <div class="flow-indicator">
+                <div class="flow-fill" id="wind-flow" style="width: 25%"></div>
+            </div>
+            <span>25%</span>
+        </div>
+        
+        <div class="energy-flow">
+            <span class="flow-label">Grid</span>
+            <div class="flow-indicator">
+                <div class="flow-fill" id="grid-flow" style="width: 15%"></div>
+            </div>
+            <span>15%</span>
+        </div>
+    </div>
+    
+    <div id="environmental-panel">
+        <div class="env-metric">
+            <div class="env-value" id="temp-reduction">-3.2°C</div>
+            <div class="env-label">Urban Heat</div>
+        </div>
+        <div class="env-metric">
+            <div class="env-value" id="biodiversity">+12%</div>
+            <div class="env-label">Biodiversity</div>
+        </div>
+        <div class="env-metric">
+            <div class="env-value" id="carbon-sequestered">8.5</div>
+            <div class="env-label">CO₂ Stored (tons)</div>
+        </div>
+        <div class="env-metric">
+            <div class="env-value" id="air-quality-index">95</div>
+            <div class="env-label">Air Quality</div>
+        </div>
+    </div>
+
+    <canvas id="sustainability-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class SustainableDesign {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#87ceeb');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(0, 15, 20);
+                this.camera.lookAt(0, 5, 0);
+                
+                this.buildingType = 'residential';
+                this.activeFeatures = new Set(['solar']);
+                this.energyMetrics = {
+                    solarEfficiency: 0.85,
+                    insulation: 25,
+                    waterRecycling: 0.60,
+                    windEnergy: 0.30
+                };
+                
+                this.currentMetrics = {
+                    energyGeneration: 12.5,
+                    energyConsumption: 8.2,
+                    waterCollection: 245,
+                    wasteRecycled: 78
+                };
+                
+                this.leedScore = 0;
+                this.simulationRunning = false;
+                this.timeOfDay = 12; // 12 PM
+                
+                this.ecoSystems = [];
+                this.renewableEnergy = [];
+                this.waterSystems = [];
+                
+                this.initializeLights();
+                this.createSustainableBuilding();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting
+                this.ambientLight = new AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Sun (primary energy source)
+                this.sunLight = new DirectionalLight(1.0, '#fff59d');
+                this.sunLight.setDirection(-1, -2, -0.5);
+                this.scene.add(this.sunLight);
+
+                // Simulated wind direction indicator
+                this.windLight = new PointLight(0.3, '#81d4fa');
+                this.windLight.setPosition(15, 10, -5);
+                this.scene.add(this.windLight);
+
+                // Green energy indicators
+                this.ecoLight = new PointLight(0.4, '#4caf50');
+                this.ecoLight.setPosition(0, 10, 0);
+                this.scene.add(this.ecoLight);
+            }
+
+            createSustainableBuilding() {
+                this.buildingParts = [];
+                
+                // Foundation (with rainwater collection)
+                this.createFoundation();
+                
+                // Main structure
+                this.createMainStructure();
+                
+                // Green roof system
+                this.createGreenRoof();
+                
+                // Solar panel array
+                this.createSolarArray();
+                
+                // Wind turbines
+                this.createWindTurbines();
+                
+                // Water management systems
+                this.createWaterSystems();
+                
+                // Energy-efficient windows
+                this.createSmartWindows();
+                
+                // Geothermal system
+                this.createGeothermalSystem();
+            }
+
+            createFoundation() {
+                // Foundation with integrated rainwater collection
+                const foundationGeometry = new BoxGeometry(15, 2, 10);
+                const foundationMaterial = new StandardMaterial({ 
+                    color: '#757575',
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                
+                const foundation = new Mesh(foundationGeometry);
+                foundation.material = foundationMaterial.clone();
+                foundation.setPosition(0, 1, 0);
+                
+                foundation.userData = {
+                    type: 'foundation',
+                    sustainable: true,
+                    waterCollection: true
+                };
+                
+                this.buildingParts.push(foundation);
+                this.scene.add(foundation);
+                
+                // Rainwater collection tanks
+                this.createWaterTanks();
+            }
+
+            createWaterTanks() {
+                for (let i = 0; i < 4; i++) {
+                    const tankGeometry = new CylinderGeometry(1, 1.2, 2);
+                    const tankMaterial = new StandardMaterial({ 
+                        color: '#2196f3',
+                        transparency: 0.7,
+                        opacity: 0.8
+                    });
+                    
+                    const tank = new Mesh(tankGeometry);
+                    tank.material = tankMaterial.clone();
+                    
+                    const angle = (i * Math.PI) / 2;
+                    tank.setPosition(
+                        Math.cos(angle) * 8, 
+                        1, 
+                        Math.sin(angle) * 5
+                    );
+                    
+                    tank.userData = {
+                        type: 'waterTank',
+                        capacity: 1000,
+                        level: Math.random() * 100
+                    };
+                    
+                    this.waterSystems.push(tank);
+                    this.scene.add(tank);
+                }
+            }
+
+            createMainStructure() {
+                // Energy-efficient walls
+                const wallGeometry = new BoxGeometry(15, 8, 0.5);
+                const wallMaterial = new StandardMaterial({ 
+                    color: '#8bc34a', // Eco-friendly green tint
+                    roughness: 0.6,
+                    metalness: 0.2,
+                    emissive: '#2e7d32',
+                    emissiveIntensity: 0.1
+                });
+                
+                const walls = [
+                    { pos: [0, 5, -5], rot: [0, 0, 0], name: 'front' },
+                    { pos: [0, 5, 5], rot: [0, Math.PI, 0], name: 'back' },
+                    { pos: [-7.5, 5, 0], rot: [0, Math.PI / 2, 0], name: 'left' },
+                    { pos: [7.5, 5, 0], rot: [0, -Math.PI / 2, 0], name: 'right' }
+                ];
+                
+                walls.forEach(wall => {
+                    const wallMesh = new Mesh(wallGeometry);
+                    wallMesh.material = wallMaterial.clone();
+                    wallMesh.setPosition(...wall.pos);
+                    wallMesh.setRotation(...wall.rot);
+                    
+                    wallMesh.userData = {
+                        type: 'wall',
+                        sustainable: true,
+                        insulation: this.energyMetrics.insulation
+                    };
+                    
+                    this.buildingParts.push(wallMesh);
+                    this.scene.add(wallMesh);
+                });
+            }
+
+            createGreenRoof() {
+                // Green roof layer
+                const roofGeometry = new PlaneGeometry(15, 10);
+                const roofMaterial = new StandardMaterial({ 
+                    color: '#2e7d32',
+                    roughness: 0.8,
+                    metalness: 0.1,
+                    emissive: '#4caf50',
+                    emissiveIntensity: 0.2
+                });
+                
+                const greenRoof = new Mesh(roofGeometry);
+                greenRoof.material = roofMaterial.clone();
+                greenRoof.setPosition(0, 8.5, 0);
+                greenRoof.setRotation(Math.PI / 2, 0, 0);
+                
+                greenRoof.userData = {
+                    type: 'greenRoof',
+                    sustainable: true,
+                    area: 150,
+                    co2Absorption: 12.5
+                };
+                
+                this.buildingParts.push(greenRoof);
+                this.scene.add(greenRoof);
+                
+                // Add rooftop garden elements
+                this.createRooftopGarden();
+            }
+
+            createRooftopGarden() {
+                // Planters for rooftop garden
+                for (let i = 0; i < 8; i++) {
+                    const planterGeometry = new CylinderGeometry(0.5, 0.6, 0.3);
+                    const planterMaterial = new StandardMaterial({ color: '#8d6e63' });
+                    
+                    const planter = new Mesh(planterGeometry);
+                    planter.material = planterMaterial.clone();
+                    
+                    const angle = (i * Math.PI) / 4;
+                    const radius = 5;
+                    planter.setPosition(
+                        Math.cos(angle) * radius, 
+                        8.8, 
+                        Math.sin(angle) * radius * 0.6
+                    );
+                    
+                    // Add plants
+                    const plantGeometry = new CylinderGeometry(0.3, 0.2, 0.8);
+                    const plantMaterial = new StandardMaterial({ 
+                        color: '#4caf50',
+                        emissive: '#2e7d32',
+                        emissiveIntensity: 0.1
+                    });
+                    const plant = new Mesh(plantGeometry);
+                    plant.material = plantMaterial.clone();
+                    plant.setPosition(0, 0.5, 0);
+                    planter.add(plant);
+                    
+                    this.ecoSystems.push(planter);
+                    this.scene.add(planter);
+                }
+            }
+
+            createSolarArray() {
+                // Solar panel array on roof
+                for (let i = 0; i < 12; i++) {
+                    const panelGeometry = new BoxGeometry(1.2, 0.1, 2);
+                    const panelMaterial = new StandardMaterial({ 
+                        color: '#1a237e',
+                        metalness: 0.9,
+                        emissive: '#3f51b5',
+                        emissiveIntensity: 0.1
+                    });
+                    
+                    const panel = new Mesh(panelGeometry);
+                    panel.material = panelMaterial.clone();
+                    
+                    const row = Math.floor(i / 4);
+                    const col = i % 4;
+                    panel.setPosition(
+                        -3 + col * 2, 
+                        9.2, 
+                        -2 + row * 1.5
+                    );
+                    panel.setRotation(0.3, 0, 0); // Angle for optimal sun exposure
+                    
+                    panel.userData = {
+                        type: 'solarPanel',
+                        efficiency: this.energyMetrics.solarEfficiency,
+                        power: 300 // watts
+                    };
+                    
+                    this.renewableEnergy.push(panel);
+                    this.scene.add(panel);
+                }
+            }
+
+            createWindTurbines() {
+                // Small-scale wind turbines
+                for (let i = 0; i < 3; i++) {
+                    const turbineGroup = new Mesh();
+                    
+                    // Turbine base
+                    const baseGeometry = new CylinderGeometry(0.3, 0.5, 3);
+                    const baseMaterial = new StandardMaterial({ color: '#607d8b' });
+                    const base = new Mesh(baseGeometry);
+                    base.setPosition(0, 1.5, 0);
+                    turbineGroup.add(base);
+                    
+                    // Turbine blades
+                    for (let j = 0; j < 3; j++) {
+                        const bladeGeometry = new BoxGeometry(0.1, 0.5, 2.5);
+                        const bladeMaterial = new StandardMaterial({ 
+                            color: '#eceff1',
+                            metalness: 0.8
+                        });
+                        const blade = new Mesh(bladeGeometry);
+                        blade.material = bladeMaterial.clone();
+                        blade.setPosition(0, 3.2, 0);
+                        blade.setRotation(0, 0, (j * Math.PI * 2) / 3);
+                        turbineGroup.add(blade);
+                    }
+                    
+                    const angle = (i * Math.PI * 2) / 3;
+                    turbineGroup.setPosition(
+                        Math.cos(angle) * 12, 
+                        0, 
+                        Math.sin(angle) * 8
+                    );
+                    
+                    turbineGroup.userData = {
+                        type: 'windTurbine',
+                        power: 1000 // watts
+                    };
+                    
+                    this.renewableEnergy.push(turbineGroup);
+                    this.scene.add(turbineGroup);
+                }
+            }
+
+            createWaterSystems() {
+                // Greywater treatment system
+                const treatmentGeometry = new BoxGeometry(3, 2, 2);
+                const treatmentMaterial = new StandardMaterial({ 
+                    color: '#2196f3',
+                    transparency: 0.6,
+                    opacity: 0.8
+                });
+                
+                const treatment = new Mesh(treatmentGeometry);
+                treatment.material = treatmentMaterial.clone();
+                treatment.setPosition(-10, 1, -8);
+                
+                treatment.userData = {
+                    type: 'waterTreatment',
+                    capacity: 500,
+                    recyclingRate: this.energyMetrics.waterRecycling
+                };
+                
+                this.waterSystems.push(treatment);
+                this.scene.add(treatment);
+                
+                // Permeable pavement
+                this.createPermeablePavement();
+            }
+
+            createPermeablePavement() {
+                // Eco-friendly permeable pavement around building
+                for (let i = 0; i < 16; i++) {
+                    const pavementGeometry = new BoxGeometry(2, 0.1, 2);
+                    const pavementMaterial = new StandardMaterial({ 
+                        color: '#a5d6a7',
+                        roughness: 0.7,
+                        metalness: 0.1
+                    });
+                    
+                    const pavement = new Mesh(pavementGeometry);
+                    pavement.material = pavementMaterial.clone();
+                    
+                    const row = Math.floor(i / 4);
+                    const col = i % 4;
+                    pavement.setPosition(
+                        -12 + col * 3, 
+                        0.05, 
+                        -8 + row * 3
+                    );
+                    
+                    pavement.userData = {
+                        type: 'permeablePavement',
+                        drainageRate: 85
+                    };
+                    
+                    this.ecoSystems.push(pavement);
+                    this.scene.add(pavement);
+                }
+            }
+
+            createSmartWindows() {
+                // Energy-efficient smart windows
+                const windowConfigs = [
+                    { pos: [-6, 6, -4.75], rot: [0, 0, 0] },
+                    { pos: [-2, 6, -4.75], rot: [0, 0, 0] },
+                    { pos: [2, 6, -4.75], rot: [0, 0, 0] },
+                    { pos: [6, 6, -4.75], rot: [0, 0, 0] },
+                    { pos: [-6, 6, 4.75], rot: [0, Math.PI, 0] },
+                    { pos: [-2, 6, 4.75], rot: [0, Math.PI, 0] },
+                    { pos: [2, 6, 4.75], rot: [0, Math.PI, 0] },
+                    { pos: [6, 6, 4.75], rot: [0, Math.PI, 0] }
+                ];
+                
+                windowConfigs.forEach(config => {
+                    const windowGeometry = new BoxGeometry(1.5, 2.5, 0.1);
+                    const windowMaterial = new StandardMaterial({ 
+                        color: '#87ceeb',
+                        transparency: 0.6,
+                        opacity: 0.7,
+                        metalness: 0.8
+                    });
+                    
+                    const window = new Mesh(windowGeometry);
+                    window.material = windowMaterial.clone();
+                    window.setPosition(...config.pos);
+                    window.setRotation(...config.rot);
+                    
+                    window.userData = {
+                        type: 'smartWindow',
+                        energyEfficiency: 0.9
+                    };
+                    
+                    this.buildingParts.push(window);
+                    this.scene.add(window);
+                });
+            }
+
+            createGeothermalSystem() {
+                // Geothermal heat pump system
+                const geothermalGeometry = new CylinderGeometry(2, 2, 1);
+                const geothermalMaterial = new StandardMaterial({ 
+                    color: '#e91e63',
+                    emissive: '#e91e63',
+                    emissiveIntensity: 0.1
+                });
+                
+                const geothermal = new Mesh(geothermalGeometry);
+                geothermal.material = geothermalMaterial.clone();
+                geothermal.setPosition(10, 0.5, 0);
+                
+                geothermal.userData = {
+                    type: 'geothermal',
+                    efficiency: 0.95
+                };
+                
+                this.renewableEnergy.push(geothermal);
+                this.scene.add(geothermal);
+                
+                // Geothermal pipes (underground visualization)
+                for (let i = 0; i < 5; i++) {
+                    const pipeGeometry = new CylinderGeometry(0.2, 0.2, 8);
+                    const pipeMaterial = new StandardMaterial({ color: '#e91e63' });
+                    const pipe = new Mesh(pipeGeometry);
+                    pipe.material = pipeMaterial.clone();
+                    pipe.setPosition(8 + i * 0.5, -3, 0);
+                    pipe.setRotation(Math.PI / 2, 0, 0);
+                    
+                    this.renewableEnergy.push(pipe);
+                    this.scene.add(pipe);
+                }
+            }
+
+            updateEnergyMetrics() {
+                // Simulate real-time energy calculations
+                const solarEfficiency = this.energyMetrics.solarEfficiency;
+                const windEfficiency = this.energyMetrics.windEnergy;
+                const timeFactor = Math.sin((this.timeOfDay - 6) * Math.PI / 12) * 0.8 + 0.2;
+                
+                // Solar energy generation
+                const solarGeneration = 3600 * solarEfficiency * timeFactor; // watts
+                
+                // Wind energy generation
+                const windGeneration = 3000 * windEfficiency * (Math.random() * 0.3 + 0.7); // watts
+                
+                // Geothermal energy
+                const geothermalGeneration = 2000 * 0.95; // constant
+                
+                // Total generation
+                const totalGeneration = (solarGeneration + windGeneration + geothermalGeneration) / 1000; // kW
+                
+                // Consumption (varies by building type and time of day)
+                const baseConsumption = this.buildingType === 'residential' ? 6 : 12;
+                const consumptionVariation = Math.sin((this.timeOfDay - 8) * Math.PI / 12) * 0.5 + 0.5;
+                const totalConsumption = baseConsumption * consumptionVariation;
+                
+                // Update metrics
+                this.currentMetrics.energyGeneration = totalGeneration;
+                this.currentMetrics.energyConsumption = totalConsumption;
+                this.currentMetrics.netEnergy = totalGeneration - totalConsumption;
+                
+                // Water collection based on rainfall simulation
+                const rainfall = Math.random() * 50 + 100; // mm per day
+                this.currentMetrics.waterCollection = rainfall * 2.3; // gallons
+                
+                // Update UI
+                document.getElementById('energy-gen').textContent = totalGeneration.toFixed(1);
+                document.getElementById('energy-cons').textContent = totalConsumption.toFixed(1);
+                document.getElementById('net-energy').textContent = 
+                    (totalGeneration - totalConsumption > 0 ? '+' : '') + 
+                    (totalGeneration - totalConsumption).toFixed(1);
+                document.getElementById('water-collected').textContent = Math.round(this.currentMetrics.waterCollection);
+                
+                // Update flow indicators
+                const solarPercent = (solarGeneration / (solarGeneration + windGeneration + geothermalGeneration)) * 100;
+                const windPercent = (windGeneration / (solarGeneration + windGeneration + geothermalGeneration)) * 100;
+                const gridPercent = Math.max(0, 100 - solarPercent - windPercent);
+                
+                document.getElementById('solar-flow').style.width = solarPercent + '%';
+                document.getElementById('wind-flow').style.width = windPercent + '%';
+                document.getElementById('grid-flow').style.width = gridPercent + '%';
+                
+                this.calculateLEEDScore();
+            }
+
+            calculateLEEDScore() {
+                let score = 0;
+                
+                // Sustainable Sites (10 points)
+                score += this.activeFeatures.has('green-roof') ? 5 : 0;
+                score += this.activeFeatures.has('water') ? 5 : 0;
+                
+                // Water Efficiency (11 points)
+                score += this.energyMetrics.waterRecycling > 0.5 ? 6 : 0;
+                score += this.energyMetrics.waterRecycling > 0.8 ? 5 : 0;
+                
+                // Energy & Atmosphere (33 points)
+                score += Math.min(20, this.currentMetrics.energyGeneration * 2);
+                score += this.energyMetrics.solarEfficiency > 0.8 ? 8 : 0;
+                score += this.activeFeatures.has('geothermal') ? 5 : 0;
+                
+                // Materials & Resources (13 points)
+                score += this.activeFeatures.has('recycling') ? 8 : 0;
+                score += this.activeFeatures.has('insulation') ? 5 : 0;
+                
+                // Indoor Environmental Quality (16 points)
+                score += this.activeFeatures.has('ventilation') ? 6 : 0;
+                score += this.activeFeatures.has('lighting') ? 10 : 0;
+                
+                // Innovation (6 points)
+                if (this.activeFeatures.size >= 6) score += 3;
+                if (this.leedScore > 80) score += 3;
+                
+                // Regional Priority (4 points)
+                score += this.activeFeatures.has('solar') ? 2 : 0;
+                score += this.activeFeatures.has('wind') ? 2 : 0;
+                
+                this.leedScore = Math.min(110, Math.round(score));
+                document.getElementById('leed-score').textContent = this.leedScore;
+                
+                // Update certification badge
+                const badge = document.getElementById('leed-badge');
+                if (this.leedScore >= 80) {
+                    badge.textContent = 'LEED Gold Certified';
+                    badge.style.backgroundColor = '#ffd700';
+                } else if (this.leedScore >= 60) {
+                    badge.textContent = 'LEED Silver Certified';
+                    badge.style.backgroundColor = '#c0c0c0';
+                } else if (this.leedScore >= 40) {
+                    badge.textContent = 'LEED Certified';
+                    badge.style.backgroundColor = '#cd7f32';
+                } else {
+                    badge.textContent = 'Not Certified';
+                    badge.style.backgroundColor = '#666';
+                }
+            }
+
+            simulateTimeOfDay() {
+                if (this.simulationRunning) {
+                    this.timeOfDay += 0.1;
+                    if (this.timeOfDay >= 24) this.timeOfDay = 0;
+                    
+                    // Update sun position and intensity
+                    const sunIntensity = Math.max(0, Math.sin((this.timeOfDay - 6) * Math.PI / 12));
+                    this.sunLight.intensity = sunIntensity;
+                    
+                    // Update environmental factors
+                    this.updateEnvironmentalImpact();
+                }
+            }
+
+            updateEnvironmentalImpact() {
+                // Calculate carbon footprint reduction
+                const energyOffset = this.currentMetrics.energyGeneration - this.currentMetrics.energyConsumption;
+                const carbonReduction = Math.max(0, energyOffset * 0.5 * 365 / 1000); // tons per year
+                
+                // Calculate cost savings
+                const annualSavings = carbonReduction * 50; // $50 per ton CO2
+                
+                // Update metrics
+                document.getElementById('carbon-footprint').textContent = '-' + carbonReduction.toFixed(1);
+                document.getElementById('cost-savings').textContent = '$' + (annualSavings / 1000).toFixed(1) + 'K';
+                document.getElementById('energy-efficiency').textContent = 
+                    Math.round((this.currentMetrics.energyGeneration / this.currentMetrics.energyConsumption) * 100);
+                
+                // Environmental impact
+                const tempReduction = Math.min(10, carbonReduction * 0.5);
+                document.getElementById('temp-reduction').textContent = '-' + tempReduction.toFixed(1) + '°C';
+                document.getElementById('carbon-sequestered').textContent = (carbonReduction * 2.2).toFixed(1);
+            }
+
+            setupEventListeners() {
+                // Feature selection
+                document.querySelectorAll('.eco-feature').forEach(feature => {
+                    feature.addEventListener('click', () => {
+                        const featureType = feature.dataset.feature;
+                        
+                        if (this.activeFeatures.has(featureType)) {
+                            this.activeFeatures.delete(featureType);
+                            feature.classList.remove('active');
+                        } else {
+                            this.activeFeatures.add(featureType);
+                            feature.classList.add('active');
+                        }
+                        
+                        this.updateSystemVisibility();
+                        this.calculateLEEDScore();
+                    });
+                });
+
+                // Control sliders
+                document.getElementById('solar-efficiency').addEventListener('input', (e) => {
+                    this.energyMetrics.solarEfficiency = parseInt(e.target.value) / 100;
+                    document.getElementById('solar-value').textContent = e.target.value + '%';
+                });
+
+                document.getElementById('insulation-value').addEventListener('input', (e) => {
+                    this.energyMetrics.insulation = parseInt(e.target.value);
+                    document.getElementById('insulation-display').textContent = 'R-' + e.target.value;
+                });
+
+                document.getElementById('water-recycling').addEventListener('input', (e) => {
+                    this.energyMetrics.waterRecycling = parseInt(e.target.value) / 100;
+                    document.getElementById('water-value').textContent = e.target.value + '%';
+                });
+
+                document.getElementById('wind-energy').addEventListener('input', (e) => {
+                    this.energyMetrics.windEnergy = parseInt(e.target.value) / 100;
+                    document.getElementById('wind-value').textContent = e.target.value + '%';
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            updateSystemVisibility() {
+                // Show/hide systems based on active features
+                this.renewableEnergy.forEach(system => {
+                    const type = system.userData.type;
+                    const visible = (type === 'solarPanel' && this.activeFeatures.has('solar')) ||
+                                   (type === 'windTurbine' && this.activeFeatures.has('wind')) ||
+                                   (type === 'geothermal' && this.activeFeatures.has('geothermal'));
+                    system.visible = visible;
+                });
+                
+                this.waterSystems.forEach(system => {
+                    const visible = this.activeFeatures.has('water');
+                    system.visible = visible;
+                });
+                
+                this.ecoSystems.forEach(system => {
+                    const visible = (system.userData.type === 'greenRoof' && this.activeFeatures.has('green-roof')) ||
+                                   (system.userData.type === 'permeablePavement' && this.activeFeatures.has('recycling'));
+                    system.visible = visible;
+                });
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+                document.getElementById('building-type').textContent = 
+                    this.buildingType.charAt(0).toUpperCase() + this.buildingType.slice(1);
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+                
+                // Simulate time progression
+                this.simulateTimeOfDay();
+                
+                // Update energy metrics
+                this.updateEnergyMetrics();
+                
+                // Animate renewable energy systems
+                const time = performance.now() * 0.001;
+                this.renewableEnergy.forEach((system, index) => {
+                    if (system.userData.type === 'windTurbine') {
+                        system.setRotation(time * 2 + index, 0, 0);
+                    } else if (system.userData.type === 'solarPanel') {
+                        // Subtle panel movement for realism
+                        system.setRotation(0.3 + Math.sin(time + index) * 0.05, 0, 0);
+                    }
+                });
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let sustainabilityDemo;
+
+        function runSimulation() {
+            if (sustainabilityDemo) {
+                sustainabilityDemo.simulationRunning = !sustainabilityDemo.simulationRunning;
+                console.log('Simulation ' + (sustainabilityDemo.simulationRunning ? 'started' : 'paused'));
+            }
+        }
+
+        function optimizeDesign() {
+            if (sustainabilityDemo) {
+                // Optimize system settings for maximum efficiency
+                const sliders = {
+                    'solar-efficiency': 95,
+                    'insulation-value': 40,
+                    'water-recycling': 90,
+                    'wind-energy': 70
+                };
+                
+                Object.entries(sliders).forEach(([id, value]) => {
+                    const slider = document.getElementById(id);
+                    if (slider) {
+                        slider.value = value;
+                        slider.dispatchEvent(new Event('input'));
+                    }
+                });
+                
+                // Activate all features
+                document.querySelectorAll('.eco-feature').forEach(feature => {
+                    if (!sustainabilityDemo.activeFeatures.has(feature.dataset.feature)) {
+                        feature.click();
+                    }
+                });
+            }
+        }
+
+        function compareOptions() {
+            if (sustainabilityDemo) {
+                console.log('Comparing design options...');
+                // This would show different design configurations
+            }
+        }
+
+        function generateReport() {
+            if (sustainabilityDemo) {
+                const report = {
+                    building: {
+                        type: sustainabilityDemo.buildingType,
+                        leedScore: sustainabilityDemo.leedScore,
+                        certification: document.getElementById('leed-badge').textContent
+                    },
+                    energy: {
+                        generation: sustainabilityDemo.currentMetrics.energyGeneration,
+                        consumption: sustainabilityDemo.currentMetrics.energyConsumption,
+                        netEnergy: sustainabilityDemo.currentMetrics.netEnergy,
+                        solarEfficiency: sustainabilityDemo.energyMetrics.solarEfficiency,
+                        windEnergy: sustainabilityDemo.energyMetrics.windEnergy
+                    },
+                    water: {
+                        collection: sustainabilityDemo.currentMetrics.waterCollection,
+                        recyclingRate: sustainabilityDemo.energyMetrics.waterRecycling
+                    },
+                    environmental: {
+                        features: Array.from(sustainabilityDemo.activeFeatures),
+                        insulation: sustainabilityDemo.energyMetrics.insulation,
+                        wasteRecycled: sustainabilityDemo.currentMetrics.wasteRecycled
+                    },
+                    savings: {
+                        carbonReduction: document.getElementById('carbon-footprint').textContent,
+                        annualSavings: document.getElementById('cost-savings').textContent,
+                        waterSavings: document.getElementById('water-savings').textContent
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'leed-report.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function resetDesign() {
+            if (sustainabilityDemo) {
+                // Reset all systems to default
+                sustainabilityDemo.activeFeatures.clear();
+                sustainabilityDemo.activeFeatures.add('solar');
+                
+                // Reset UI
+                document.querySelectorAll('.eco-feature').forEach(feature => {
+                    feature.classList.remove('active');
+                    if (feature.dataset.feature === 'solar') {
+                        feature.classList.add('active');
+                    }
+                });
+                
+                // Reset sliders
+                const defaultValues = {
+                    'solar-efficiency': 85,
+                    'insulation-value': 25,
+                    'water-recycling': 60,
+                    'wind-energy': 30
+                };
+                
+                Object.entries(defaultValues).forEach(([id, value]) => {
+                    const slider = document.getElementById(id);
+                    if (slider) {
+                        slider.value = value;
+                        slider.dispatchEvent(new Event('input'));
+                    }
+                });
+                
+                sustainabilityDemo.leedScore = 0;
+                sustainabilityDemo.timeOfDay = 12;
+                sustainabilityDemo.updateSystemVisibility();
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('sustainability-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                sustainabilityDemo = new SustainableDesign(canvas);
+                console.log('Sustainable design demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading sustainable design:', error);
+                document.getElementById('sustainability-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

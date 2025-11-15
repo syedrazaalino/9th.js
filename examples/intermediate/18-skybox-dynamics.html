@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skybox Dynamics Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Skybox Dynamics Demo</strong><br>
+        Dynamic environment skyboxes<br>
+        - Procedural sky generation<br>
+        - Time of day cycling<br>
+        - Weather transitions<br>
+        - Multi-layer atmospheres
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setSkyType('day')" class="active">Day Cycle</button>
+            <button onclick="setSkyType('sunset')">Sunset</button>
+            <button onclick="setSkyType('night')">Night</button>
+            <button onclick="setSkyType('storm')">Storm</button>
+        </div>
+        <div class="control-group">
+            <label>Time Speed: <span id="speed-val">1.0</span></label>
+            <input type="range" id="time-speed" min="0" max="5" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Cloud Coverage: <span id="cloud-val">0.5</span></label>
+            <input type="range" id="cloud-coverage" min="0" max="1" step="0.01" value="0.5">
+        </div>
+        <div class="control-group">
+            <label>Atmosphere Thickness: <span id="atmosphere-val">1.0</span></label>
+            <input type="range" id="atmosphere-thickness" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <button onclick="toggleAnimation()">Toggle Animation</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 10, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Dynamic Skybox System
+        class DynamicSkyboxSystem {
+            constructor() {
+                this.skyType = 'day';
+                this.timeSpeed = 1.0;
+                this.cloudCoverage = 0.5;
+                this.atmosphereThickness = 1.0;
+                this.animated = true;
+                this.time = 0;
+
+                this.createSkySystem();
+                this.createEnvironment();
+            }
+
+            createSkySystem() {
+                // Create multi-layer sky
+                this.skyLayers = {
+                    gradient: this.createSkyGradient(),
+                    clouds: this.createClouds(),
+                    stars: this.createStars(),
+                    sun: this.createSun(),
+                    moon: this.createMoon()
+                };
+
+                Object.values(this.skyLayers).forEach(layer => {
+                    if (layer) scene.add(layer);
+                });
+            }
+
+            createSkyGradient() {
+                const geometry = new THREE.SphereGeometry(1000, 32, 16);
+                
+                const uniforms = {
+                    topColor: { value: new THREE.Color(0x0077be) },
+                    bottomColor: { value: new THREE.Color(0xffffff) },
+                    offset: { value: 33 },
+                    exponent: { value: 0.6 },
+                    time: { value: 0.0 }
+                };
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: uniforms,
+                    vertexShader: `
+                        varying vec3 vWorldPosition;
+                        void main() {
+                            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                            vWorldPosition = worldPosition.xyz;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform vec3 topColor;
+                        uniform vec3 bottomColor;
+                        uniform float offset;
+                        uniform float exponent;
+                        uniform float time;
+                        varying vec3 vWorldPosition;
+                        
+                        void main() {
+                            float h = normalize(vWorldPosition + offset).y;
+                            float t = max(pow(max(h, 0.0), exponent), 0.0);
+                            
+                            vec3 color = mix(bottomColor, topColor, t);
+                            
+                            // Add time-based variation
+                            color.r += sin(time * 0.1) * 0.05;
+                            color.b += cos(time * 0.1) * 0.05;
+                            
+                            gl_FragColor = vec4(color, 1.0);
+                        }
+                    `,
+                    side: THREE.BackSide,
+                    transparent: false
+                });
+
+                return new THREE.Mesh(geometry, material);
+            }
+
+            createClouds() {
+                const cloudCount = 100;
+                const cloudGeometry = new THREE.PlaneGeometry(50, 50);
+                const cloudMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8,
+                    depthWrite: false
+                });
+
+                const clouds = new THREE.Group();
+
+                for (let i = 0; i < cloudCount; i++) {
+                    const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial.clone());
+                    cloud.position.set(
+                        (Math.random() - 0.5) * 2000,
+                        Math.random() * 200 + 100,
+                        (Math.random() - 0.5) * 2000
+                    );
+                    cloud.rotation.z = Math.random() * Math.PI * 2;
+                    cloud.userData = {
+                        speed: 0.5 + Math.random(),
+                        originalX: cloud.position.x,
+                        originalZ: cloud.position.z
+                    };
+                    
+                    clouds.add(cloud);
+                }
+
+                return clouds;
+            }
+
+            createStars() {
+                const starCount = 2000;
+                const starGeometry = new THREE.BufferGeometry();
+                const starPositions = new Float32Array(starCount * 3);
+                const starColors = new Float32Array(starCount * 3);
+
+                for (let i = 0; i < starCount; i++) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.random() * Math.PI;
+                    const radius = 800 + Math.random() * 200;
+
+                    starPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+                    starPositions[i * 3 + 1] = radius * Math.cos(phi);
+                    starPositions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+                    const brightness = Math.random() * 0.5 + 0.5;
+                    starColors[i * 3] = brightness;
+                    starColors[i * 3 + 1] = brightness;
+                    starColors[i * 3 + 2] = brightness;
+                }
+
+                starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+                starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+                const starMaterial = new THREE.PointsMaterial({
+                    size: 1,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                return new THREE.Points(starGeometry, starMaterial);
+            }
+
+            createSun() {
+                const sunGeometry = new THREE.SphereGeometry(5, 32, 16);
+                const sunMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xfff700,
+                    emissive: 0xfff700,
+                    emissiveIntensity: 2
+                });
+
+                const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+                sun.userData = { 
+                    angle: 0,
+                    radius: 200
+                };
+
+                return sun;
+            }
+
+            createMoon() {
+                const moonGeometry = new THREE.SphereGeometry(3, 32, 16);
+                const moonMaterial = new THREE.MeshLambertMaterial({
+                    color: 0xf5f5dc,
+                    emissive: 0xf5f5dc,
+                    emissiveIntensity: 0.1
+                });
+
+                const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+                moon.userData = {
+                    angle: Math.PI,
+                    radius: 150
+                };
+
+                return moon;
+            }
+
+            createEnvironment() {
+                // Create ground and reference objects
+                const groundGeometry = new THREE.PlaneGeometry(100, 100);
+                const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x4a5d23 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.y = -5;
+                ground.receiveShadow = true;
+                scene.add(ground);
+
+                // Reference objects
+                const referenceObjects = [];
+                const geometries = [
+                    new THREE.BoxGeometry(2, 2, 2),
+                    new THREE.SphereGeometry(1.5, 32, 16),
+                    new THREE.CylinderGeometry(1, 1, 3, 16)
+                ];
+
+                const materials = [
+                    new THREE.MeshLambertMaterial({ color: 0xe74c3c }),
+                    new THREE.MeshLambertMaterial({ color: 0x3498db }),
+                    new THREE.MeshLambertMaterial({ color: 0x2ecc71 })
+                ];
+
+                geometries.forEach((geometry, i) => {
+                    const mesh = new THREE.Mesh(geometry, materials[i]);
+                    mesh.position.set(
+                        (i - 1) * 8,
+                        0,
+                        -10
+                    );
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    scene.add(mesh);
+                    referenceObjects.push(mesh);
+                });
+
+                this.referenceObjects = referenceObjects;
+            }
+
+            setSkyType(type) {
+                this.skyType = type;
+                this.applySkyType();
+            }
+
+            applySkyType() {
+                const gradient = this.skyLayers.gradient.material.uniforms;
+                
+                switch(this.skyType) {
+                    case 'day':
+                        gradient.topColor.value.setHex(0x0077be);
+                        gradient.bottomColor.value.setHex(0x87ceeb);
+                        break;
+                    
+                    case 'sunset':
+                        gradient.topColor.value.setHex(0xff6b35);
+                        gradient.bottomColor.value.setHex(0xf39c12);
+                        break;
+                    
+                    case 'night':
+                        gradient.topColor.value.setHex(0x191970);
+                        gradient.bottomColor.value.setHex(0x2c3e50);
+                        break;
+                    
+                    case 'storm':
+                        gradient.topColor.value.setHex(0x2c3e50);
+                        gradient.bottomColor.value.setHex(0x34495e);
+                        break;
+                }
+            }
+
+            setTimeSpeed(speed) {
+                this.timeSpeed = speed;
+            }
+
+            setCloudCoverage(coverage) {
+                this.cloudCoverage = coverage;
+                this.skyLayers.clouds.children.forEach(cloud => {
+                    cloud.visible = Math.random() < coverage;
+                });
+            }
+
+            setAtmosphereThickness(thickness) {
+                this.atmosphereThickness = thickness;
+                this.skyLayers.gradient.material.uniforms.exponent.value = thickness * 0.6;
+            }
+
+            toggleAnimation() {
+                this.animated = !this.animated;
+            }
+
+            update(time) {
+                if (!this.animated) return;
+
+                const dayLength = 60; // 60 seconds for full day cycle
+                const dayProgress = (time * this.timeSpeed) % dayLength;
+                const dayFraction = dayProgress / dayLength;
+
+                // Update gradient shader time
+                this.skyLayers.gradient.material.uniforms.time.value = time;
+
+                // Update sun and moon positions
+                const sunAngle = dayFraction * Math.PI * 2;
+                const moonAngle = sunAngle + Math.PI;
+
+                const sunRadius = 200;
+                const moonRadius = 150;
+
+                this.skyLayers.sun.position.set(
+                    Math.cos(sunAngle) * sunRadius,
+                    Math.sin(sunAngle) * sunRadius,
+                    0
+                );
+
+                this.skyLayers.moon.position.set(
+                    Math.cos(moonAngle) * moonRadius,
+                    Math.sin(moonAngle) * moonRadius,
+                    0
+                );
+
+                // Update sun intensity based on height
+                const sunHeight = Math.sin(sunAngle);
+                this.skyLayers.sun.material.emissiveIntensity = Math.max(0, sunHeight) * 3;
+                this.skyLayers.moon.material.emissiveIntensity = Math.max(0, -sunHeight) * 0.5;
+
+                // Update stars visibility
+                this.skyLayers.stars.visible = sunHeight < 0;
+
+                // Update clouds
+                this.skyLayers.clouds.children.forEach(cloud => {
+                    cloud.position.x += cloud.userData.speed * 0.5;
+                    cloud.position.z += cloud.userData.speed * 0.1;
+                    
+                    if (cloud.position.x > 1000) {
+                        cloud.position.x = -1000;
+                    }
+                    if (cloud.position.z > 1000) {
+                        cloud.position.z = -1000;
+                    }
+                });
+
+                // Update reference objects
+                this.referenceObjects.forEach((obj, index) => {
+                    obj.rotation.y = time * (0.2 + index * 0.1);
+                });
+            }
+        }
+
+        // Create skybox system
+        const skyboxSystem = new DynamicSkyboxSystem();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 1;
+        directionalLight.shadow.camera.far = 300;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        scene.add(directionalLight);
+
+        // Global functions
+        window.setSkyType = (type) => {
+            skyboxSystem.setSkyType(type);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.toggleAnimation = () => {
+            skyboxSystem.toggleAnimation();
+        };
+
+        // Control bindings
+        const speedSlider = document.getElementById('time-speed');
+        const speedDisplay = document.getElementById('speed-val');
+        speedSlider.addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            skyboxSystem.setTimeSpeed(speed);
+            speedDisplay.textContent = speed.toFixed(1);
+        });
+
+        const cloudSlider = document.getElementById('cloud-coverage');
+        const cloudDisplay = document.getElementById('cloud-val');
+        cloudSlider.addEventListener('input', (e) => {
+            const coverage = parseFloat(e.target.value);
+            skyboxSystem.setCloudCoverage(coverage);
+            cloudDisplay.textContent = coverage.toFixed(2);
+        });
+
+        const atmosphereSlider = document.getElementById('atmosphere-thickness');
+        const atmosphereDisplay = document.getElementById('atmosphere-val');
+        atmosphereSlider.addEventListener('input', (e) => {
+            const thickness = parseFloat(e.target.value);
+            skyboxSystem.setAtmosphereThickness(thickness);
+            atmosphereDisplay.textContent = thickness.toFixed(1);
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            skyboxSystem.update(elapsedTime);
+
+            // Sync directional light with sun
+            const sunPos = skyboxSystem.skyLayers.sun.position;
+            directionalLight.position.copy(sunPos);
+            directionalLight.target.position.set(0, 0, 0);
+            directionalLight.target.updateMatrixWorld();
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

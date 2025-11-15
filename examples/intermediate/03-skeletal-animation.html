@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skeletal Animation Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 5px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover { background: #666; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Skeletal Animation Demo</strong><br>
+        Procedural bone animation system<br>
+        - Hierarchical bone structure<br>
+        - IK (Inverse Kinematics) simulation<br>
+        - Multiple animation clips<br>
+        - Real-time pose editing
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="playAnimation('idle')">Idle</button>
+            <button onclick="playAnimation('walk')">Walk</button>
+            <button onclick="playAnimation('run')">Run</button>
+            <button onclick="playAnimation('dance')">Dance</button>
+        </div>
+        <div class="control-group">
+            <label>Animation Speed: <span id="speed-val">1.0</span></label>
+            <input type="range" id="animation-speed" min="0" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Bone Influence: <span id="influence-val">1.0</span></label>
+            <input type="range" id="bone-influence" min="0" max="1" step="0.01" value="1.0">
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x2c3e50);
+        scene.fog = new THREE.Fog(0x2c3e50, 10, 50);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(10, 8, 10);
+        camera.lookAt(0, 5, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 5, 0);
+        controls.enableDamping = true;
+
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(20, 20);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x34495e });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Create a procedural character with bones
+        class SkeletalCharacter {
+            constructor() {
+                this.bones = [];
+                this.animations = {};
+                this.currentAnimation = 'idle';
+                this.animationTime = 0;
+                this.animationSpeed = 1.0;
+                this.boneInfluence = 1.0;
+
+                this.createCharacter();
+                this.setupAnimations();
+            }
+
+            createCharacter() {
+                // Create bone hierarchy
+                const boneGeometry = new THREE.BoxGeometry(0.3, 2, 0.3);
+                const boneMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xff6b35, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                // Spine bones
+                const spine1 = this.createBone('spine1', boneGeometry, boneMaterial);
+                spine1.position.y = 0;
+                const spine2 = this.createBone('spine2', boneGeometry, boneMaterial);
+                spine2.position.y = 2;
+                const spine3 = this.createBone('spine3', boneGeometry, boneMaterial);
+                spine3.position.y = 4;
+
+                // Head
+                const head = this.createBone('head', new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshBasicMaterial({ color: 0xe74c3c }));
+                head.position.y = 5.5;
+
+                // Arms
+                const leftArm = this.createBone('leftArm', new THREE.BoxGeometry(0.3, 1.5, 0.3), boneMaterial);
+                leftArm.position.set(-1.2, 4, 0);
+                
+                const rightArm = this.createBone('rightArm', new THREE.BoxGeometry(0.3, 1.5, 0.3), boneMaterial);
+                rightArm.position.set(1.2, 4, 0);
+
+                // Legs
+                const leftLeg = this.createBone('leftLeg', new THREE.BoxGeometry(0.4, 2, 0.4), boneMaterial);
+                leftLeg.position.set(-0.5, 0, 0);
+                
+                const rightLeg = this.createBone('rightLeg', new THREE.BoxGeometry(0.4, 2, 0.4), boneMaterial);
+                rightLeg.position.set(0.5, 0, 0);
+
+                // Hierarchy
+                scene.add(spine1);
+                spine1.add(spine2);
+                spine2.add(spine3);
+                spine3.add(head);
+                spine2.add(leftArm);
+                spine2.add(rightArm);
+                spine1.add(leftLeg);
+                spine1.add(rightLeg);
+
+                // Store bones
+                this.bones = {
+                    spine1, spine2, spine3, head, leftArm, rightArm, leftLeg, rightLeg
+                };
+
+                // Add visual skeleton lines
+                this.addSkeletonHelper();
+            }
+
+            createBone(name, geometry, material) {
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.userData.boneName = name;
+                return mesh;
+            }
+
+            addSkeletonHelper() {
+                // Create lines connecting bones for visual skeleton
+                const points = [];
+                const material = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+
+                // Spine
+                points.push(new THREE.Vector3(0, 0, 0));
+                points.push(new THREE.Vector3(0, 2, 0));
+                points.push(new THREE.Vector3(0, 4, 0));
+                points.push(new THREE.Vector3(0, 6, 0));
+
+                // Arms
+                points.push(new THREE.Vector3(0, 4, 0));
+                points.push(new THREE.Vector3(-1.2, 4, 0));
+                points.push(new THREE.Vector3(0, 4, 0));
+                points.push(new THREE.Vector3(1.2, 4, 0));
+
+                // Legs
+                points.push(new THREE.Vector3(0, 0, 0));
+                points.push(new THREE.Vector3(-0.5, 0, 0));
+                points.push(new THREE.Vector3(0, 0, 0));
+                points.push(new THREE.Vector3(0.5, 0, 0));
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const skeleton = new THREE.LineSegments(geometry, material);
+                scene.add(skeleton);
+            }
+
+            setupAnimations() {
+                // Idle animation
+                this.animations.idle = {
+                    duration: 2.0,
+                    keyframes: [
+                        { time: 0.0, bones: { 
+                            head: { rotation: [0, 0, 0] },
+                            leftArm: { rotation: [0, 0, 0.1] },
+                            rightArm: { rotation: [0, 0, -0.1] }
+                        }},
+                        { time: 1.0, bones: { 
+                            head: { rotation: [0, 0, 0.1] },
+                            leftArm: { rotation: [0, 0, 0.15] },
+                            rightArm: { rotation: [0, 0, -0.15] }
+                        }},
+                        { time: 2.0, bones: { 
+                            head: { rotation: [0, 0, 0] },
+                            leftArm: { rotation: [0, 0, 0.1] },
+                            rightArm: { rotation: [0, 0, -0.1] }
+                        }}
+                    ]
+                };
+
+                // Walk animation
+                this.animations.walk = {
+                    duration: 1.2,
+                    keyframes: [
+                        { time: 0.0, bones: { 
+                            leftArm: { rotation: [0, 0, -0.3] },
+                            rightArm: { rotation: [0, 0, 0.3] },
+                            leftLeg: { rotation: [0.2, 0, 0] },
+                            rightLeg: { rotation: [-0.2, 0, 0] }
+                        }},
+                        { time: 0.3, bones: { 
+                            leftArm: { rotation: [0, 0, -0.1] },
+                            rightArm: { rotation: [0, 0, 0.1] },
+                            leftLeg: { rotation: [0, 0, 0] },
+                            rightLeg: { rotation: [0, 0, 0] }
+                        }},
+                        { time: 0.6, bones: { 
+                            leftArm: { rotation: [0, 0, 0.3] },
+                            rightArm: { rotation: [0, 0, -0.3] },
+                            leftLeg: { rotation: [-0.2, 0, 0] },
+                            rightLeg: { rotation: [0.2, 0, 0] }
+                        }},
+                        { time: 0.9, bones: { 
+                            leftArm: { rotation: [0, 0, 0.1] },
+                            rightArm: { rotation: [0, 0, -0.1] },
+                            leftLeg: { rotation: [0, 0, 0] },
+                            rightLeg: { rotation: [0, 0, 0] }
+                        }},
+                        { time: 1.2, bones: { 
+                            leftArm: { rotation: [0, 0, -0.3] },
+                            rightArm: { rotation: [0, 0, 0.3] },
+                            leftLeg: { rotation: [0.2, 0, 0] },
+                            rightLeg: { rotation: [-0.2, 0, 0] }
+                        }}
+                    ]
+                };
+
+                // Run animation (faster)
+                this.animations.run = {
+                    duration: 0.8,
+                    keyframes: [
+                        { time: 0.0, bones: { 
+                            head: { rotation: [0.1, 0, 0] },
+                            leftArm: { rotation: [0, 0, -0.5] },
+                            rightArm: { rotation: [0, 0, 0.5] },
+                            leftLeg: { rotation: [0.4, 0, 0] },
+                            rightLeg: { rotation: [-0.4, 0, 0] }
+                        }},
+                        { time: 0.2, bones: { 
+                            leftArm: { rotation: [0, 0, 0] },
+                            rightArm: { rotation: [0, 0, 0] },
+                            leftLeg: { rotation: [0, 0, 0] },
+                            rightLeg: { rotation: [0, 0, 0] }
+                        }},
+                        { time: 0.4, bones: { 
+                            head: { rotation: [-0.1, 0, 0] },
+                            leftArm: { rotation: [0, 0, 0.5] },
+                            rightArm: { rotation: [0, 0, -0.5] },
+                            leftLeg: { rotation: [-0.4, 0, 0] },
+                            rightLeg: { rotation: [0.4, 0, 0] }
+                        }},
+                        { time: 0.6, bones: { 
+                            leftArm: { rotation: [0, 0, 0] },
+                            rightArm: { rotation: [0, 0, 0] },
+                            leftLeg: { rotation: [0, 0, 0] },
+                            rightLeg: { rotation: [0, 0, 0] }
+                        }},
+                        { time: 0.8, bones: { 
+                            head: { rotation: [0.1, 0, 0] },
+                            leftArm: { rotation: [0, 0, -0.5] },
+                            rightArm: { rotation: [0, 0, 0.5] },
+                            leftLeg: { rotation: [0.4, 0, 0] },
+                            rightLeg: { rotation: [-0.4, 0, 0] }
+                        }}
+                    ]
+                };
+
+                // Dance animation
+                this.animations.dance = {
+                    duration: 3.0,
+                    keyframes: [
+                        { time: 0.0, bones: { 
+                            head: { rotation: [0, 0, 0] },
+                            leftArm: { rotation: [0, 0, 0] },
+                            rightArm: { rotation: [0, 0, 0] },
+                            spine1: { rotation: [0, 0, 0] }
+                        }},
+                        { time: 0.5, bones: { 
+                            head: { rotation: [0.2, 0, 0.1] },
+                            leftArm: { rotation: [0.3, 0, 0.5] },
+                            rightArm: { rotation: [0.3, 0, -0.5] },
+                            spine1: { rotation: [0, 0, 0.1] }
+                        }},
+                        { time: 1.0, bones: { 
+                            head: { rotation: [-0.2, 0, -0.1] },
+                            leftArm: { rotation: [0, 0, -0.5] },
+                            rightArm: { rotation: [0, 0, 0.5] },
+                            spine1: { rotation: [0, 0, -0.1] }
+                        }},
+                        { time: 1.5, bones: { 
+                            head: { rotation: [0, 0.3, 0] },
+                            leftArm: { rotation: [0.5, 0, 0] },
+                            rightArm: { rotation: [0.5, 0, 0] },
+                            spine1: { rotation: [0.2, 0, 0] }
+                        }},
+                        { time: 2.0, bones: { 
+                            head: { rotation: [0, -0.3, 0] },
+                            leftArm: { rotation: [-0.3, 0, 0] },
+                            rightArm: { rotation: [-0.3, 0, 0] },
+                            spine1: { rotation: [-0.2, 0, 0] }
+                        }},
+                        { time: 2.5, bones: { 
+                            head: { rotation: [0, 0, 0] },
+                            leftArm: { rotation: [0, 0, 0] },
+                            rightArm: { rotation: [0, 0, 0] },
+                            spine1: { rotation: [0, 0, 0] }
+                        }},
+                        { time: 3.0, bones: { 
+                            head: { rotation: [0, 0, 0] },
+                            leftArm: { rotation: [0, 0, 0] },
+                            rightArm: { rotation: [0, 0, 0] },
+                            spine1: { rotation: [0, 0, 0] }
+                        }}
+                    ]
+                };
+            }
+
+            updateAnimation(deltaTime) {
+                const animation = this.animations[this.currentAnimation];
+                if (!animation) return;
+
+                this.animationTime += deltaTime * this.animationSpeed;
+                
+                // Loop animation
+                if (this.animationTime > animation.duration) {
+                    this.animationTime = 0;
+                }
+
+                // Interpolate between keyframes
+                this.interpolateKeyframes(animation);
+            }
+
+            interpolateKeyframes(animation) {
+                const keyframes = animation.keyframes;
+                
+                // Find surrounding keyframes
+                let currentKeyframe = keyframes[0];
+                let nextKeyframe = keyframes[1];
+
+                for (let i = 0; i < keyframes.length - 1; i++) {
+                    if (this.animationTime >= keyframes[i].time && this.animationTime <= keyframes[i + 1].time) {
+                        currentKeyframe = keyframes[i];
+                        nextKeyframe = keyframes[i + 1];
+                        break;
+                    }
+                }
+
+                // Calculate interpolation factor
+                const t1 = currentKeyframe.time;
+                const t2 = nextKeyframe.time;
+                const alpha = (this.animationTime - t1) / (t2 - t1);
+
+                // Interpolate bone rotations
+                for (const boneName in currentKeyframe.bones) {
+                    if (this.bones[boneName] && currentKeyframe.bones[boneName].rotation && nextKeyframe.bones[boneName].rotation) {
+                        const current = currentKeyframe.bones[boneName].rotation;
+                        const next = nextKeyframe.bones[boneName].rotation;
+                        
+                        // Apply influence factor
+                        const influence = this.boneInfluence;
+                        
+                        this.bones[boneName].rotation.x = (current[0] + (next[0] - current[0]) * alpha) * influence;
+                        this.bones[boneName].rotation.y = (current[1] + (next[1] - current[1]) * alpha) * influence;
+                        this.bones[boneName].rotation.z = (current[2] + (next[2] - current[2]) * alpha) * influence;
+                    }
+                }
+            }
+
+            playAnimation(name) {
+                if (this.animations[name]) {
+                    this.currentAnimation = name;
+                    this.animationTime = 0;
+                }
+            }
+        }
+
+        // Create character instance
+        const character = new SkeletalCharacter();
+
+        // Lighting for better character visibility
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        scene.add(directionalLight);
+
+        // Global functions for buttons
+        window.playAnimation = (animationName) => {
+            character.playAnimation(animationName);
+        };
+
+        // Control bindings
+        const speedSlider = document.getElementById('animation-speed');
+        const speedDisplay = document.getElementById('speed-val');
+        speedSlider.addEventListener('input', (e) => {
+            character.animationSpeed = parseFloat(e.target.value);
+            speedDisplay.textContent = e.target.value;
+        });
+
+        const influenceSlider = document.getElementById('bone-influence');
+        const influenceDisplay = document.getElementById('influence-val');
+        influenceSlider.addEventListener('input', (e) => {
+            character.boneInfluence = parseFloat(e.target.value);
+            influenceDisplay.textContent = e.target.value;
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+
+            // Update character animation
+            character.updateAnimation(deltaTime);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

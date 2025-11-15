@@ -1,0 +1,366 @@
+# Travis CI Configuration for 9th.js
+
+language: node_js
+
+# Test on multiple Node.js versions
+node_js:
+  - '16'
+  - '18'
+  - '20'
+
+# Test on multiple operating systems
+os:
+  - linux
+  - windows
+  - osx
+
+# Use Ubuntu 20.04 LTS for Linux builds
+dist: focal
+
+# Cache dependencies
+cache:
+  directories:
+    - node_modules
+    - ~/.npm
+
+# Environment variables
+env:
+  global:
+    - NODE_ENV=test
+    - CI=true
+
+# Build matrix exclusions/inclusions
+jobs:
+  include:
+    # Fast finish - don't wait for allowed failures
+    - stage: lint
+      name: "Lint and Format Check"
+      node_js: '18'
+      script:
+        - npm run lint
+        - npm run format:check
+        - npm run type-check
+      after_success: skip
+
+    # Core tests
+    - stage: test
+      name: "Unit Tests"
+      node_js: '18'
+      script:
+        - npm run test -- tests/unit
+
+    - stage: test
+      name: "Integration Tests"
+      node_js: '18'
+      script:
+        - npm run test -- tests/integration
+
+    # Performance tests (only on pull requests and main branch)
+    - stage: performance
+      name: "Performance Tests"
+      node_js: '18'
+      if: type = pull_request OR branch = main
+      script:
+        - npm run test -- tests/performance
+      after_script:
+        - mkdir -p performance-results
+        - cp coverage/*.json performance-results/ || true
+
+    # Visual regression tests (only on pull requests and main branch)
+    - stage: visual
+      name: "Visual Regression Tests"
+      node_js: '18'
+      if: type = pull_request OR branch = main
+      script:
+        - npm run test -- tests/visual
+      after_script:
+        - mkdir -p visual-results
+        - cp coverage/*.json visual-results/ || true
+
+    # Load tests (only on pull requests and main branch)
+    - stage: load
+      name: "Load Tests"
+      node_js: '18'
+      if: type = pull_request OR branch = main
+      script:
+        - npm run test -- tests/load
+      after_script:
+        - mkdir -p load-results
+        - cp coverage/*.json load-results/ || true
+
+    # Cross-platform tests
+    - stage: cross-platform
+      name: "Cross-Platform Tests"
+      os: windows
+      node_js: '18'
+      script:
+        - npm ci
+        - npm run test:ci
+
+    - stage: cross-platform
+      name: "macOS Tests"
+      os: osx
+      node_js: '18'
+      script:
+        - npm ci
+        - npm run test:ci
+
+    # Build tests
+    - stage: build
+      name: "Build Verification"
+      node_js: '18'
+      script:
+        - npm run build
+        - npm run analyze
+      after_success:
+        - ls -la dist/
+
+    # Security audit
+    - stage: security
+      name: "Security Audit"
+      node_js: '18'
+      script:
+        - npm audit --audit-level=moderate
+        - npm outdated | grep -E "^\w+\s+\d+\.\d+\.\d+\s+.*\d+\.\d+\.\d+" || echo "No major version mismatches"
+
+    # Documentation build
+    - stage: docs
+      name: "Documentation Build"
+      node_js: '18'
+      script:
+        - npm run docs
+      after_success:
+        - test -f docs/api/index.html || (echo "Documentation build failed" && exit 1)
+
+    # Browser compatibility tests
+    - stage: browser
+      name: "Browser Compatibility"
+      node_js: '18'
+      addons:
+        chrome: stable
+        firefox: latest
+      script:
+        - npm install -g npx
+        - npx playwright install --with-deps
+        - npm run test:browser
+      if: type = pull_request
+
+    # Bundle size analysis
+    - stage: bundle
+      name: "Bundle Size Analysis"
+      node_js: '18'
+      script:
+        - npm run build
+        - npm run size
+      if: branch = main OR type = pull_request
+
+    # Coverage upload
+    - stage: coverage
+      name: "Coverage Upload"
+      node_js: '18'
+      script:
+        - npm run test:coverage
+      after_success:
+        - npm install -g codecov
+        - codecov
+
+  allow_failures:
+    # Allow performance tests to fail without failing the build
+    - stage: performance
+      name: "Performance Tests"
+    # Allow visual tests to fail without failing the build
+    - stage: visual
+      name: "Visual Regression Tests"
+    # Allow load tests to fail without failing the build
+    - stage: load
+      name: "Load Tests"
+
+  fast_finish: true
+
+# Installation steps
+before_install:
+  # Update npm
+  - npm install -g npm@latest
+
+install:
+  - npm ci
+
+# Before script
+before_script:
+  - echo "Running tests on Travis CI"
+  - node --version
+  - npm --version
+
+# After success
+after_success:
+  - echo "All tests passed successfully!"
+
+# After failure
+after_failure:
+  - echo "Tests failed. Collecting debug information..."
+  - ls -la
+  - cat package.json
+
+# Deploy stages (only on specific branches)
+deploy:
+  # Deploy documentation to GitHub Pages (main branch only)
+  - provider: pages
+    skip_cleanup: true
+    local_dir: docs/api
+    github_token: $GITHUB_TOKEN
+    target_branch: gh-pages
+    on:
+      branch: main
+      condition: $TRAVIS_NODE_VERSION = 18
+
+  # Deploy to npm (tagged releases only)
+  - provider: npm
+    email: $NPM_EMAIL
+    api_key: $NPM_API_KEY
+    skip_cleanup: true
+    on:
+      tags: true
+      node_js: '18'
+
+  # Deploy to GitHub Releases (tagged releases only)
+  - provider: releases
+    api_key: $GITHUB_TOKEN
+    file_glob: true
+    file: dist/*
+    skip_cleanup: true
+    on:
+      tags: true
+      node_js: '18'
+
+# Notifications
+notifications:
+  email:
+    recipients:
+      - team@9thjs.com
+    on_success: change
+    on_failure: always
+
+  # Slack notifications (if configured)
+  slack:
+    rooms:
+      - secure: $SLACK_TOKEN
+    on_success: change
+    on_failure: always
+
+  # Webhook notifications (if configured)
+  webhooks:
+    urls:
+      - $WEBHOOK_URL
+    on_success: change
+    on_failure: always
+
+# Build stages
+stages:
+  - name: lint
+    if: type = pull_request OR branch = main
+
+  - name: test
+    if: type = pull_request OR branch = main
+
+  - name: performance
+    if: type = pull_request OR branch = main
+
+  - name: visual
+    if: type = pull_request OR branch = main
+
+  - name: load
+    if: type = pull_request OR branch = main
+
+  - name: cross-platform
+    if: type = pull_request OR branch = main
+
+  - name: build
+    if: branch = main
+
+  - name: security
+    if: branch = main
+
+  - name: docs
+    if: branch = main
+
+  - name: browser
+    if: type = pull_request
+
+  - name: bundle
+    if: branch = main OR type = pull_request
+
+  - name: coverage
+    if: branch = main
+
+  - name: deploy
+    if: tag IS present
+
+# Additional settings
+addons:
+  # Chrome for browser testing
+  chrome: stable
+
+  # Firefox for browser testing
+  firefox: latest
+
+  # Safari for macOS testing
+  safari:
+    enabled: true
+
+# Build timeout
+timeout: 3600
+
+# Retry flaky tests
+cache_retry:
+  toolcache: true
+  npm: true
+
+# Environment-specific settings
+matrix:
+  # Fast finish
+  fast_finish: true
+
+  # Allow some jobs to fail without failing the entire build
+  allow_failures:
+    - env: BROWSER_TEST=true
+    - stage: performance
+    - stage: visual
+    - stage: load
+
+  # Exclude certain combinations
+  exclude:
+    # Skip some combinations to reduce build time
+    - os: osx
+      node_js: '16'
+    - os: windows
+      node_js: '16'
+
+# Custom commands
+before_deploy:
+  - echo "Preparing for deployment..."
+  - npm run build
+  - npm run docs
+
+after_deploy:
+  - echo "Deployment completed!"
+
+# Cleanup
+after_script:
+  - echo "Cleaning up..."
+  - rm -rf node_modules
+  - rm -rf ~/.npm
+
+# Debug mode (enable with TRAVIS_DEBUG=true)
+debug:
+  enabled: false
+  stages:
+    - name: debug
+      if: $TRAVIS_DEBUG = true
+      script:
+        - echo "Debug mode enabled"
+        - whoami
+        - pwd
+        - env
+        - node --version
+        - npm --version
+        - npm ls

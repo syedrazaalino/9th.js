@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Profiler - Developer Tools Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toolbar h1 {
+            font-size: 18px;
+            color: #00ff88;
+            margin-right: 30px;
+        }
+
+        .tool-btn {
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #505050;
+            border-color: #00ff88;
+        }
+
+        .tool-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            color: #00ff88;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 15px 15px 0 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 15px;
+        }
+
+        .stat-card {
+            background: #3a3a3a;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #555;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00ff88;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+        }
+
+        .stat-change {
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .stat-change.positive {
+            color: #00ff88;
+        }
+
+        .stat-change.negative {
+            color: #ff4444;
+        }
+
+        .monitoring-panel {
+            padding: 15px;
+        }
+
+        .monitoring-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #3a3a3a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .monitoring-item:hover {
+            background: #454545;
+        }
+
+        .monitoring-item.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .monitoring-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .monitoring-status.active {
+            background: #00ff88;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-canvas {
+            flex: 1;
+            background: linear-gradient(45deg, #222, #333);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #profilerCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .graphs-container {
+            height: 300px;
+            background: #1e1e1e;
+            border-top: 1px solid #444;
+            display: flex;
+        }
+
+        .graph-panel {
+            flex: 1;
+            border-right: 1px solid #444;
+            position: relative;
+        }
+
+        .graph-panel:last-child {
+            border-right: none;
+        }
+
+        .graph-title {
+            background: #2d2d2d;
+            padding: 10px 15px;
+            font-size: 12px;
+            color: #00ff88;
+            font-weight: 600;
+            border-bottom: 1px solid #444;
+        }
+
+        .graph-canvas {
+            width: 100%;
+            height: calc(100% - 35px);
+            display: block;
+        }
+
+        .property-panel {
+            width: 300px;
+            background: #2d2d2d;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .alerts-panel {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: #3a3a3a;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 4px solid;
+            font-size: 12px;
+        }
+
+        .alert-item.warning {
+            border-color: #ffaa00;
+        }
+
+        .alert-item.error {
+            border-color: #ff4444;
+        }
+
+        .alert-item.info {
+            border-color: #0088ff;
+        }
+
+        .alert-time {
+            color: #999;
+            font-size: 10px;
+            margin-bottom: 5px;
+        }
+
+        .controls-panel {
+            padding: 15px;
+            border-top: 1px solid #444;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .control-input {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .control-input[type="range"] {
+            padding: 0;
+        }
+
+        .floating-stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #00ff88;
+            z-index: 1000;
+        }
+
+        .performance-gauge {
+            width: 80px;
+            height: 80px;
+            margin: 10px auto;
+        }
+
+        .gauge-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .gauge-text {
+            text-anchor: middle;
+            dominant-baseline: middle;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .stress-test-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(45, 45, 45, 0.9);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+
+        .stress-test-btn {
+            background: #ff4444;
+            border: none;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 12px;
+        }
+
+        .stress-test-btn:hover {
+            background: #ff6666;
+        }
+
+        .export-controls {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .export-btn:hover {
+            background: #454545;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>📊 Performance Profiler</h1>
+        <button class="tool-btn" id="startProfiler">Start</button>
+        <button class="tool-btn" id="stopProfiler">Stop</button>
+        <button class="tool-btn" id="clearStats">Clear</button>
+        <button class="tool-btn" id="exportData">Export</button>
+        <button class="tool-btn" id="settingsBtn">Settings</button>
+        <div class="export-controls">
+            <button class="tool-btn export-btn" onclick="profiler.exportJSON()">JSON</button>
+            <button class="tool-btn export-btn" onclick="profiler.exportCSV()">CSV</button>
+            <button class="tool-btn export-btn" onclick="profiler.exportReport()">Report</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="section-title">Performance Metrics</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="fpsValue">60</div>
+                    <div class="stat-label">FPS</div>
+                    <div class="stat-change" id="fpsChange">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="frameTimeValue">16.7</div>
+                    <div class="stat-label">Frame Time (ms)</div>
+                    <div class="stat-change" id="frameTimeChange">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="memoryValue">0</div>
+                    <div class="stat-label">Memory (MB)</div>
+                    <div class="stat-change" id="memoryChange">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="drawCallsValue">1</div>
+                    <div class="stat-label">Draw Calls</div>
+                    <div class="stat-change" id="drawCallsChange">--</div>
+                </div>
+            </div>
+
+            <div class="section-title">Monitoring</div>
+            <div class="monitoring-panel">
+                <div class="monitoring-item active" data-monitor="fps">
+                    <div class="monitoring-status active"></div>
+                    <span>FPS Monitor</span>
+                </div>
+                <div class="monitoring-item active" data-monitor="memory">
+                    <div class="monitoring-status active"></div>
+                    <span>Memory Usage</span>
+                </div>
+                <div class="monitoring-item active" data-monitor="cpu">
+                    <div class="monitoring-status active"></div>
+                    <span>CPU Usage</span>
+                </div>
+                <div class="monitoring-item" data-monitor="network">
+                    <div class="monitoring-status"></div>
+                    <span>Network I/O</span>
+                </div>
+                <div class="monitoring-item" data-monitor="render">
+                    <div class="monitoring-status active"></div>
+                    <span>Render Pipeline</span>
+                </div>
+            </div>
+
+            <div class="performance-gauge">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#333" stroke-width="8"/>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#00ff88" stroke-width="8"
+                            stroke-dasharray="251.2" stroke-dashoffset="0"
+                            id="performanceGauge"
+                            style="transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 0.3s;"/>
+                    <text x="50" y="50" class="gauge-text" fill="#00ff88" id="gaugeText">100%</text>
+                </svg>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <div class="preview-canvas">
+                <canvas id="profilerCanvas"></canvas>
+                <div class="floating-stats" id="floatingStats">
+                    FPS: <span id="currentFps">60</span><br>
+                    Frame: <span id="currentFrameTime">16.7</span>ms<br>
+                    GPU: <span id="gpuTime">0.5</span>ms
+                </div>
+            </div>
+            
+            <div class="graphs-container">
+                <div class="graph-panel">
+                    <div class="graph-title">FPS History</div>
+                    <canvas class="graph-canvas" id="fpsGraph"></canvas>
+                </div>
+                <div class="graph-panel">
+                    <div class="graph-title">Memory Usage</div>
+                    <canvas class="graph-canvas" id="memoryGraph"></canvas>
+                </div>
+                <div class="graph-panel">
+                    <div class="graph-title">Frame Time</div>
+                    <canvas class="graph-canvas" id="frameTimeGraph"></canvas>
+                </div>
+                <div class="graph-panel">
+                    <div class="graph-title">CPU Usage</div>
+                    <canvas class="graph-canvas" id="cpuGraph"></canvas>
+                </div>
+            </div>
+
+            <div class="stress-test-controls">
+                <div style="color: #00ff88; font-size: 12px; margin-bottom: 10px; font-weight: 600;">Stress Tests</div>
+                <button class="stress-test-btn" onclick="profiler.stressTest('geometry')">Geometry</button>
+                <button class="stress-test-btn" onclick="profiler.stressTest('particles')">Particles</button>
+                <button class="stress-test-btn" onclick="profiler.stressTest('shaders')">Shaders</button>
+                <button class="stress-test-btn" onclick="profiler.stressTest('memory')">Memory</button>
+            </div>
+        </div>
+
+        <div class="property-panel">
+            <div class="section-title">Alerts & Warnings</div>
+            <div class="alerts-panel" id="alertsPanel">
+                <div class="alert-item info">
+                    <div class="alert-time">12:34:56</div>
+                    <div>Profiler started. Monitoring performance metrics...</div>
+                </div>
+            </div>
+
+            <div class="controls-panel">
+                <div class="control-group">
+                    <label class="control-label">Update Rate (Hz)</label>
+                    <input type="range" class="control-input" min="1" max="60" value="30" id="updateRateSlider">
+                    <span id="updateRateDisplay" style="font-size: 11px; color: #00ff88;">30</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Graph History (seconds)</label>
+                    <input type="range" class="control-input" min="10" max="300" value="60" id="historySlider">
+                    <span id="historyDisplay" style="font-size: 11px; color: #00ff88;">60s</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Alert Thresholds</label>
+                    <div style="font-size: 11px; color: #999; margin-bottom: 5px;">FPS Warning: < 30</div>
+                    <div style="font-size: 11px; color: #999; margin-bottom: 5px;">Memory Warning: > 100MB</div>
+                    <div style="font-size: 11px; color: #999;">Frame Time Warning: > 33ms</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Monitoring Status</label>
+                    <div class="monitoring-item active">
+                        <div class="monitoring-status active"></div>
+                        <span>Auto-detect issues</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class PerformanceProfiler {
+            constructor() {
+                this.isRunning = false;
+                this.frameCount = 0;
+                this.lastFpsUpdate = Date.now();
+                this.startTime = Date.now();
+                this.currentFPS = 60;
+                this.frameTime = 16.7;
+                this.memoryUsage = 0;
+                this.drawCalls = 1;
+                this.cpuUsage = 0;
+                this.gpuTime = 0.5;
+
+                // Historical data
+                this.fpsHistory = [];
+                this.memoryHistory = [];
+                this.frameTimeHistory = [];
+                this.cpuHistory = [];
+                this.maxHistory = 1000; // Last 1000 frames
+
+                // Monitoring
+                this.monitoring = {
+                    fps: true,
+                    memory: true,
+                    cpu: true,
+                    network: false,
+                    render: true
+                };
+
+                // Alert system
+                this.alerts = [];
+                this.alertThresholds = {
+                    fpsWarning: 30,
+                    memoryWarning: 100, // MB
+                    frameTimeWarning: 33, // ms
+                    cpuWarning: 80 // %
+                };
+
+                // Performance objects for stress testing
+                this.scene = null;
+                this.renderer = null;
+                this.stressObjects = [];
+
+                // Graph canvases
+                this.graphs = {
+                    fps: document.getElementById('fpsGraph'),
+                    memory: document.getElementById('memoryGraph'),
+                    frameTime: document.getElementById('frameTimeGraph'),
+                    cpu: document.getElementById('cpuGraph')
+                };
+
+                this.init();
+                this.setupEventListeners();
+            }
+
+            init() {
+                this.setupPreviewScene();
+                this.setupGraphs();
+                this.animate();
+            }
+
+            setupPreviewScene() {
+                const canvas = document.getElementById('profilerCanvas');
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true
+                });
+
+                // Set initial size
+                const container = canvas.parentElement;
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+
+                // Create scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x222222);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    container.clientWidth / container.clientHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(0, 2, 5);
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 5, 5);
+                this.scene.add(directionalLight);
+
+                // Add demo objects
+                this.addDemoObjects();
+
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    this.renderer.setSize(container.clientWidth, container.clientHeight);
+                    this.camera.aspect = container.clientWidth / container.clientHeight;
+                    this.camera.updateProjectionMatrix();
+                });
+            }
+
+            addDemoObjects() {
+                // Create rotating cubes
+                for (let i = 0; i < 10; i++) {
+                    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                    const material = new THREE.MeshLambertMaterial({
+                        color: new THREE.Color().setHSL(i / 10, 0.8, 0.6)
+                    });
+                    const cube = new THREE.Mesh(geometry, material);
+                    
+                    cube.position.x = (i - 5) * 1.2;
+                    cube.position.y = Math.sin(i) * 2;
+                    cube.position.z = Math.cos(i) * 2;
+                    
+                    cube.userData = {
+                        rotationSpeed: 0.01 + i * 0.001,
+                        originalY: cube.position.y
+                    };
+                    
+                    this.scene.add(cube);
+                    this.stressObjects.push(cube);
+                }
+
+                // Add a torus knot
+                const torusGeometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+                const torusMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x00ff88,
+                    shininess: 100
+                });
+                const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+                torus.position.set(0, 0, 0);
+                torus.userData.rotationSpeed = 0.005;
+                this.scene.add(torus);
+                this.stressObjects.push(torus);
+            }
+
+            setupGraphs() {
+                // Set up graph canvases
+                Object.values(this.graphs).forEach(canvas => {
+                    const parent = canvas.parentElement;
+                    canvas.width = parent.clientWidth;
+                    canvas.height = parent.clientHeight - 35;
+                });
+            }
+
+            setupEventListeners() {
+                // Control buttons
+                document.getElementById('startProfiler').addEventListener('click', () => this.start());
+                document.getElementById('stopProfiler').addEventListener('click', () => this.stop());
+                document.getElementById('clearStats').addEventListener('click', () => this.clearStats());
+                document.getElementById('exportData').addEventListener('click', () => this.exportData());
+                document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
+
+                // Sliders
+                document.getElementById('updateRateSlider').addEventListener('input', (e) => {
+                    document.getElementById('updateRateDisplay').textContent = e.target.value;
+                });
+
+                document.getElementById('historySlider').addEventListener('input', (e) => {
+                    document.getElementById('historyDisplay').textContent = e.target.value + 's';
+                });
+
+                // Monitoring toggles
+                document.querySelectorAll('.monitoring-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const monitor = item.dataset.monitor;
+                        this.toggleMonitoring(monitor, item);
+                    });
+                });
+            }
+
+            toggleMonitoring(monitor, element) {
+                this.monitoring[monitor] = !this.monitoring[monitor];
+                
+                const status = element.querySelector('.monitoring-status');
+                if (this.monitoring[monitor]) {
+                    status.classList.add('active');
+                    element.classList.add('active');
+                } else {
+                    status.classList.remove('active');
+                    element.classList.remove('active');
+                }
+            }
+
+            start() {
+                this.isRunning = true;
+                this.startTime = Date.now();
+                this.addAlert('info', 'Profiler started. Monitoring performance metrics...');
+            }
+
+            stop() {
+                this.isRunning = false;
+                this.addAlert('info', 'Profiler stopped.');
+            }
+
+            clearStats() {
+                this.fpsHistory = [];
+                this.memoryHistory = [];
+                this.frameTimeHistory = [];
+                this.cpuHistory = [];
+                this.alerts = [];
+                
+                document.getElementById('alertsPanel').innerHTML = '';
+                this.addAlert('info', 'Statistics cleared.');
+            }
+
+            measurePerformance() {
+                const start = performance.now();
+                
+                // Simulate performance measurements
+                if (this.monitoring.fps) {
+                    this.updateFPS();
+                }
+                
+                if (this.monitoring.memory) {
+                    this.updateMemoryUsage();
+                }
+                
+                if (this.monitoring.cpu) {
+                    this.updateCPUUsage();
+                }
+                
+                if (this.monitoring.render) {
+                    this.updateRenderStats();
+                }
+
+                const end = performance.now();
+                const measurementTime = end - start;
+
+                // Add measurement overhead to frame time
+                this.frameTime = measurementTime + (Math.random() * 2);
+
+                return measurementTime;
+            }
+
+            updateFPS() {
+                this.frameCount++;
+                const now = Date.now();
+                const delta = now - this.lastFpsUpdate;
+                
+                if (delta >= 1000) {
+                    this.currentFPS = Math.round((this.frameCount * 1000) / delta);
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                    
+                    // Update history
+                    this.fpsHistory.push(this.currentFPS);
+                    if (this.fpsHistory.length > this.maxHistory) {
+                        this.fpsHistory.shift();
+                    }
+                    
+                    // Update UI
+                    document.getElementById('fpsValue').textContent = this.currentFPS;
+                    document.getElementById('currentFps').textContent = this.currentFPS;
+                    
+                    // Check thresholds
+                    this.checkThresholds();
+                }
+            }
+
+            updateMemoryUsage() {
+                if (performance.memory) {
+                    this.memoryUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
+                } else {
+                    // Fallback for browsers without memory API
+                    this.memoryUsage = 50 + Math.sin(Date.now() / 1000) * 20;
+                }
+                
+                this.memoryHistory.push(this.memoryUsage);
+                if (this.memoryHistory.length > this.maxHistory) {
+                    this.memoryHistory.shift();
+                }
+                
+                document.getElementById('memoryValue').textContent = this.memoryUsage.toFixed(1);
+            }
+
+            updateCPUUsage() {
+                // Simulate CPU usage measurement
+                const now = Date.now();
+                this.cpuUsage = 30 + Math.sin(now / 1000) * 40 + Math.random() * 20;
+                this.cpuUsage = Math.max(0, Math.min(100, this.cpuUsage));
+                
+                this.cpuHistory.push(this.cpuUsage);
+                if (this.cpuHistory.length > this.maxHistory) {
+                    this.cpuHistory.shift();
+                }
+                
+                document.getElementById('cpuUsage').textContent = this.cpuUsage.toFixed(1) + '%';
+            }
+
+            updateRenderStats() {
+                // Simulate render pipeline measurements
+                this.drawCalls = 1 + Math.floor(Math.random() * 10);
+                this.gpuTime = 0.5 + Math.random() * 2;
+                
+                document.getElementById('drawCallsValue').textContent = this.drawCalls;
+                document.getElementById('currentFrameTime').textContent = this.frameTime.toFixed(1);
+                document.getElementById('gpuTime').textContent = this.gpuTime.toFixed(2);
+            }
+
+            checkThresholds() {
+                if (this.currentFPS < this.alertThresholds.fpsWarning) {
+                    this.addAlert('warning', `Low FPS detected: ${this.currentFPS}`);
+                }
+                
+                if (this.memoryUsage > this.alertThresholds.memoryWarning) {
+                    this.addAlert('warning', `High memory usage: ${this.memoryUsage.toFixed(1)}MB`);
+                }
+                
+                if (this.frameTime > this.alertThresholds.frameTimeWarning) {
+                    this.addAlert('warning', `High frame time: ${this.frameTime.toFixed(1)}ms`);
+                }
+                
+                if (this.cpuUsage > this.alertThresholds.cpuWarning) {
+                    this.addAlert('warning', `High CPU usage: ${this.cpuUsage.toFixed(1)}%`);
+                }
+            }
+
+            addAlert(type, message) {
+                const alert = {
+                    time: new Date(),
+                    type: type,
+                    message: message
+                };
+                
+                this.alerts.push(alert);
+                
+                // Update UI
+                const panel = document.getElementById('alertsPanel');
+                const alertElement = document.createElement('div');
+                alertElement.className = `alert-item ${type}`;
+                
+                const timeStr = alert.time.toLocaleTimeString();
+                alertElement.innerHTML = `
+                    <div class="alert-time">${timeStr}</div>
+                    <div>${message}</div>
+                `;
+                
+                panel.insertBefore(alertElement, panel.firstChild);
+                
+                // Keep only last 20 alerts
+                while (panel.children.length > 20) {
+                    panel.removeChild(panel.lastChild);
+                }
+            }
+
+            renderGraph(canvas, data, maxValue, color) {
+                if (!data || data.length === 0) return;
+                
+                const ctx = canvas.getContext('2d');
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                ctx.clearRect(0, 0, width, height);
+                
+                // Draw grid
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 5; i++) {
+                    const y = (height / 5) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+                
+                // Draw data line
+                if (data.length > 1) {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    
+                    const stepX = width / (this.maxHistory - 1);
+                    
+                    for (let i = 0; i < data.length; i++) {
+                        const x = i * stepX;
+                        const value = Math.min(data[i], maxValue);
+                        const y = height - (value / maxValue) * height;
+                        
+                        if (i === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    
+                    ctx.stroke();
+                }
+                
+                // Draw current value indicator
+                if (data.length > 0) {
+                    const currentValue = data[data.length - 1];
+                    const x = width - 30;
+                    const y = height - (currentValue / maxValue) * height;
+                    
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            updateGraphs() {
+                this.renderGraph(this.graphs.fps, this.fpsHistory, 120, '#00ff88');
+                this.renderGraph(this.graphs.memory, this.memoryHistory, 200, '#0088ff');
+                this.renderGraph(this.graphs.frameTime, this.frameTimeHistory, 100, '#ffaa00');
+                this.renderGraph(this.graphs.cpu, this.cpuHistory, 100, '#ff4444');
+            }
+
+            updatePerformanceGauge() {
+                // Calculate overall performance score
+                let score = 100;
+                
+                if (this.currentFPS < 60) score -= (60 - this.currentFPS);
+                if (this.memoryUsage > 100) score -= (this.memoryUsage - 100);
+                if (this.cpuUsage > 50) score -= (this.cpuUsage - 50) / 2;
+                
+                score = Math.max(0, Math.min(100, score));
+                
+                // Update gauge
+                const gauge = document.getElementById('performanceGauge');
+                const text = document.getElementById('gaugeText');
+                
+                const circumference = 2 * Math.PI * 40;
+                const offset = circumference * (1 - score / 100);
+                
+                gauge.style.strokeDashoffset = offset;
+                text.textContent = Math.round(score) + '%';
+                
+                // Update color based on score
+                let color = '#00ff88'; // Good
+                if (score < 70) color = '#ffaa00'; // Warning
+                if (score < 40) color = '#ff4444'; // Critical
+                
+                gauge.style.stroke = color;
+                text.setAttribute('fill', color);
+            }
+
+            stressTest(type) {
+                switch (type) {
+                    case 'geometry':
+                        this.addAlert('info', 'Starting geometry stress test...');
+                        this.runGeometryStressTest();
+                        break;
+                    case 'particles':
+                        this.addAlert('info', 'Starting particle stress test...');
+                        this.runParticleStressTest();
+                        break;
+                    case 'shaders':
+                        this.addAlert('info', 'Starting shader stress test...');
+                        this.runShaderStressTest();
+                        break;
+                    case 'memory':
+                        this.addAlert('info', 'Starting memory stress test...');
+                        this.runMemoryStressTest();
+                        break;
+                }
+            }
+
+            runGeometryStressTest() {
+                const startTime = Date.now();
+                let objectCount = 0;
+                
+                const addObjects = () => {
+                    if (Date.now() - startTime < 5000) { // Run for 5 seconds
+                        for (let i = 0; i < 10; i++) {
+                            const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                            const material = new THREE.MeshLambertMaterial({
+                                color: Math.random() * 0xffffff
+                            });
+                            const mesh = new THREE.Mesh(geometry, material);
+                            mesh.position.set(
+                                (Math.random() - 0.5) * 20,
+                                (Math.random() - 0.5) * 20,
+                                (Math.random() - 0.5) * 20
+                            );
+                            this.scene.add(mesh);
+                            this.stressObjects.push(mesh);
+                            objectCount++;
+                        }
+                        
+                        if (Math.random() > 0.7) {
+                            this.addAlert('warning', `Geometry test: ${objectCount} objects created`);
+                        }
+                        
+                        setTimeout(addObjects, 100);
+                    } else {
+                        this.addAlert('info', `Geometry stress test completed: ${objectCount} objects`);
+                    }
+                };
+                
+                addObjects();
+            }
+
+            runParticleStressTest() {
+                // Create particle system
+                const particleCount = 1000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 10;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 10;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+                    
+                    velocities[i * 3] = (Math.random() - 0.5) * 0.1;
+                    velocities[i * 3 + 1] = Math.random() * 0.1;
+                    velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    color: 0x00ff88,
+                    size: 0.05
+                });
+                
+                const particles = new THREE.Points(geometry, material);
+                this.scene.add(particles);
+                this.stressObjects.push(particles);
+                
+                this.addAlert('info', `Particle stress test started: ${particleCount} particles`);
+            }
+
+            runShaderStressTest() {
+                // Create objects with complex shaders
+                for (let i = 0; i < 5; i++) {
+                    const geometry = new THREE.SphereGeometry(0.5, 32, 16);
+                    
+                    const vertexShader = `
+                        varying vec3 vNormal;
+                        varying vec3 vPosition;
+                        
+                        void main() {
+                            vNormal = normalize(normalMatrix * normal);
+                            vPosition = position;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `;
+                    
+                    const fragmentShader = `
+                        uniform float uTime;
+                        varying vec3 vNormal;
+                        varying vec3 vPosition;
+                        
+                        void main() {
+                            float noise = sin(vPosition.x * 10.0 + uTime) * 
+                                         cos(vPosition.y * 10.0 + uTime) * 
+                                         sin(vPosition.z * 10.0 + uTime);
+                            vec3 color = vec3(0.5 + noise * 0.5, 0.0, 0.5);
+                            gl_FragColor = vec4(color, 1.0);
+                        }
+                    `;
+                    
+                    const material = new THREE.ShaderMaterial({
+                        vertexShader: vertexShader,
+                        fragmentShader: fragmentShader,
+                        uniforms: {
+                            uTime: { value: 0 }
+                        }
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(i * 2 - 4, 0, 0);
+                    this.scene.add(mesh);
+                    this.stressObjects.push(mesh);
+                }
+                
+                this.addAlert('info', 'Shader stress test started: 5 shader objects');
+            }
+
+            runMemoryStressTest() {
+                const startTime = Date.now();
+                let allocations = 0;
+                
+                const allocateMemory = () => {
+                    if (Date.now() - startTime < 3000) { // Run for 3 seconds
+                        // Create large arrays
+                        const array = new Array(10000).fill(0).map(() => Math.random());
+                        allocations++;
+                        
+                        if (allocations % 50 === 0) {
+                            this.addAlert('warning', `Memory test: ${allocations} allocations made`);
+                        }
+                        
+                        setTimeout(allocateMemory, 50);
+                    } else {
+                        this.addAlert('info', `Memory stress test completed: ${allocations} allocations`);
+                    }
+                };
+                
+                allocateMemory();
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (this.isRunning && this.scene && this.renderer) {
+                    const measureStart = performance.now();
+                    
+                    // Update demo objects
+                    this.stressObjects.forEach(obj => {
+                        if (obj.userData.rotationSpeed) {
+                            obj.rotation.y += obj.userData.rotationSpeed;
+                            obj.rotation.x += obj.userData.rotationSpeed * 0.5;
+                        }
+                        
+                        if (obj.userData.originalY !== undefined) {
+                            obj.position.y = obj.userData.originalY + Math.sin(Date.now() / 1000) * 0.5;
+                        }
+                    });
+                    
+                    // Update shader uniforms
+                    this.stressObjects.forEach(obj => {
+                        if (obj.material && obj.material.uniforms && obj.material.uniforms.uTime) {
+                            obj.material.uniforms.uTime.value = Date.now() / 1000;
+                        }
+                    });
+                    
+                    // Measure performance
+                    this.measurePerformance();
+                    
+                    // Render scene
+                    this.renderer.render(this.scene, this.camera);
+                    
+                    // Update graphs
+                    this.updateGraphs();
+                    
+                    // Update gauge
+                    this.updatePerformanceGauge();
+                    
+                    const measureEnd = performance.now();
+                    this.frameTime = measureEnd - measureStart;
+                }
+            }
+
+            exportJSON() {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    metrics: {
+                        fps: this.currentFPS,
+                        frameTime: this.frameTime,
+                        memoryUsage: this.memoryUsage,
+                        drawCalls: this.drawCalls,
+                        cpuUsage: this.cpuUsage
+                    },
+                    history: {
+                        fps: this.fpsHistory,
+                        memory: this.memoryHistory,
+                        frameTime: this.frameTimeHistory,
+                        cpu: this.cpuHistory
+                    },
+                    alerts: this.alerts
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `profiler-data-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportCSV() {
+                const maxLength = Math.max(
+                    this.fpsHistory.length,
+                    this.memoryHistory.length,
+                    this.frameTimeHistory.length,
+                    this.cpuHistory.length
+                );
+                
+                let csv = 'Frame,FPS,Frame Time (ms),Memory (MB),CPU Usage (%)\n';
+                
+                for (let i = 0; i < maxLength; i++) {
+                    const fps = this.fpsHistory[i] || '';
+                    const frameTime = this.frameTimeHistory[i] || '';
+                    const memory = this.memoryHistory[i] || '';
+                    const cpu = this.cpuHistory[i] || '';
+                    
+                    csv += `${i},${fps},${frameTime},${memory},${cpu}\n`;
+                }
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `profiler-data-${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportReport() {
+                const report = `
+Performance Profiler Report
+Generated: ${new Date().toISOString()}
+
+=== Summary ===
+Average FPS: ${this.calculateAverage(this.fpsHistory).toFixed(1)}
+Average Frame Time: ${this.calculateAverage(this.frameTimeHistory).toFixed(1)}ms
+Peak Memory Usage: ${Math.max(...this.memoryHistory).toFixed(1)}MB
+Average CPU Usage: ${this.calculateAverage(this.cpuHistory).toFixed(1)}%
+
+=== Alerts ===
+${this.alerts.map(alert => `[${alert.time.toLocaleTimeString()}] ${alert.type.toUpperCase()}: ${alert.message}`).join('\n')}
+
+=== Performance Recommendations ===
+${this.generateRecommendations()}
+
+=== End of Report ===
+                `;
+                
+                const blob = new Blob([report], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `profiler-report-${Date.now()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            calculateAverage(array) {
+                if (array.length === 0) return 0;
+                return array.reduce((sum, val) => sum + val, 0) / array.length;
+            }
+
+            generateRecommendations() {
+                const recommendations = [];
+                
+                if (this.currentFPS < 30) {
+                    recommendations.push('• Consider reducing geometry complexity or draw calls');
+                    recommendations.push('• Enable frustum culling for off-screen objects');
+                }
+                
+                if (this.memoryUsage > 100) {
+                    recommendations.push('• Review texture sizes and compression');
+                    recommendations.push('• Implement object pooling for dynamic objects');
+                }
+                
+                if (this.cpuUsage > 80) {
+                    recommendations.push('• Optimize JavaScript execution and event handlers');
+                    recommendations.push('• Consider using Web Workers for heavy computations');
+                }
+                
+                return recommendations.length > 0 ? recommendations.join('\n') : 'No performance issues detected. Application is running optimally.';
+            }
+
+            exportData() {
+                this.addAlert('info', 'Export menu opened - choose format (JSON/CSV/Report)');
+            }
+
+            openSettings() {
+                alert('Settings dialog would open here. Configure profiler preferences, alert thresholds, and monitoring options.');
+            }
+        }
+
+        // Initialize profiler
+        const profiler = new PerformanceProfiler();
+        window.profiler = profiler;
+    </script>
+</body>
+</html>

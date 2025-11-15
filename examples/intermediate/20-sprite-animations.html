@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Animations Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Sprite Animations Demo</strong><br>
+        2D overlays in 3D space<br>
+        - Animated sprite sheets<br>
+        - Billboard rendering<br>
+        - Particle sprites<br>
+        - UI elements in 3D
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setAnimationType('walking')" class="active">Walking</button>
+            <button onclick="setAnimationType('explosion')">Explosion</button>
+            <button onclick="setAnimationType('fire')">Fire</button>
+            <button onclick="setAnimationType('particles')">Particles</button>
+        </div>
+        <div class="control-group">
+            <label>Animation Speed: <span id="speed-val">1.0</span></label>
+            <input type="range" id="animation-speed" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Sprite Count: <span id="count-val">50</span></label>
+            <input type="range" id="sprite-count" min="10" max="200" step="10" value="50">
+        </div>
+        <div class="control-group">
+            <label>Size: <span id="size-val">2.0</span></label>
+            <input type="range" id="sprite-size" min="0.5" max="10" step="0.5" value="2.0">
+        </div>
+        <div class="control-group">
+            <button onclick="toggleBillboarding()">Toggle Billboard</button>
+            <button onclick="toggleDepthTest()">Toggle Depth Test</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x2c3e50);
+        scene.fog = new THREE.Fog(0x2c3e50, 10, 50);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(10, 8, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Sprite Animation System
+        class SpriteAnimationSystem {
+            constructor() {
+                this.animationType = 'walking';
+                this.animationSpeed = 1.0;
+                this.spriteCount = 50;
+                this.spriteSize = 2.0;
+                this.billboarding = true;
+                this.depthTest = true;
+                this.sprites = [];
+                this.texture = this.createSpriteSheet();
+
+                this.createSprites();
+                this.setupScene();
+            }
+
+            createSpriteSheet() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const context = canvas.getContext('2d');
+
+                // Create different sprite frames
+                const frameSize = 64;
+                const framesPerRow = 4;
+                
+                for (let i = 0; i < 12; i++) {
+                    const row = Math.floor(i / framesPerRow);
+                    const col = i % framesPerRow;
+                    const x = col * frameSize;
+                    const y = row * frameSize;
+
+                    // Draw different shapes/colors for different frames
+                    context.save();
+                    context.translate(x + frameSize / 2, y + frameSize / 2);
+                    
+                    const hue = (i / 12) * 360;
+                    context.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                    
+                    switch(this.animationType) {
+                        case 'walking':
+                            // Walking animation frames
+                            const armAngle = (i % 4) * Math.PI / 2;
+                            context.rotate(armAngle);
+                            context.fillRect(-8, -20, 16, 30); // Body
+                            context.fillRect(-15, -15, 10, 25); // Left arm
+                            context.fillRect(5, -15, 10, 25); // Right arm
+                            break;
+                        
+                        case 'explosion':
+                            // Explosion animation
+                            const scale = 0.5 + (i / 11) * 1.5;
+                            context.scale(scale, scale);
+                            context.fillStyle = `hsl(${30 + i * 10}, 100%, ${50 + i * 3}%)`;
+                            context.beginPath();
+                            context.arc(0, 0, 15, 0, Math.PI * 2);
+                            context.fill();
+                            
+                            // Add particles
+                            for (let j = 0; j < 8; j++) {
+                                const angle = j * Math.PI / 4;
+                                context.save();
+                                context.rotate(angle);
+                                context.translate(20, 0);
+                                context.fillRect(-2, -2, 4, 4);
+                                context.restore();
+                            }
+                            break;
+                        
+                        case 'fire':
+                            // Fire animation
+                            const flameSize = 8 + Math.sin(i * 0.5) * 4;
+                            const gradient = context.createRadialGradient(0, 0, 0, 0, 0, flameSize);
+                            gradient.addColorStop(0, `hsl(${40 + i * 5}, 100%, 70%)`);
+                            gradient.addColorStop(0.7, `hsl(${20 + i * 8}, 100%, 50%)`);
+                            gradient.addColorStop(1, `hsl(${10 + i * 10}, 100%, 30%)`);
+                            
+                            context.fillStyle = gradient;
+                            context.beginPath();
+                            context.arc(0, 0, flameSize, 0, Math.PI * 2);
+                            context.fill();
+                            
+                            // Add sparks
+                            for (let j = 0; j < 5; j++) {
+                                const angle = j * Math.PI * 2 / 5 + i * 0.1;
+                                context.save();
+                                context.rotate(angle);
+                                context.translate(12, 0);
+                                context.fillStyle = `hsl(${50 + i * 5}, 100%, 80%)`;
+                                context.fillRect(-1, -1, 2, 2);
+                                context.restore();
+                            }
+                            break;
+                        
+                        default:
+                            context.fillRect(-15, -15, 30, 30);
+                    }
+                    
+                    context.restore();
+                }
+
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                texture.wrapS = THREE.ClampToEdgeWrapping;
+                texture.wrapT = THREE.ClampToEdgeWrapping;
+                
+                return texture;
+            }
+
+            createSprites() {
+                this.clearSprites();
+                
+                const geometry = new THREE.PlaneGeometry(this.spriteSize, this.spriteSize);
+                
+                for (let i = 0; i < this.spriteCount; i++) {
+                    const material = new THREE.MeshBasicMaterial({
+                        map: this.texture,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        side: THREE.DoubleSide
+                    });
+
+                    const sprite = new THREE.Mesh(geometry, material);
+                    
+                    // Position sprites in various patterns
+                    switch(this.animationType) {
+                        case 'walking':
+                            sprite.position.set(
+                                (Math.random() - 0.5) * 20,
+                                0,
+                                (Math.random() - 0.5) * 20
+                            );
+                            break;
+                        
+                        case 'explosion':
+                            sprite.position.set(
+                                (Math.random() - 0.5) * 15,
+                                Math.random() * 5,
+                                (Math.random() - 0.5) * 15
+                            );
+                            break;
+                        
+                        case 'fire':
+                            sprite.position.set(
+                                (Math.random() - 0.5) * 10,
+                                0,
+                                (Math.random() - 0.5) * 10
+                            );
+                            break;
+                        
+                        case 'particles':
+                            sprite.position.set(
+                                (Math.random() - 0.5) * 30,
+                                (Math.random() - 0.5) * 30,
+                                (Math.random() - 0.5) * 30
+                            );
+                            break;
+                    }
+                    
+                    sprite.userData = {
+                        animationFrame: 0,
+                        animationTime: 0,
+                        velocity: new THREE.Vector3(
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2
+                        ),
+                        rotationSpeed: (Math.random() - 0.5) * 2,
+                        lifetime: Math.random() * 10 + 5
+                    };
+
+                    scene.add(sprite);
+                    this.sprites.push(sprite);
+                }
+            }
+
+            clearSprites() {
+                this.sprites.forEach(sprite => scene.remove(sprite));
+                this.sprites = [];
+            }
+
+            setupScene() {
+                // Ground plane
+                const groundGeometry = new THREE.PlaneGeometry(30, 30);
+                const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x34495e });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                scene.add(ground);
+
+                // 3D reference objects
+                const cube = new THREE.Mesh(
+                    new THREE.BoxGeometry(3, 3, 3),
+                    new THREE.MeshLambertMaterial({ color: 0xe74c3c })
+                );
+                cube.position.set(-5, 1.5, 0);
+                cube.castShadow = true;
+                cube.receiveShadow = true;
+                scene.add(cube);
+
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(2, 32, 16),
+                    new THREE.MeshLambertMaterial({ color: 0x3498db })
+                );
+                sphere.position.set(5, 2, 0);
+                sphere.castShadow = true;
+                sphere.receiveShadow = true;
+                scene.add(sphere);
+
+                this.referenceObjects = [cube, sphere];
+            }
+
+            setAnimationType(type) {
+                this.animationType = type;
+                this.texture.dispose();
+                this.texture = this.createSpriteSheet();
+                this.sprites.forEach(sprite => {
+                    sprite.material.map = this.texture;
+                    sprite.material.needsUpdate = true;
+                });
+                this.createSprites();
+            }
+
+            setAnimationSpeed(speed) {
+                this.animationSpeed = speed;
+            }
+
+            setSpriteCount(count) {
+                this.spriteCount = count;
+                this.createSprites();
+            }
+
+            setSpriteSize(size) {
+                this.spriteSize = size;
+                this.sprites.forEach(sprite => {
+                    sprite.scale.set(size, size, 1);
+                });
+            }
+
+            toggleBillboarding() {
+                this.billboarding = !this.billboarding;
+            }
+
+            toggleDepthTest() {
+                this.depthTest = !this.depthTest;
+                this.sprites.forEach(sprite => {
+                    sprite.material.depthTest = this.depthTest;
+                });
+            }
+
+            update(deltaTime) {
+                this.sprites.forEach((sprite, index) => {
+                    const userData = sprite.userData;
+                    
+                    // Update animation
+                    userData.animationTime += deltaTime * this.animationSpeed;
+                    const frameDuration = 0.1 / this.animationSpeed;
+                    
+                    if (userData.animationTime >= frameDuration) {
+                        userData.animationFrame = (userData.animationFrame + 1) % 12;
+                        userData.animationTime = 0;
+                        
+                        // Update texture offset for animation
+                        const frameSize = 1 / 4; // 4 frames per row
+                        const row = Math.floor(userData.animationFrame / 4);
+                        const col = userData.animationFrame % 4;
+                        
+                        sprite.material.map.offset.set(col * frameSize, row * frameSize);
+                        sprite.material.map.repeat.set(frameSize, frameSize);
+                    }
+
+                    // Update position based on animation type
+                    switch(this.animationType) {
+                        case 'walking':
+                            // Sprites walk around randomly
+                            sprite.position.add(userData.velocity.clone().multiplyScalar(deltaTime));
+                            
+                            // Keep on ground
+                            sprite.position.y = 0;
+                            
+                            // Boundary check
+                            if (Math.abs(sprite.position.x) > 15 || Math.abs(sprite.position.z) > 15) {
+                                userData.velocity.negate();
+                            }
+                            
+                            // Face movement direction
+                            const angle = Math.atan2(userData.velocity.x, userData.velocity.z);
+                            sprite.rotation.y = angle;
+                            break;
+                        
+                        case 'explosion':
+                            // Explosions rise and fade
+                            sprite.position.y += deltaTime * 5;
+                            sprite.userData.lifetime -= deltaTime;
+                            
+                            // Scale up during explosion
+                            const explosionScale = 1 + userData.animationFrame * 0.2;
+                            sprite.scale.set(explosionScale * this.spriteSize, explosionScale * this.spriteSize, 1);
+                            
+                            // Remove expired explosions
+                            if (sprite.userData.lifetime <= 0) {
+                                sprite.userData.lifetime = Math.random() * 10 + 5;
+                                sprite.position.set(
+                                    (Math.random() - 0.5) * 15,
+                                    0,
+                                    (Math.random() - 0.5) * 15
+                                );
+                                sprite.scale.set(this.spriteSize, this.spriteSize, 1);
+                            }
+                            break;
+                        
+                        case 'fire':
+                            // Fire flickers
+                            sprite.position.y = Math.sin(userData.animationTime * 20) * 0.2;
+                            
+                            // Flickering opacity
+                            sprite.material.opacity = 0.7 + Math.sin(userData.animationTime * 15) * 0.3;
+                            break;
+                        
+                        case 'particles':
+                            // Particles drift around
+                            sprite.position.add(userData.velocity.clone().multiplyScalar(deltaTime));
+                            
+                            // Rotate
+                            sprite.rotation.z += userData.rotationSpeed * deltaTime;
+                            
+                            // Wrap around bounds
+                            if (Math.abs(sprite.position.x) > 15) {
+                                sprite.position.x *= -1;
+                            }
+                            if (Math.abs(sprite.position.y) > 15) {
+                                sprite.position.y *= -1;
+                            }
+                            if (Math.abs(sprite.position.z) > 15) {
+                                sprite.position.z *= -1;
+                            }
+                            break;
+                    }
+
+                    // Billboard effect
+                    if (this.billboarding) {
+                        sprite.lookAt(camera.position);
+                    }
+                });
+
+                // Animate reference objects
+                this.referenceObjects.forEach((obj, index) => {
+                    obj.rotation.y += deltaTime * (0.5 + index * 0.2);
+                    obj.rotation.x += deltaTime * 0.3;
+                });
+            }
+        }
+
+        // Create sprite animation system
+        const spriteSystem = new SpriteAnimationSystem();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(10, 15, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -20;
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
+        scene.add(directionalLight);
+
+        // Global functions
+        window.setAnimationType = (type) => {
+            spriteSystem.setAnimationType(type);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.toggleBillboarding = () => {
+            spriteSystem.toggleBillboarding();
+        };
+
+        window.toggleDepthTest = () => {
+            spriteSystem.toggleDepthTest();
+        };
+
+        // Control bindings
+        const speedSlider = document.getElementById('animation-speed');
+        const speedDisplay = document.getElementById('speed-val');
+        speedSlider.addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            spriteSystem.setAnimationSpeed(speed);
+            speedDisplay.textContent = speed.toFixed(1);
+        });
+
+        const countSlider = document.getElementById('sprite-count');
+        const countDisplay = document.getElementById('count-val');
+        countSlider.addEventListener('input', (e) => {
+            const count = parseInt(e.target.value);
+            spriteSystem.setSpriteCount(count);
+            countDisplay.textContent = count;
+        });
+
+        const sizeSlider = document.getElementById('sprite-size');
+        const sizeDisplay = document.getElementById('size-val');
+        sizeSlider.addEventListener('input', (e) => {
+            const size = parseFloat(e.target.value);
+            spriteSystem.setSpriteSize(size);
+            sizeDisplay.textContent = size.toFixed(1);
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+
+            spriteSystem.update(deltaTime);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

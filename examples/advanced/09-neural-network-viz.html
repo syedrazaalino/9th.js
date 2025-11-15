@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network 3D Visualization</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #0a0a0a; font-family: 'Courier New', monospace; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #nn-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 20px; border-radius: 12px;
+            color: #00ff00; min-width: 280px; font-size: 13px;
+            border: 1px solid #00ff00;
+        }
+        #nn-controls h3 { color: #00ff00; margin-bottom: 15px; text-align: center; }
+        #nn-controls label { display: block; margin: 10px 0 5px; color: #00cc00; }
+        #nn-controls input, #nn-controls select {
+            width: 100%; padding: 8px; margin-bottom: 10px;
+            background: rgba(0,255,0,0.1); border: 1px solid #00ff00;
+            border-radius: 4px; color: #00ff00; font-family: inherit;
+        }
+        #nn-controls button {
+            width: 100%; padding: 10px; margin: 5px 0;
+            background: linear-gradient(135deg, #004400, #008800);
+            border: 1px solid #00ff00; border-radius: 4px; 
+            color: #00ff00; cursor: pointer; font-family: inherit;
+            font-weight: bold; transition: all 0.3s;
+        }
+        #nn-controls button:hover { 
+            background: linear-gradient(135deg, #008800, #00aa00); 
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+        .checkbox-group input { width: auto; }
+        #network-info {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #00ff00; font-size: 12px; line-height: 1.6;
+            border: 1px solid #00ff00; max-width: 200px;
+        }
+        #data-flow {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #00ff00; font-size: 11px; border: 1px solid #00ff00;
+            max-width: 300px;
+        }
+        #activation-chart {
+            width: 100%; height: 60px; background: rgba(0,0,0,0.5);
+            border: 1px solid #00ff00; margin: 10px 0; position: relative;
+        }
+        .neuron-pulse {
+            position: absolute; width: 4px; height: 4px; background: #00ff00;
+            border-radius: 50%; animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="nn-controls">
+        <h3>🧠 Neural Network AI</h3>
+        
+        <label>Network Architecture:</label>
+        <select id="architecture">
+            <option value="simple">Simple (2-4-1)</option>
+            <option value="medium" selected>Medium (4-8-4-2)</option>
+            <option value="deep">Deep (8-12-8-6-4-2)</option>
+            <option value="cnn">CNN Style</option>
+            <option value="rnn">RNN Style</option>
+        </select>
+        
+        <label>Learning Rate:</label>
+        <input type="range" id="learning-rate" min="0.001" max="0.1" step="0.001" value="0.01">
+        
+        <label>Activation Function:</label>
+        <select id="activation">
+            <option value="sigmoid">Sigmoid</option>
+            <option value="tanh" selected>Tanh</option>
+            <option value="relu">ReLU</option>
+            <option value="leaky">Leaky ReLU</option>
+            <option value="swish">Swish</option>
+        </select>
+        
+        <label>Training Speed:</label>
+        <input type="range" id="training-speed" min="1" max="50" value="10">
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-weights" checked>
+            <label for="show-weights">Show Weights</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-gradients" checked>
+            <label for="show-gradients">Show Gradients</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="animate-training" checked>
+            <label for="animate-training">Animate Training</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-data-flow">
+            <label for="show-data-flow">Data Flow</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="3d-layers">
+            <label for="3d-layers">3D Layer Layout</label>
+        </div>
+        
+        <button id="train-network">🚀 Train Network</button>
+        <button id="reset-network">🔄 Reset</button>
+        <button id="random-weights">🎲 Random Weights</button>
+        <button id="test-sample">🧪 Test Sample</button>
+        
+        <div style="margin-top: 15px; font-size: 10px; color: #006600; text-align: center;">
+            Real-time backpropagation visualization with 3D data flow
+        </div>
+    </div>
+    
+    <div id="network-info">
+        <div><strong>📊 Network Status</strong></div>
+        <div>Total Neurons: <span id="neuron-count">0</span></div>
+        <div>Total Weights: <span id="weight-count">0</span></div>
+        <div>Training Loss: <span id="training-loss">0.000</span></div>
+        <div>Accuracy: <span id="accuracy">0%</span></div>
+        <div>Epoch: <span id="epoch">0</span></div>
+        <div>Learning Speed: <span id="learning-speed">10/s</span></div>
+        
+        <div id="activation-chart"></div>
+        
+        <div>Active Neurons: <span id="active-neurons">0</span></div>
+        <div>Data Packets: <span id="data-packets">0</span></div>
+    </div>
+    
+    <div id="data-flow">
+        <div><strong>📡 Data Flow Monitor</strong></div>
+        <div>Input → Hidden: <span id="input-flow">0</span> packets/s</div>
+        <div>Hidden → Output: <span id="hidden-flow">0</span> packets/s</div>
+        <div>Backpropagation: <span id="backprop-flow">0</span> packets/s</div>
+        <div>Gradient Magnitude: <span id="gradient-mag">0.000</span></div>
+        <div>Weight Updates: <span id="weight-updates">0</span></div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class NeuralNetworkVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                // Network state
+                this.layers = [];
+                this.weights = [];
+                this.biases = [];
+                this.activations = [];
+                this.gradients = [];
+                this.dataPackets = [];
+                
+                // Training state
+                this.isTraining = false;
+                this.epoch = 0;
+                this.learningRate = 0.01;
+                this.trainingLoss = 0;
+                this.accuracy = 0;
+                this.activationFunction = 'tanh';
+                
+                // Visualization options
+                this.showWeights = true;
+                this.showGradients = true;
+                this.animateTraining = true;
+                this.showDataFlow = false;
+                this.is3D = false;
+                
+                // Performance tracking
+                this.lastUpdate = 0;
+                this.trainingSpeed = 10;
+                this.packetCount = 0;
+                
+                this.setupLighting();
+                this.setupCamera();
+                this.setupControls();
+                this.createNetwork();
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                const ambientLight = new Engine.AmbientLight(0x001100, 0.4);
+                this.scene.add(ambientLight);
+                
+                const neuronLight = new Engine.PointLight(0x00ff00, 1, 50);
+                neuronLight.position.set(0, 0, 10);
+                this.scene.add(neuronLight);
+                
+                const connectionLight = new Engine.PointLight(0x008800, 0.5, 30);
+                connectionLight.position.set(0, 0, -10);
+                this.scene.add(connectionLight);
+            }
+            
+            setupCamera() {
+                this.camera.position.set(0, 0, 50);
+                this.camera.lookAt(0, 0, 0);
+                this.cameraAngle = 0;
+            }
+            
+            setupControls() {
+                document.getElementById('architecture').addEventListener('change', (e) => {
+                    this.changeArchitecture(e.target.value);
+                });
+                
+                document.getElementById('learning-rate').addEventListener('input', (e) => {
+                    this.learningRate = parseFloat(e.target.value);
+                });
+                
+                document.getElementById('activation').addEventListener('change', (e) => {
+                    this.activationFunction = e.target.value;
+                    this.updateActivations();
+                });
+                
+                document.getElementById('training-speed').addEventListener('input', (e) => {
+                    this.trainingSpeed = parseInt(e.target.value);
+                    document.getElementById('learning-speed').textContent = `${this.trainingSpeed}/s`;
+                });
+                
+                // Checkbox controls
+                const checkboxes = ['show-weights', 'show-gradients', 'animate-training', 'show-data-flow', '3d-layers'];
+                checkboxes.forEach(checkbox => {
+                    document.getElementById(checkbox).addEventListener('change', (e) => {
+                        this[checkbox.replace('-', '')] = e.target.checked;
+                        this.updateVisualization();
+                    });
+                });
+                
+                // Button controls
+                document.getElementById('train-network').addEventListener('click', () => {
+                    this.toggleTraining();
+                });
+                
+                document.getElementById('reset-network').addEventListener('click', () => {
+                    this.resetNetwork();
+                });
+                
+                document.getElementById('random-weights').addEventListener('click', () => {
+                    this.randomizeWeights();
+                });
+                
+                document.getElementById('test-sample').addEventListener('click', () => {
+                    this.testSample();
+                });
+                
+                // Mouse controls
+                this.isMouseDown = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isMouseDown = true;
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.isMouseDown) {
+                        const deltaX = e.clientX - this.mouseX;
+                        const deltaY = e.clientY - this.mouseY;
+                        
+                        this.cameraAngle += deltaX * 0.01;
+                        this.camera.position.x = Math.sin(this.cameraAngle) * 50;
+                        this.camera.position.z = Math.cos(this.cameraAngle) * 50;
+                        
+                        this.mouseX = e.clientX;
+                        this.mouseY = e.clientY;
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+            }
+            
+            createNetwork() {
+                const architectures = {
+                    simple: [2, 4, 1],
+                    medium: [4, 8, 4, 2],
+                    deep: [8, 12, 8, 6, 4, 2],
+                    cnn: [16, 8, 4, 2],
+                    rnn: [4, 6, 4, 2]
+                };
+                
+                const arch = architectures.medium;
+                this.createNetworkFromLayers(arch);
+            }
+            
+            changeArchitecture(type) {
+                const architectures = {
+                    simple: [2, 4, 1],
+                    medium: [4, 8, 4, 2],
+                    deep: [8, 12, 8, 6, 4, 2],
+                    cnn: [16, 8, 4, 2],
+                    rnn: [4, 6, 4, 2]
+                };
+                
+                this.createNetworkFromLayers(architectures[type]);
+            }
+            
+            createNetworkFromLayers(layerSizes) {
+                // Clear existing network
+                while (this.scene.children.length > 0) {
+                    this.scene.remove(this.scene.children[0]);
+                }
+                this.setupLighting();
+                
+                this.layers = [];
+                this.weights = [];
+                this.biases = [];
+                this.activations = [];
+                this.gradients = [];
+                
+                // Create neurons
+                const layerSpacing = this.is3D ? 15 : 20;
+                const neuronSpacing = this.is3D ? 2 : 2.5;
+                
+                for (let layerIndex = 0; layerIndex < layerSizes.length; layerIndex++) {
+                    const layer = [];
+                    const layerPosition = (layerIndex - (layerSizes.length - 1) / 2) * layerSpacing;
+                    
+                    for (let neuronIndex = 0; neuronIndex < layerSizes[layerIndex]; neuronIndex++) {
+                        const neuronPosition = (neuronIndex - (layerSizes[layerIndex] - 1) / 2) * neuronSpacing;
+                        
+                        const geometry = new Engine.SphereGeometry(0.8, 16, 12);
+                        const material = new Engine.MeshLambertMaterial({
+                            color: 0x003300,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        
+                        const neuron = new Engine.Mesh(geometry, material);
+                        neuron.position.set(
+                            layerPosition,
+                            neuronPosition,
+                            this.is3D ? (Math.random() - 0.5) * 10 : 0
+                        );
+                        
+                        neuron.userData = {
+                            layer: layerIndex,
+                            index: neuronIndex,
+                            activation: 0,
+                            gradient: 0
+                        };
+                        
+                        layer.push(neuron);
+                        this.scene.add(neuron);
+                    }
+                    
+                    this.layers.push(layer);
+                    this.activations.push(new Array(layerSizes[layerIndex]).fill(0));
+                    this.gradients.push(new Array(layerSizes[layerIndex]).fill(0));
+                }
+                
+                // Create weights and connections
+                this.createConnections(layerSizes);
+                
+                this.updateStatistics();
+            }
+            
+            createConnections(layerSizes) {
+                for (let layerIndex = 0; layerIndex < layerSizes.length - 1; layerIndex++) {
+                    const currentLayer = this.layers[layerIndex];
+                    const nextLayer = this.layers[layerIndex + 1];
+                    
+                    const weightMatrix = [];
+                    const biasVector = new Array(layerSizes[layerIndex + 1]).fill(0);
+                    
+                    for (let nextNeuron = 0; nextNeuron < layerSizes[layerIndex + 1]; nextNeuron++) {
+                        const weightRow = [];
+                        
+                        for (let currentNeuron = 0; currentNeuron < layerSizes[layerIndex]; currentNeuron++) {
+                            const fromNeuron = currentLayer[currentNeuron];
+                            const toNeuron = nextLayer[nextNeuron];
+                            
+                            // Create connection line
+                            const points = [fromNeuron.position, toNeuron.position];
+                            const geometry = new Engine.BufferGeometry().setFromPoints(points);
+                            
+                            const weight = (Math.random() - 0.5) * 2;
+                            const color = this.getWeightColor(weight);
+                            
+                            const material = new Engine.LineBasicMaterial({
+                                color: color,
+                                transparent: true,
+                                opacity: 0.6
+                            });
+                            
+                            const line = new Engine.Line(geometry, material);
+                            line.userData = {
+                                weight: weight,
+                                fromLayer: layerIndex,
+                                fromNeuron: currentNeuron,
+                                toLayer: layerIndex + 1,
+                                toNeuron: nextNeuron
+                            };
+                            
+                            this.scene.add(line);
+                            
+                            weightRow.push(weight);
+                        }
+                        
+                        weightMatrix.push(weightRow);
+                    }
+                    
+                    this.weights.push(weightMatrix);
+                    this.biases.push(biasVector);
+                }
+            }
+            
+            getWeightColor(weight) {
+                const absWeight = Math.abs(weight);
+                if (weight > 0) {
+                    return new Engine.Color(absWeight, absWeight * 0.5, 0);
+                } else {
+                    return new Engine.Color(0, absWeight * 0.5, absWeight);
+                }
+            }
+            
+            updateWeights() {
+                // Update connection line colors and opacities based on weight magnitude
+                this.scene.children.forEach(child => {
+                    if (child.userData && child.userData.weight !== undefined) {
+                        const weight = child.userData.weight;
+                        const magnitude = Math.abs(weight);
+                        const color = this.getWeightColor(weight);
+                        
+                        child.material.color = color;
+                        child.material.opacity = magnitude * 0.8 + 0.2;
+                    }
+                });
+            }
+            
+            forwardPropagation(inputs) {
+                // Set input layer
+                for (let i = 0; i < inputs.length; i++) {
+                    this.activations[0][i] = inputs[i];
+                    this.layers[0][i].material.color.setHex(0x00ff00);
+                }
+                
+                // Process each layer
+                for (let layerIndex = 1; layerIndex < this.activations.length; layerIndex++) {
+                    const currentActivations = this.activations[layerIndex - 1];
+                    const nextActivations = this.activations[layerIndex];
+                    
+                    for (let neuronIndex = 0; neuronIndex < nextActivations.length; neuronIndex++) {
+                        let sum = this.biases[layerIndex - 1][neuronIndex];
+                        
+                        for (let inputIndex = 0; inputIndex < currentActivations.length; inputIndex++) {
+                            sum += currentActivations[inputIndex] * this.weights[layerIndex - 1][neuronIndex][inputIndex];
+                        }
+                        
+                        nextActivations[neuronIndex] = this.activate(sum);
+                    }
+                    
+                    // Visualize layer activations
+                    this.visualizeLayerActivations(layerIndex);
+                }
+            }
+            
+            activate(x) {
+                switch (this.activationFunction) {
+                    case 'sigmoid':
+                        return 1 / (1 + Math.exp(-x));
+                    case 'tanh':
+                        return Math.tanh(x);
+                    case 'relu':
+                        return Math.max(0, x);
+                    case 'leaky':
+                        return x > 0 ? x : 0.01 * x;
+                    case 'swish':
+                        return x * (1 / (1 + Math.exp(-x)));
+                    default:
+                        return Math.tanh(x);
+                }
+            }
+            
+            visualizeLayerActivations(layerIndex) {
+                const layer = this.layers[layerIndex];
+                const activations = this.activations[layerIndex];
+                
+                for (let i = 0; i < layer.length; i++) {
+                    const activation = activations[i];
+                    const intensity = Math.abs(activation);
+                    
+                    if (activation > 0) {
+                        layer[i].material.color.setRGB(intensity, intensity * 0.5, 0);
+                    } else {
+                        layer[i].material.color.setRGB(0, intensity * 0.5, intensity);
+                    }
+                    
+                    layer[i].scale.setScalar(1 + intensity * 0.5);
+                }
+            }
+            
+            backwardPropagation(targets) {
+                const outputLayer = this.activations.length - 1;
+                const outputActivations = this.activations[outputLayer];
+                
+                // Calculate output layer gradients
+                for (let i = 0; i < outputActivations.length; i++) {
+                    const error = outputActivations[i] - targets[i];
+                    const derivative = this.getDerivative(outputActivations[i], this.activationFunction);
+                    this.gradients[outputLayer][i] = error * derivative;
+                }
+                
+                // Calculate hidden layer gradients
+                for (let layerIndex = outputLayer - 1; layerIndex >= 1; layerIndex--) {
+                    for (let neuronIndex = 0; neuronIndex < this.activations[layerIndex].length; neuronIndex++) {
+                        let sum = 0;
+                        
+                        for (let nextNeuron = 0; nextNeuron < this.activations[layerIndex + 1].length; nextNeuron++) {
+                            sum += this.gradients[layerIndex + 1][nextNeuron] * this.weights[layerIndex][nextNeuron][neuronIndex];
+                        }
+                        
+                        const derivative = this.getDerivative(this.activations[layerIndex][neuronIndex], this.activationFunction);
+                        this.gradients[layerIndex][neuronIndex] = sum * derivative;
+                    }
+                }
+                
+                // Update weights
+                this.updateNetworkWeights();
+            }
+            
+            getDerivative(x, activationFunction) {
+                switch (activationFunction) {
+                    case 'sigmoid':
+                        return x * (1 - x);
+                    case 'tanh':
+                        return 1 - x * x;
+                    case 'relu':
+                        return x > 0 ? 1 : 0;
+                    case 'leaky':
+                        return x > 0 ? 1 : 0.01;
+                    case 'swish':
+                        return this.activate(x) + x * x * Math.exp(-x) / (1 + Math.exp(-x)) ** 2;
+                    default:
+                        return 1 - x * x;
+                }
+            }
+            
+            updateNetworkWeights() {
+                let totalWeightChange = 0;
+                let weightUpdateCount = 0;
+                
+                for (let layerIndex = 0; layerIndex < this.weights.length; layerIndex++) {
+                    for (let neuronIndex = 0; neuronIndex < this.weights[layerIndex].length; neuronIndex++) {
+                        for (let inputIndex = 0; inputIndex < this.weights[layerIndex][neuronIndex].length; inputIndex++) {
+                            const gradient = this.gradients[layerIndex + 1][neuronIndex] * this.activations[layerIndex][inputIndex];
+                            const weightChange = -this.learningRate * gradient;
+                            
+                            this.weights[layerIndex][neuronIndex][inputIndex] += weightChange;
+                            
+                            totalWeightChange += Math.abs(weightChange);
+                            weightUpdateCount++;
+                        }
+                        
+                        this.biases[layerIndex][neuronIndex] -= this.learningRate * this.gradients[layerIndex + 1][neuronIndex];
+                    }
+                }
+                
+                this.updateWeights();
+                
+                // Update statistics
+                const avgWeightChange = totalWeightChange / weightUpdateCount;
+                document.getElementById('gradient-mag').textContent = avgWeightChange.toFixed(4);
+                document.getElementById('weight-updates').textContent = weightUpdateCount;
+            }
+            
+            createDataPacket(startNeuron, endNeuron, isForward = true) {
+                const geometry = new Engine.SphereGeometry(0.3, 8, 6);
+                const material = new Engine.MeshBasicMaterial({
+                    color: isForward ? 0x00ffff : 0xff0000,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const packet = new Engine.Mesh(geometry, material);
+                
+                const startPos = startNeuron.position;
+                const endPos = endNeuron.position;
+                
+                packet.userData = {
+                    startPos: startPos.clone(),
+                    endPos: endPos.clone(),
+                    isForward: isForward,
+                    speed: 0.02,
+                    t: 0
+                };
+                
+                packet.position.copy(startPos);
+                this.dataPackets.push(packet);
+                this.scene.add(packet);
+            }
+            
+            updateDataPackets() {
+                for (let i = this.dataPackets.length - 1; i >= 0; i--) {
+                    const packet = this.dataPackets[i];
+                    
+                    packet.userData.t += packet.userData.speed;
+                    
+                    if (packet.userData.t >= 1) {
+                        this.scene.remove(packet);
+                        this.dataPackets.splice(i, 1);
+                        continue;
+                    }
+                    
+                    const t = packet.userData.t;
+                    packet.position.lerpVectors(packet.userData.startPos, packet.userData.endPos, t);
+                    packet.material.opacity = 0.8 * (1 - t);
+                }
+            }
+            
+            simulateTraining() {
+                if (!this.isTraining) return;
+                
+                // Generate random input
+                const inputs = this.layers[0].map(() => Math.random());
+                
+                // Forward propagation
+                this.forwardPropagation(inputs);
+                
+                // Generate random target
+                const targets = this.layers[this.layers.length - 1].map(() => Math.random());
+                
+                // Backward propagation
+                this.backwardPropagation(targets);
+                
+                // Create data flow visualization
+                if (this.showDataFlow) {
+                    this.createTrainingVisualization(inputs, targets);
+                }
+                
+                // Calculate loss
+                const outputs = this.activations[this.activations.length - 1];
+                let loss = 0;
+                for (let i = 0; i < outputs.length; i++) {
+                    loss += Math.pow(outputs[i] - targets[i], 2);
+                }
+                this.trainingLoss = loss / outputs.length;
+                
+                this.epoch++;
+                
+                if (this.animateTraining && Math.random() < 0.1) {
+                    this.createRandomDataFlow();
+                }
+            }
+            
+            createTrainingVisualization(inputs, targets) {
+                // Create data packets for forward propagation
+                for (let layerIndex = 0; layerIndex < this.layers.length - 1; layerIndex++) {
+                    for (let neuronIndex = 0; neuronIndex < this.layers[layerIndex].length; neuronIndex++) {
+                        const fromNeuron = this.layers[layerIndex][neuronIndex];
+                        const toNeuron = this.layers[layerIndex + 1][Math.floor(Math.random() * this.layers[layerIndex + 1].length)];
+                        this.createDataPacket(fromNeuron, toNeuron, true);
+                    }
+                }
+            }
+            
+            createRandomDataFlow() {
+                // Random neuron to neuron data flow
+                const fromLayer = Math.floor(Math.random() * (this.layers.length - 1));
+                const fromNeuron = Math.floor(Math.random() * this.layers[fromLayer].length);
+                const toNeuron = Math.floor(Math.random() * this.layers[fromLayer + 1].length);
+                
+                this.createDataPacket(
+                    this.layers[fromLayer][fromNeuron],
+                    this.layers[fromLayer + 1][toNeuron],
+                    true
+                );
+            }
+            
+            testSample() {
+                const inputs = Array.from({length: this.layers[0].length}, () => Math.random());
+                this.forwardPropagation(inputs);
+                
+                // Highlight active neurons
+                this.layers.forEach((layer, layerIndex) => {
+                    layer.forEach((neuron, neuronIndex) => {
+                        const activation = this.activations[layerIndex][neuronIndex];
+                        const intensity = Math.abs(activation);
+                        const color = activation > 0 ? 
+                            new Engine.Color(intensity, intensity * 0.5, 0) :
+                            new Engine.Color(0, intensity * 0.5, intensity);
+                        
+                        neuron.material.color = color;
+                        neuron.scale.setScalar(1 + intensity * 0.3);
+                    });
+                });
+            }
+            
+            toggleTraining() {
+                this.isTraining = !this.isTraining;
+                document.getElementById('train-network').textContent = 
+                    this.isTraining ? '⏸️ Stop Training' : '🚀 Train Network';
+            }
+            
+            resetNetwork() {
+                this.epoch = 0;
+                this.trainingLoss = 0;
+                this.isTraining = false;
+                this.createNetwork();
+                document.getElementById('train-network').textContent = '🚀 Train Network';
+            }
+            
+            randomizeWeights() {
+                for (let layerIndex = 0; layerIndex < this.weights.length; layerIndex++) {
+                    for (let neuronIndex = 0; neuronIndex < this.weights[layerIndex].length; neuronIndex++) {
+                        for (let inputIndex = 0; inputIndex < this.weights[layerIndex][neuronIndex].length; inputIndex++) {
+                            this.weights[layerIndex][neuronIndex][inputIndex] = (Math.random() - 0.5) * 2;
+                        }
+                    }
+                    
+                    for (let i = 0; i < this.biases[layerIndex].length; i++) {
+                        this.biases[layerIndex][i] = (Math.random() - 0.5) * 0.5;
+                    }
+                }
+                
+                this.updateWeights();
+            }
+            
+            updateActivations() {
+                // Re-activate all neurons with current activation function
+                for (let layerIndex = 0; layerIndex < this.activations.length; layerIndex++) {
+                    for (let neuronIndex = 0; neuronIndex < this.activations[layerIndex].length; neuronIndex++) {
+                        this.activations[layerIndex][neuronIndex] = this.activate(this.activations[layerIndex][neuronIndex]);
+                    }
+                }
+            }
+            
+            updateVisualization() {
+                this.createNetwork();
+            }
+            
+            updateStatistics() {
+                const totalNeurons = this.layers.reduce((sum, layer) => sum + layer.length, 0);
+                const totalWeights = this.weights.reduce((sum, layer) => 
+                    sum + layer.reduce((layerSum, neuron) => layerSum + neuron.length, 0), 0);
+                
+                document.getElementById('neuron-count').textContent = totalNeurons;
+                document.getElementById('weight-count').textContent = totalWeights;
+                document.getElementById('training-loss').textContent = this.trainingLoss.toFixed(4);
+                document.getElementById('accuracy').textContent = (this.accuracy * 100).toFixed(1) + '%';
+                document.getElementById('epoch').textContent = this.epoch;
+                
+                // Update data flow statistics
+                let activeNeurons = 0;
+                this.activations.forEach(layer => {
+                    layer.forEach(activation => {
+                        if (Math.abs(activation) > 0.1) activeNeurons++;
+                    });
+                });
+                
+                document.getElementById('active-neurons').textContent = activeNeurons;
+                document.getElementById('data-packets').textContent = this.dataPackets.length;
+                
+                // Update flow rates
+                document.getElementById('input-flow').textContent = this.packetCount;
+                document.getElementById('hidden-flow').textContent = Math.floor(this.packetCount * 0.8);
+                document.getElementById('backprop-flow').textContent = Math.floor(this.packetCount * 0.6);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (this.isTraining) {
+                    const currentTime = Date.now();
+                    const interval = 1000 / this.trainingSpeed;
+                    
+                    if (currentTime - this.lastUpdate > interval) {
+                        this.simulateTraining();
+                        this.lastUpdate = currentTime;
+                    }
+                }
+                
+                this.updateDataPackets();
+                this.updateStatistics();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize neural network visualizer
+        window.addEventListener('load', () => {
+            new NeuralNetworkVisualizer();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

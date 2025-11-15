@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Lighting Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls input[type="color"] {
+            width: 100%;
+            height: 30px;
+            margin-bottom: 8px;
+        }
+        
+        #controls select, #controls input[type="checkbox"] {
+            margin-bottom: 8px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: 100%;
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        #controls .control-group {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #lightingScene {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        #lightingScene label {
+            font-weight: normal;
+            margin: 4px 0;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>💡 Lighting Demo</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Understand different light types</li>
+            <li>Learn about light properties and parameters</li>
+            <li>Explore lighting effects and shadows</li>
+            <li>Master light positioning and direction</li>
+        </ul>
+        <p><strong>What you see:</strong> A scene with multiple objects demonstrating various lighting techniques including ambient, directional, point, and spot lights with shadow casting.</p>
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <h4>🎛️ Scene Setup</h4>
+            
+            <label for="scenePreset">Scene Preset:</label>
+            <select id="scenePreset">
+                <option value="basic">Basic (Ambient + Directional)</option>
+                <option value="warm">Warm (Multiple Point Lights)</option>
+                <option value="cool">Cool (Spotlight Focus)</option>
+                <option value="dramatic">Dramatic (High Contrast)</option>
+                <option value="night">Night (Low Ambient)</option>
+            </select>
+            
+            <label for="backgroundColor">Background Color:</label>
+            <input type="color" id="backgroundColor" value="#1a1a1a">
+        </div>
+        
+        <div class="control-group">
+            <h4>🌟 Ambient Light</h4>
+            
+            <label for="ambientIntensity">Intensity:</label>
+            <input type="range" id="ambientIntensity" min="0" max="2" step="0.1" value="0.3">
+            <span id="ambient-intensity-value">0.3</span>
+            
+            <label for="ambientColor">Color:</label>
+            <input type="color" id="ambientColor" value="#404040">
+        </div>
+        
+        <div class="control-group">
+            <h4>☀️ Directional Light</h4>
+            
+            <label for="directionalEnabled">
+                <input type="checkbox" id="directionalEnabled" checked> Enable
+            </label>
+            
+            <label for="directionalIntensity">Intensity:</label>
+            <input type="range" id="directionalIntensity" min="0" max="3" step="0.1" value="1.0">
+            <span id="directional-intensity-value">1.0</span>
+            
+            <label for="directionalColor">Color:</label>
+            <input type="color" id="directionalColor" value="#ffffff">
+            
+            <label for="directionalRotation">Direction (Y-axis):</label>
+            <input type="range" id="directionalRotation" min="0" max="360" step="10" value="45">
+            <span id="directional-rotation-value">45°</span>
+            
+            <label for="shadowIntensity">Shadow Intensity:</label>
+            <input type="range" id="shadowIntensity" min="0" max="1" step="0.1" value="0.5">
+            <span id="shadow-intensity-value">0.5</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>💡 Point Light</h4>
+            
+            <label for="pointEnabled">
+                <input type="checkbox" id="pointEnabled"> Enable
+            </label>
+            
+            <label for="pointIntensity">Intensity:</label>
+            <input type="range" id="pointIntensity" min="0" max="5" step="0.1" value="1.5">
+            <span id="point-intensity-value">1.5</span>
+            
+            <label for="pointColor">Color:</label>
+            <input type="color" id="pointColor" value="#ff6b35">
+            
+            <label for="pointDistance">Distance:</label>
+            <input type="range" id="pointDistance" min="1" max="20" step="1" value="10">
+            <span id="point-distance-value">10</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>🔦 Spot Light</h4>
+            
+            <label for="spotEnabled">
+                <input type="checkbox" id="spotEnabled"> Enable
+            </label>
+            
+            <label for="spotIntensity">Intensity:</label>
+            <input type="range" id="spotIntensity" min="0" max="5" step="0.1" value="2.0">
+            <span id="spot-intensity-value">2.0</span>
+            
+            <label for="spotColor">Color:</label>
+            <input type="color" id="spotColor" value="#4ecdc4">
+            
+            <label for="spotAngle">Angle:</label>
+            <input type="range" id="spotAngle" min="10" max="90" step="5" value="45">
+            <span id="spot-angle-value">45°</span>
+            
+            <label for="spotRotation">Direction:</label>
+            <input type="range" id="spotRotation" min="0" max="360" step="10" value="180">
+            <span id="spot-rotation-value">180°</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎨 Object Controls</h4>
+            
+            <label for="objectRotation">Rotation Speed:</label>
+            <input type="range" id="objectRotation" min="0" max="2" step="0.1" value="0.5">
+            <span id="object-rotation-value">0.5</span>
+            
+            <button id="reset">Reset All</button>
+            <button id="animate">Animate Lights</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <small>FPS: <span id="fps">0</span></small>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html" class="current">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class LightingDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.objectRotationSpeed = 0.5;
+                this.animateLights = false;
+                this.lightAnimationTime = 0;
+                
+                this.init();
+                this.setupLighting();
+                this.setupGeometry();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#1a1a1a');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 0, 12);
+                
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+            }
+            
+            setupGeometry() {
+                // Ground plane
+                const groundGeometry = new NinthJS.PlaneGeometry(20, 20);
+                const groundMaterial = new NinthJS.LambertMaterial({ color: '#333333' });
+                this.ground = new NinthJS.Mesh(groundGeometry);
+                this.ground.material = groundMaterial;
+                this.ground.setRotation(-Math.PI / 2, 0, 0);
+                this.ground.setPosition(0, -3, 0);
+                this.scene.add(this.ground);
+                
+                // Central object - torus knot
+                const torusGeometry = new NinthJS.TorusKnotGeometry(1.5, 0.5, 128, 32);
+                const torusMaterial = new NinthJS.PhongMaterial({ 
+                    color: '#4488ff',
+                    specular: '#ffffff',
+                    shininess: 100
+                });
+                this.torus = new NinthJS.Mesh(torusGeometry);
+                this.torus.material = torusMaterial;
+                this.scene.add(this.torus);
+                
+                // Orbiting spheres
+                this.spheres = [];
+                for (let i = 0; i < 6; i++) {
+                    const sphereGeometry = new NinthJS.SphereGeometry(0.8, 32, 16);
+                    const sphereMaterial = new NinthJS.LambertMaterial({ 
+                        color: `hsl(${i * 60}, 70%, 60%)`
+                    });
+                    const sphere = new NinthJS.Mesh(sphereGeometry);
+                    sphere.material = sphereMaterial;
+                    this.spheres.push(sphere);
+                    this.scene.add(sphere);
+                }
+            }
+            
+            setupLighting() {
+                // Ambient light
+                this.ambientLight = new NinthJS.AmbientLight(0.3, '#404040');
+                this.scene.add(this.ambientLight);
+                
+                // Directional light
+                this.directionalLight = new NinthJS.DirectionalLight(1.0, '#ffffff');
+                this.directionalLight.setDirection(-1, -1, -1);
+                this.directionalLight.castShadow = true;
+                this.directionalLight.shadowIntensity = 0.5;
+                this.scene.add(this.directionalLight);
+                
+                // Point light
+                this.pointLight = new NinthJS.PointLight(1.5, '#ff6b35', 10);
+                this.pointLight.enabled = false;
+                this.scene.add(this.pointLight);
+                
+                // Spot light
+                this.spotLight = new NinthJS.SpotLight(2.0, '#4ecdc4', 45 * Math.PI / 180);
+                this.spotLight.enabled = false;
+                this.scene.add(this.spotLight);
+            }
+            
+            setupControls() {
+                // Scene preset
+                document.getElementById('scenePreset').addEventListener('change', (e) => {
+                    this.applyScenePreset(e.target.value);
+                });
+                
+                // Background color
+                document.getElementById('backgroundColor').addEventListener('change', (e) => {
+                    this.scene.setBackground(e.target.value);
+                });
+                
+                // Ambient light controls
+                this.setupAmbientControls();
+                
+                // Directional light controls
+                this.setupDirectionalControls();
+                
+                // Point light controls
+                this.setupPointControls();
+                
+                // Spot light controls
+                this.setupSpotControls();
+                
+                // Object controls
+                this.setupObjectControls();
+            }
+            
+            setupAmbientControls() {
+                const intensitySlider = document.getElementById('ambientIntensity');
+                const intensityValue = document.getElementById('ambient-intensity-value');
+                intensitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    intensityValue.textContent = value.toFixed(1);
+                    this.ambientLight.intensity = value;
+                });
+                
+                document.getElementById('ambientColor').addEventListener('change', (e) => {
+                    this.ambientLight.color = e.target.value;
+                });
+            }
+            
+            setupDirectionalControls() {
+                const enabledCheckbox = document.getElementById('directionalEnabled');
+                const intensitySlider = document.getElementById('directionalIntensity');
+                const intensityValue = document.getElementById('directional-intensity-value');
+                const rotationSlider = document.getElementById('directionalRotation');
+                const rotationValue = document.getElementById('directional-rotation-value');
+                const shadowSlider = document.getElementById('shadowIntensity');
+                const shadowValue = document.getElementById('shadow-intensity-value');
+                
+                enabledCheckbox.addEventListener('change', (e) => {
+                    this.directionalLight.enabled = e.target.checked;
+                });
+                
+                intensitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    intensityValue.textContent = value.toFixed(1);
+                    this.directionalLight.intensity = value;
+                });
+                
+                document.getElementById('directionalColor').addEventListener('change', (e) => {
+                    this.directionalLight.color = e.target.value;
+                });
+                
+                rotationSlider.addEventListener('input', (e) => {
+                    const degrees = parseInt(e.target.value);
+                    rotationValue.textContent = degrees + '°';
+                    const radians = (degrees * Math.PI) / 180;
+                    const direction = {
+                        x: Math.cos(radians),
+                        y: -1,
+                        z: Math.sin(radians)
+                    };
+                    this.directionalLight.setDirection(direction.x, direction.y, direction.z);
+                });
+                
+                shadowSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    shadowValue.textContent = value.toFixed(1);
+                    this.directionalLight.shadowIntensity = value;
+                });
+            }
+            
+            setupPointControls() {
+                const enabledCheckbox = document.getElementById('pointEnabled');
+                const intensitySlider = document.getElementById('pointIntensity');
+                const intensityValue = document.getElementById('point-intensity-value');
+                const distanceSlider = document.getElementById('pointDistance');
+                const distanceValue = document.getElementById('point-distance-value');
+                
+                enabledCheckbox.addEventListener('change', (e) => {
+                    this.pointLight.enabled = e.target.checked;
+                });
+                
+                intensitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    intensityValue.textContent = value.toFixed(1);
+                    this.pointLight.intensity = value;
+                });
+                
+                document.getElementById('pointColor').addEventListener('change', (e) => {
+                    this.pointLight.color = e.target.value;
+                });
+                
+                distanceSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    distanceValue.textContent = value;
+                    this.pointLight.distance = value;
+                });
+            }
+            
+            setupSpotControls() {
+                const enabledCheckbox = document.getElementById('spotEnabled');
+                const intensitySlider = document.getElementById('spotIntensity');
+                const intensityValue = document.getElementById('spot-intensity-value');
+                const angleSlider = document.getElementById('spotAngle');
+                const angleValue = document.getElementById('spot-angle-value');
+                const rotationSlider = document.getElementById('spotRotation');
+                const rotationValue = document.getElementById('spot-rotation-value');
+                
+                enabledCheckbox.addEventListener('change', (e) => {
+                    this.spotLight.enabled = e.target.checked;
+                });
+                
+                intensitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    intensityValue.textContent = value.toFixed(1);
+                    this.spotLight.intensity = value;
+                });
+                
+                document.getElementById('spotColor').addEventListener('change', (e) => {
+                    this.spotLight.color = e.target.value;
+                });
+                
+                angleSlider.addEventListener('input', (e) => {
+                    const degrees = parseInt(e.target.value);
+                    angleValue.textContent = degrees + '°';
+                    this.spotLight.angle = degrees * Math.PI / 180;
+                });
+                
+                rotationSlider.addEventListener('input', (e) => {
+                    const degrees = parseInt(e.target.value);
+                    rotationValue.textContent = degrees + '°';
+                    this.lightAnimationTime = degrees * Math.PI / 180;
+                });
+            }
+            
+            setupObjectControls() {
+                const rotationSlider = document.getElementById('objectRotation');
+                const rotationValue = document.getElementById('object-rotation-value');
+                rotationSlider.addEventListener('input', (e) => {
+                    this.objectRotationSpeed = parseFloat(e.target.value);
+                    rotationValue.textContent = this.objectRotationSpeed.toFixed(1);
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => this.reset());
+                document.getElementById('animate').addEventListener('click', () => {
+                    this.animateLights = !this.animateLights;
+                    document.getElementById('animate').textContent = this.animateLights ? 'Stop Animation' : 'Animate Lights';
+                });
+            }
+            
+            applyScenePreset(preset) {
+                const presets = {
+                    basic: {
+                        ambient: { intensity: 0.3, color: '#404040' },
+                        directional: { enabled: true, intensity: 1.0, color: '#ffffff', rotation: 45 },
+                        point: { enabled: false },
+                        spot: { enabled: false },
+                        background: '#1a1a1a'
+                    },
+                    warm: {
+                        ambient: { intensity: 0.4, color: '#ffaa44' },
+                        directional: { enabled: true, intensity: 0.8, color: '#ffdd88', rotation: 30 },
+                        point: { enabled: true, intensity: 2.0, color: '#ff6b35', distance: 8 },
+                        spot: { enabled: false },
+                        background: '#2a1a1a'
+                    },
+                    cool: {
+                        ambient: { intensity: 0.2, color: '#4488ff' },
+                        directional: { enabled: true, intensity: 1.2, color: '#ffffff', rotation: 60 },
+                        point: { enabled: true, intensity: 1.0, color: '#4ecdc4', distance: 12 },
+                        spot: { enabled: true, intensity: 3.0, color: '#00ffff', angle: 30, rotation: 180 },
+                        background: '#0a1a2a'
+                    },
+                    dramatic: {
+                        ambient: { intensity: 0.1, color: '#222222' },
+                        directional: { enabled: true, intensity: 2.0, color: '#ffffff', rotation: 0 },
+                        point: { enabled: false },
+                        spot: { enabled: true, intensity: 4.0, color: '#ffffff', angle: 20, rotation: 90 },
+                        background: '#000000'
+                    },
+                    night: {
+                        ambient: { intensity: 0.1, color: '#001122' },
+                        directional: { enabled: false },
+                        point: { enabled: true, intensity: 3.0, color: '#66ccff', distance: 6 },
+                        spot: { enabled: true, intensity: 2.5, color: '#ffaa66', angle: 45, rotation: 270 },
+                        background: '#000011'
+                    }
+                };
+                
+                const config = presets[preset];
+                if (!config) return;
+                
+                // Apply ambient
+                document.getElementById('ambientIntensity').value = config.ambient.intensity;
+                document.getElementById('ambient-intensity-value').textContent = config.ambient.intensity.toFixed(1);
+                document.getElementById('ambientColor').value = config.ambient.color;
+                this.ambientLight.intensity = config.ambient.intensity;
+                this.ambientLight.color = config.ambient.color;
+                
+                // Apply directional
+                document.getElementById('directionalEnabled').checked = config.directional.enabled;
+                document.getElementById('directionalIntensity').value = config.directional.intensity;
+                document.getElementById('directional-intensity-value').textContent = config.directional.intensity.toFixed(1);
+                document.getElementById('directionalColor').value = config.directional.color;
+                document.getElementById('directionalRotation').value = config.directional.rotation;
+                document.getElementById('directional-rotation-value').textContent = config.directional.rotation + '°';
+                this.directionalLight.enabled = config.directional.enabled;
+                this.directionalLight.intensity = config.directional.intensity;
+                this.directionalLight.color = config.directional.color;
+                const dirRadians = (config.directional.rotation * Math.PI) / 180;
+                this.directionalLight.setDirection(Math.cos(dirRadians), -1, Math.sin(dirRadians));
+                
+                // Apply point
+                document.getElementById('pointEnabled').checked = config.point.enabled;
+                document.getElementById('pointIntensity').value = config.point.intensity;
+                document.getElementById('point-intensity-value').textContent = config.point.intensity.toFixed(1);
+                document.getElementById('pointColor').value = config.point.color;
+                document.getElementById('pointDistance').value = config.point.distance;
+                document.getElementById('point-distance-value').textContent = config.point.distance;
+                this.pointLight.enabled = config.point.enabled;
+                this.pointLight.intensity = config.point.intensity;
+                this.pointLight.color = config.point.color;
+                this.pointLight.distance = config.point.distance;
+                
+                // Apply spot
+                if (config.spot) {
+                    document.getElementById('spotEnabled').checked = config.spot.enabled;
+                    document.getElementById('spotIntensity').value = config.spot.intensity;
+                    document.getElementById('spot-intensity-value').textContent = config.spot.intensity.toFixed(1);
+                    document.getElementById('spotColor').value = config.spot.color;
+                    document.getElementById('spotAngle').value = config.spot.angle;
+                    document.getElementById('spot-angle-value').textContent = config.spot.angle + '°';
+                    document.getElementById('spotRotation').value = config.spot.rotation;
+                    document.getElementById('spot-rotation-value').textContent = config.spot.rotation + '°';
+                    this.spotLight.enabled = config.spot.enabled;
+                    this.spotLight.intensity = config.spot.intensity;
+                    this.spotLight.color = config.spot.color;
+                    this.spotLight.angle = config.spot.angle * Math.PI / 180;
+                }
+                
+                // Apply background
+                document.getElementById('backgroundColor').value = config.background;
+                this.scene.setBackground(config.background);
+            }
+            
+            reset() {
+                document.getElementById('scenePreset').value = 'basic';
+                this.applyScenePreset('basic');
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                
+                const time = performance.now() * 0.001;
+                const rotationTime = time * this.objectRotationSpeed;
+                
+                // Animate main torus
+                this.torus.setRotation(rotationTime, rotationTime * 0.7, rotationTime * 0.3);
+                
+                // Animate orbiting spheres
+                this.spheres.forEach((sphere, index) => {
+                    const angle = time * 0.5 + index * (Math.PI * 2 / this.spheres.length);
+                    const radius = 5;
+                    sphere.setPosition(
+                        Math.cos(angle) * radius,
+                        0,
+                        Math.sin(angle) * radius
+                    );
+                });
+                
+                // Animate lights if enabled
+                if (this.animateLights) {
+                    this.lightAnimationTime += 0.02;
+                    const spotAngle = this.lightAnimationTime * 2;
+                    this.spotLight.setDirection(Math.cos(spotAngle), -0.5, Math.sin(spotAngle));
+                    
+                    // Pulse point light
+                    this.pointLight.intensity = 1.5 + Math.sin(time * 3) * 0.5;
+                    document.getElementById('pointIntensity').value = this.pointLight.intensity.toFixed(1);
+                    document.getElementById('point-intensity-value').textContent = this.pointLight.intensity.toFixed(1);
+                }
+                
+                // Update point light position if enabled
+                if (this.pointLight.enabled) {
+                    this.pointLight.setPosition(
+                        Math.sin(time) * 8,
+                        2 + Math.cos(time * 1.5) * 2,
+                        Math.cos(time) * 8
+                    );
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        try {
+            new LightingDemo();
+            console.log('✅ Lighting demo loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Lighting demo:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

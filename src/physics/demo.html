@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics System Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .scene {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(to bottom, #87CEEB, #98FB98);
+        }
+        
+        .controls {
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .controls h2 {
+            margin-top: 0;
+            color: #4ecdc4;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+        }
+        
+        .btn {
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 12px;
+        }
+        
+        .btn:hover {
+            background: #45b7d1;
+        }
+        
+        .btn.danger {
+            background: #ff6b6b;
+        }
+        
+        .btn.danger:hover {
+            background: #ee5a52;
+        }
+        
+        .stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 11px;
+            height: 150px;
+            overflow-y: auto;
+            max-height: 150px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px;
+        }
+        
+        .log-entry.collision {
+            color: #ff6b6b;
+        }
+        
+        .log-entry.info {
+            color: #4ecdc4;
+        }
+        
+        .log-entry.warning {
+            color: #f9ca24;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .object-info {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="scene">
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <h2>Physics System Demo</h2>
+            
+            <div class="control-group">
+                <label>Objects:</label>
+                <div>
+                    <button class="btn" onclick="demo.addBall()">Add Ball</button>
+                    <button class="btn" onclick="demo.addBox()">Add Box</button>
+                    <button class="btn" onclick="demo.addHeavy()">Add Heavy</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Forces:</label>
+                <div>
+                    <button class="btn" onclick="demo.applyRandomForce()">Random Force</button>
+                    <button class="btn" onclick="demo.explode()">Explosion</button>
+                    <button class="btn" onclick="demo.resetVelocities()">Reset Velocities</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Physics Settings:</label>
+                <div>
+                    <button class="btn" onclick="demo.toggleGravity()">Toggle Gravity</button>
+                    <button class="btn" onclick="demo.changeGravity()">Change Gravity</button>
+                    <button class="btn" onclick="demo.clearObjects()">Clear All</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Tests:</label>
+                <div>
+                    <button class="btn" onclick="demo.raycast()">Raycast Demo</button>
+                    <button class="btn" onclick="demo.spawnRain()">Spawn Rain</button>
+                    <button class="btn danger" onclick="demo.stressTest()">Stress Test</button>
+                </div>
+            </div>
+            
+            <div class="stats" id="stats">
+                Loading physics system...
+            </div>
+            
+            <div class="log" id="log">
+                <div class="log-entry info">Physics system initialized</div>
+            </div>
+            
+            <div class="object-info" id="objectInfo">
+                <strong>Selected Object:</strong><br>
+                None
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import PhysicsSystem, { RigidBody, Constraint } from './PhysicsSystem.js';
+        
+        class PhysicsDemo {
+            constructor() {
+                this.physics = new PhysicsSystem();
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.objects = new Map();
+                this.selectedObject = null;
+                this.gravityEnabled = true;
+                this.gravityValues = [
+                    { x: 0, y: -9.81, z: 0, name: 'Earth' },
+                    { x: 0, y: -1.62, z: 0, name: 'Moon' },
+                    { x: 0, y: -24.79, z: 0, name: 'Jupiter' },
+                    { x: 0, y: 0, z: 0, name: 'Zero G' }
+                ];
+                this.currentGravity = 0;
+                
+                this.setupPhysics();
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.start();
+            }
+            
+            setupPhysics() {
+                // Add collision callback
+                this.physics.onCollision = (contact) => {
+                    const { bodyA, bodyB, normal, penetration } = contact;
+                    this.log(`Collision: Body ${bodyA.id} ↔ Body ${bodyB.id}`, 'collision');
+                };
+                
+                // Add initial objects
+                this.createGround();
+                this.addBall({ x: -10, y: 15, z: 0, color: '#ff6b6b' });
+                this.addBall({ x: 0, y: 20, z: 0, color: '#4ecdc4' });
+                this.addBall({ x: 10, y: 25, z: 0, color: '#f9ca24' });
+                this.addBox({ x: 5, y: 12, z: 0, color: '#a29bfe' });
+            }
+            
+            createGround() {
+                const ground = this.physics.addBody({
+                    position: { x: 0, y: 0, z: 0 },
+                    isStatic: true,
+                    collider: { type: 'aabb', halfExtents: { x: 50, y: 1, z: 50 } },
+                    userData: { type: 'ground', color: '#2c3e50' }
+                });
+                this.objects.set(ground.id, ground);
+            }
+            
+            addBall(options = {}) {
+                const ball = this.physics.addBody({
+                    position: options.position || { x: (Math.random() - 0.5) * 10, y: 10, z: (Math.random() - 0.5) * 10 },
+                    mass: 1.0,
+                    collider: { type: 'sphere', radius: 0.5 + Math.random() * 0.5 },
+                    restitution: 0.7,
+                    friction: 0.3,
+                    userData: { 
+                        type: 'ball', 
+                        color: options.color || `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        radius: 0.5
+                    }
+                });
+                this.objects.set(ball.id, ball);
+                return ball;
+            }
+            
+            addBox(options = {}) {
+                const box = this.physics.addBody({
+                    position: options.position || { x: (Math.random() - 0.5) * 10, y: 8, z: (Math.random() - 0.5) * 10 },
+                    mass: 2.0,
+                    collider: { type: 'aabb', halfExtents: { x: 0.8, y: 0.8, z: 0.8 } },
+                    restitution: 0.4,
+                    friction: 0.6,
+                    userData: { 
+                        type: 'box', 
+                        color: options.color || `hsl(${Math.random() * 360}, 70%, 60%)`,
+                        size: 1.6
+                    }
+                });
+                this.objects.set(box.id, box);
+                return box;
+            }
+            
+            addHeavy(options = {}) {
+                const heavy = this.physics.addBody({
+                    position: options.position || { x: (Math.random() - 0.5) * 10, y: 15, z: (Math.random() - 0.5) * 10 },
+                    mass: 5.0,
+                    collider: { type: 'aabb', halfExtents: { x: 1.2, y: 1.2, z: 1.2 } },
+                    restitution: 0.2,
+                    friction: 0.8,
+                    userData: { 
+                        type: 'heavy', 
+                        color: options.color || '#34495e',
+                        size: 2.4
+                    }
+                });
+                this.objects.set(heavy.id, heavy);
+                return heavy;
+            }
+            
+            setupCanvas() {
+                const resize = () => {
+                    this.canvas.width = this.canvas.clientWidth;
+                    this.canvas.height = this.canvas.clientHeight;
+                };
+                
+                window.addEventListener('resize', resize);
+                resize();
+            }
+            
+            setupEventListeners() {
+                // Mouse controls for object selection and interaction
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    // Convert screen to world coordinates (simplified)
+                    const worldX = (x / this.canvas.width - 0.5) * 50;
+                    const worldZ = (y / this.canvas.height - 0.5) * 50;
+                    
+                    const hits = this.physics.raycast(
+                        { x: worldX, y: 20, z: worldZ },
+                        { x: 0, y: -1, z: 0 },
+                        25
+                    );
+                    
+                    if (hits.length > 0) {
+                        this.selectedObject = hits[0].body;
+                        this.updateObjectInfo();
+                        this.log(`Selected object ${this.selectedObject.id}`, 'info');
+                    } else {
+                        this.selectedObject = null;
+                        this.updateObjectInfo();
+                    }
+                });
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        this.applyRandomForce();
+                    } else if (e.code === 'KeyR') {
+                        this.raycast();
+                    } else if (e.code === 'KeyC') {
+                        this.clearObjects();
+                    }
+                });
+            }
+            
+            updateObjectInfo() {
+                const info = document.getElementById('objectInfo');
+                
+                if (!this.selectedObject) {
+                    info.innerHTML = '<strong>Selected Object:</strong><br>None';
+                    return;
+                }
+                
+                const body = this.selectedObject;
+                info.innerHTML = `
+                    <strong>Selected Object:</strong><br>
+                    ID: ${body.id}<br>
+                    Type: ${body.userData.type || 'unknown'}<br>
+                    Position: (${body.position.x.toFixed(1)}, ${body.position.y.toFixed(1)}, ${body.position.z.toFixed(1)})<br>
+                    Velocity: (${body.velocity.x.toFixed(1)}, ${body.velocity.y.toFixed(1)}, ${body.velocity.z.toFixed(1)})<br>
+                    Mass: ${body.mass.toFixed(1)}<br>
+                    Sleeping: ${body.isSleeping ? 'Yes' : 'No'}<br>
+                    <button class="btn" onclick="demo.applyForceToSelected()">Apply Force</button>
+                    <button class="btn" onclick="demo.removeSelected()">Remove</button>
+                `;
+            }
+            
+            log(message, type = 'info') {
+                const log = document.getElementById('log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                log.appendChild(entry);
+                
+                // Keep only last 50 entries
+                while (log.children.length > 50) {
+                    log.removeChild(log.firstChild);
+                }
+                
+                log.scrollTop = log.scrollHeight;
+            }
+            
+            // Control methods
+            applyRandomForce() {
+                const dynamicObjects = Array.from(this.objects.values()).filter(obj => !obj.isStatic);
+                if (dynamicObjects.length === 0) return;
+                
+                const target = dynamicObjects[Math.floor(Math.random() * dynamicObjects.length)];
+                const force = {
+                    x: (Math.random() - 0.5) * 50,
+                    y: Math.random() * 30,
+                    z: (Math.random() - 0.5) * 50
+                };
+                
+                target.addForce(force);
+                this.log(`Applied force to object ${target.id}: (${force.x.toFixed(1)}, ${force.y.toFixed(1)}, ${force.z.toFixed(1)})`, 'info');
+            }
+            
+            explode() {
+                const center = { x: 0, y: 10, z: 0 };
+                const radius = 8;
+                const force = 100;
+                
+                let affected = 0;
+                for (const obj of this.objects.values()) {
+                    if (obj.isStatic) continue;
+                    
+                    const distance = obj.position.distanceTo(new Vector3(center.x, center.y, center.z));
+                    if (distance <= radius) {
+                        const direction = obj.position.clone().sub(new Vector3(center.x, center.y, center.z)).normalize();
+                        const explosionForce = direction.multiplyScalar(force * (1 - distance / radius));
+                        obj.addForce(explosionForce);
+                        affected++;
+                    }
+                }
+                
+                this.log(`Explosion affected ${affected} objects`, 'warning');
+            }
+            
+            resetVelocities() {
+                for (const obj of this.objects.values()) {
+                    if (!obj.isStatic) {
+                        obj.velocity.set(0, 0, 0);
+                        obj.angularVelocity.set(0, 0, 0);
+                        obj.wake();
+                    }
+                }
+                this.log('All velocities reset', 'info');
+            }
+            
+            toggleGravity() {
+                this.gravityEnabled = !this.gravityEnabled;
+                if (this.gravityEnabled) {
+                    this.physics.setGravity(this.gravityValues[this.currentGravity]);
+                    this.log(`Gravity enabled: ${this.gravityValues[this.currentGravity].name}`, 'info');
+                } else {
+                    this.physics.setGravity({ x: 0, y: 0, z: 0 });
+                    this.log('Gravity disabled (zero G)', 'info');
+                }
+            }
+            
+            changeGravity() {
+                this.currentGravity = (this.currentGravity + 1) % this.gravityValues.length;
+                if (this.gravityEnabled) {
+                    this.physics.setGravity(this.gravityValues[this.currentGravity]);
+                    this.log(`Gravity changed to: ${this.gravityValues[this.currentGravity].name}`, 'info');
+                }
+            }
+            
+            clearObjects() {
+                for (const [id, obj] of this.objects) {
+                    if (!obj.isStatic) {
+                        this.physics.removeBody(obj);
+                        this.objects.delete(id);
+                    }
+                }
+                this.log('Cleared all dynamic objects', 'info');
+            }
+            
+            raycast() {
+                const origin = { x: 0, y: 20, z: 0 };
+                const direction = { x: 0, y: -1, z: 0 };
+                const hits = this.physics.raycast(origin, direction, 25);
+                
+                this.log(`Raycast found ${hits.length} objects`, 'info');
+                hits.forEach((hit, index) => {
+                    this.log(`  Hit ${index + 1}: Object ${hit.body.id} at distance ${hit.distance.toFixed(1)}`, 'info');
+                });
+            }
+            
+            spawnRain() {
+                for (let i = 0; i < 20; i++) {
+                    this.addBall({
+                        position: {
+                            x: (Math.random() - 0.5) * 20,
+                            y: 20 + Math.random() * 5,
+                            z: (Math.random() - 0.5) * 20
+                        },
+                        color: `hsl(${200 + Math.random() * 60}, 70%, 60%)`
+                    });
+                }
+                this.log('Spawned 20 raindrops', 'info');
+            }
+            
+            stressTest() {
+                for (let i = 0; i < 50; i++) {
+                    if (Math.random() > 0.5) {
+                        this.addBall({
+                            position: {
+                                x: (Math.random() - 0.5) * 30,
+                                y: 15 + Math.random() * 10,
+                                z: (Math.random() - 0.5) * 30
+                            }
+                        });
+                    } else {
+                        this.addBox({
+                            position: {
+                                x: (Math.random() - 0.5) * 30,
+                                y: 15 + Math.random() * 10,
+                                z: (Math.random() - 0.5) * 30
+                            }
+                        });
+                    }
+                }
+                this.log('Stress test: Spawned 50 objects', 'warning');
+            }
+            
+            applyForceToSelected() {
+                if (!this.selectedObject) return;
+                
+                const force = {
+                    x: (Math.random() - 0.5) * 20,
+                    y: 10,
+                    z: (Math.random() - 0.5) * 20
+                };
+                
+                this.selectedObject.addForce(force);
+                this.log(`Applied force to selected object ${this.selectedObject.id}`, 'info');
+            }
+            
+            removeSelected() {
+                if (!this.selectedObject) return;
+                
+                this.physics.removeBody(this.selectedObject);
+                this.objects.delete(this.selectedObject.id);
+                this.selectedObject = null;
+                this.updateObjectInfo();
+                this.log('Removed selected object', 'info');
+            }
+            
+            start() {
+                this.physics.start();
+                
+                const animate = (currentTime) => {
+                    this.physics.update(currentTime);
+                    this.render();
+                    this.updateStats();
+                    requestAnimationFrame(animate);
+                };
+                
+                requestAnimationFrame(animate);
+            }
+            
+            updateStats() {
+                const stats = this.physics.getDebugData();
+                const gravity = this.physics.gravity;
+                
+                const statsElement = document.getElementById('stats');
+                statsElement.innerHTML = `
+                    <strong>Physics Stats:</strong><br>
+                    Bodies: ${this.objects.size}<br>
+                    Contacts: ${stats.contacts.length}<br>
+                    Gravity: (${gravity.x.toFixed(1)}, ${gravity.y.toFixed(1)}, ${gravity.z.toFixed(1)})<br>
+                    FPS: ${Math.round(1000 / (performance.now() - this.lastFrameTime || 16))}<br>
+                    Time: ${((performance.now() - this.startTime) / 1000).toFixed(1)}s
+                `;
+                
+                this.lastFrameTime = performance.now();
+                if (!this.startTime) this.startTime = performance.now();
+            }
+            
+            render() {
+                const ctx = this.ctx;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // Simple 2D projection (top-down view)
+                ctx.save();
+                ctx.translate(width / 2, height * 0.3);
+                
+                // Draw ground grid
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 1;
+                for (let i = -25; i <= 25; i += 5) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * 10, 0);
+                    ctx.lineTo(i * 10, height * 0.6);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(-250, i * 5);
+                    ctx.lineTo(250, i * 5);
+                    ctx.stroke();
+                }
+                
+                // Draw objects
+                for (const obj of this.objects.values()) {
+                    const x = obj.position.x * 8;
+                    const y = obj.position.y * 5;
+                    const screenY = height * 0.3 + y;
+                    
+                    // Skip objects below ground or too high
+                    if (obj.position.y <= 0 || obj.position.y > 30) continue;
+                    
+                    ctx.fillStyle = obj.userData.color || '#ffffff';
+                    
+                    if (obj.userData.type === 'ball') {
+                        const radius = (obj.userData.radius || 0.5) * 8;
+                        ctx.beginPath();
+                        ctx.arc(x, screenY, radius, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Highlight sleeping objects
+                        if (obj.isSleeping) {
+                            ctx.strokeStyle = '#00ff00';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            ctx.strokeStyle = obj.userData.color;
+                            ctx.lineWidth = 1;
+                        }
+                        
+                        // Highlight selected object
+                        if (this.selectedObject === obj) {
+                            ctx.strokeStyle = '#ffff00';
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                        }
+                        
+                    } else if (obj.userData.type === 'box' || obj.userData.type === 'heavy') {
+                        const size = (obj.userData.size || 1.6) * 4;
+                        ctx.fillRect(x - size / 2, screenY - size / 2, size, size);
+                        
+                        // Outline
+                        ctx.strokeStyle = obj.userData.color;
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x - size / 2, screenY - size / 2, size, size);
+                    }
+                    
+                    // Draw velocity vector
+                    if (obj.velocity.length() > 0.1) {
+                        ctx.strokeStyle = '#ff0000';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x, screenY);
+                        ctx.lineTo(x + obj.velocity.x * 3, screenY + obj.velocity.y * 3);
+                        ctx.stroke();
+                    }
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Initialize demo
+        const demo = new PhysicsDemo();
+        window.demo = demo;
+    </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Hello World</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 250px;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🌟 Hello World Example</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Understand basic scene setup</li>
+            <li>Create and manipulate simple geometry</li>
+            <li>Apply basic materials</li>
+            <li>Animate objects</li>
+        </ul>
+        <p><strong>What you see:</strong> A rotating cube with interactive color controls and basic lighting.</p>
+    </div>
+    
+    <div id="controls">
+        <h4>🎛️ Controls</h4>
+        
+        <label for="color">Cube Color:</label>
+        <input type="color" id="color" value="#4488ff">
+        
+        <label for="rotation">Rotation Speed:</label>
+        <input type="range" id="rotation" min="0" max="2" step="0.1" value="1">
+        <span id="rotation-value">1.0</span>
+        
+        <label for="size">Cube Size:</label>
+        <input type="range" id="size" min="0.5" max="2" step="0.1" value="1">
+        <span id="size-value">1.0</span>
+        
+        <div>
+            <button id="pause">Pause</button>
+            <button id="reset">Reset</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <small>FPS: <span id="fps">0</span></small>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html" class="current">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class HelloWorldExample {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.isPaused = false;
+                this.rotationSpeed = 1.0;
+                this.cubeSize = 1.0;
+                
+                this.init();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                // Initialize canvas size
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // Create engine
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                // Create scene
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#1a1a1a');
+                
+                // Create camera
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 0, 5);
+                
+                // Create renderer
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                // Create cube
+                this.createCube();
+                
+                // Add lights
+                this.setupLighting();
+                
+                // Animation state
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+            }
+            
+            createCube() {
+                const geometry = new NinthJS.BoxGeometry(this.cubeSize, this.cubeSize, this.cubeSize);
+                this.material = new NinthJS.BasicMaterial({ color: '#4488ff' });
+                this.cube = new NinthJS.Mesh(geometry);
+                this.cube.material = this.material;
+                this.scene.add(this.cube);
+            }
+            
+            setupLighting() {
+                // Ambient light for base illumination
+                this.ambientLight = new NinthJS.AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+                
+                // Directional light for shadows and depth
+                this.directionalLight = new NinthJS.DirectionalLight(0.8, '#ffffff');
+                this.directionalLight.setDirection(-1, -1, -1);
+                this.scene.add(this.directionalLight);
+            }
+            
+            setupControls() {
+                // Color control
+                document.getElementById('color').addEventListener('change', (e) => {
+                    this.material.setColor(e.target.value);
+                });
+                
+                // Rotation speed control
+                const rotationSlider = document.getElementById('rotation');
+                const rotationValue = document.getElementById('rotation-value');
+                rotationSlider.addEventListener('input', (e) => {
+                    this.rotationSpeed = parseFloat(e.target.value);
+                    rotationValue.textContent = this.rotationSpeed.toFixed(1);
+                });
+                
+                // Size control
+                const sizeSlider = document.getElementById('size');
+                const sizeValue = document.getElementById('size-value');
+                sizeSlider.addEventListener('input', (e) => {
+                    this.cubeSize = parseFloat(e.target.value);
+                    sizeValue.textContent = this.cubeSize.toFixed(1);
+                    this.cube.scale.set(this.cubeSize, this.cubeSize, this.cubeSize);
+                });
+                
+                // Pause button
+                document.getElementById('pause').addEventListener('click', () => {
+                    this.isPaused = !this.isPaused;
+                    document.getElementById('pause').textContent = this.isPaused ? 'Resume' : 'Pause';
+                });
+                
+                // Reset button
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.reset();
+                });
+            }
+            
+            reset() {
+                this.cube.setRotation(0, 0, 0);
+                this.rotationSpeed = 1.0;
+                this.cubeSize = 1.0;
+                this.isPaused = false;
+                
+                // Reset UI
+                document.getElementById('color').value = '#4488ff';
+                document.getElementById('rotation').value = '1';
+                document.getElementById('rotation-value').textContent = '1.0';
+                document.getElementById('size').value = '1';
+                document.getElementById('size-value').textContent = '1.0';
+                document.getElementById('pause').textContent = 'Pause';
+                
+                // Reset material and scale
+                this.material.setColor('#4488ff');
+                this.cube.scale.set(1, 1, 1);
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                
+                if (!this.isPaused) {
+                    const time = performance.now() * 0.001 * this.rotationSpeed;
+                    this.cube.setRotation(time, time * 0.7, 0);
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the example when page loads
+        try {
+            new HelloWorldExample();
+            console.log('✅ Hello World example loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Hello World example:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

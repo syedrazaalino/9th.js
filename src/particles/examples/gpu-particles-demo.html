@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Particle System Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #000510 0%, #000000 100%);
+            font-family: 'Courier New', monospace;
+        }
+        
+        #canvas {
+            display: block;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #00ffff;
+            max-width: 450px;
+        }
+        
+        #info h1 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #00ffff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ffff;
+        }
+        
+        .control {
+            margin: 10px 0;
+        }
+        
+        .control label {
+            display: inline-block;
+            width: 120px;
+            font-size: 12px;
+        }
+        
+        .control input[type="range"] {
+            width: 120px;
+        }
+        
+        .control input[type="number"] {
+            width: 80px;
+            background: #000;
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            padding: 2px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #00ffff, #0088ff);
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: linear-gradient(45deg, #00ffff, #00aaff);
+            transform: scale(1.05);
+        }
+        
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #00ffff;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            min-width: 200px;
+        }
+        
+        .preset-buttons {
+            margin-top: 15px;
+        }
+        
+        .preset-buttons button {
+            margin: 2px;
+            padding: 6px 8px;
+            font-size: 11px;
+            background: linear-gradient(45deg, #ff6600, #ff0000);
+            color: white;
+        }
+        
+        .system-info {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .warning {
+            color: #ff6600;
+            font-size: 10px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="info">
+        <h1>GPU PARTICLE SYSTEM</h1>
+        <p><strong>WebGL2 Compute Shaders</strong> for massive particle simulations</p>
+        <p>Features:</p>
+        <ul>
+            <li>Millions of particles on GPU</li>
+            <li>Compute shader physics</li>
+            <li>Real-time particle emission</li>
+            <li>GPU-accelerated rendering</li>
+        </ul>
+        
+        <div class="system-info" id="gpuInfo">
+            GPU Support: <span id="gpuSupport">Checking...</span><br>
+            Max Particles: <span id="maxParticles">0</span><br>
+            Compute Shaders: <span id="computeSupport">Unknown</span>
+        </div>
+        
+        <p><strong>Controls:</strong> Click to create explosions. Spacebar for bursts!</p>
+        
+        <div class="preset-buttons">
+            <h4>DEMO PRESETS:</h4>
+            <button id="fireworks">🎆 Fireworks</button>
+            <button id="explosion">💥 Explosion</button>
+            <button id="fountain">⛲ Fountain</button>
+            <button id="nebula">🌌 Nebula</button>
+        </div>
+        
+        <div class="warning" id="warning"></div>
+    </div>
+    
+    <div id="controls">
+        <div class="control">
+            <label>Max Particles:</label>
+            <input type="range" id="particleCount" min="10000" max="1000000" value="100000" step="10000">
+            <span id="particleCountValue">100000</span>
+        </div>
+        <div class="control">
+            <label>Emission Rate:</label>
+            <input type="range" id="emissionRate" min="100" max="50000" value="5000" step="100">
+            <span id="emissionRateValue">5000</span>
+        </div>
+        <div class="control">
+            <label>Particle Size:</label>
+            <input type="range" id="particleSize" min="0.5" max="5" value="2" step="0.1">
+            <span id="particleSizeValue">2.0</span>
+        </div>
+        <div class="control">
+            <label>Wind X:</label>
+            <input type="range" id="windX" min="-10" max="10" value="0" step="0.5">
+            <span id="windXValue">0.0</span>
+        </div>
+        <div class="control">
+            <label>Wind Z:</label>
+            <input type="range" id="windZ" min="-10" max="10" value="0" step="0.5">
+            <span id="windZValue">0.0</span>
+        </div>
+        <div class="control">
+            <label>Drag:</label>
+            <input type="range" id="drag" min="0.90" max="1.00" value="0.98" step="0.01">
+            <span id="dragValue">0.98</span>
+        </div>
+        <div class="control">
+            <label>Gravity:</label>
+            <input type="number" id="gravityY" value="-9.81" step="0.1">
+        </div>
+        <button id="burst">🚀 BURST</button>
+        <button id="bigExplosion">💥 BIG EXPLOSION</button>
+        <button id="clear">🗑️ CLEAR</button>
+        <button id="reset">🔄 RESET</button>
+    </div>
+    
+    <div id="stats">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Active: <span id="activeParticles">0</span></div>
+        <div>Draw Calls: <span id="drawCalls">1</span></div>
+        <div>Memory: <span id="memoryUsage">0 MB</span></div>
+        <div>Compute Time: <span id="computeTime">0 ms</span></div>
+        <div>GPU Memory: <span id="gpuMemory">0 MB</span></div>
+    </div>
+
+    <script type="module">
+        import { Scene, PerspectiveCamera, WebGLRenderer } from '../../core/index.js';
+        import { OrbitControls } from '../../controls/index.js';
+        import { Vector3, Color } from '../../core/math/index.js';
+        import { GPUParticleSystem, GPUFireworkSystem, GPUExplosionSystem } from '../GPUParticleSystem.js';
+
+        class GPUParticleDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+                this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true });
+                this.controls = null;
+                this.particleSystem = null;
+                this.currentSystemType = 'basic';
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 0;
+                this.computeTimeHistory = [];
+                
+                this.init();
+                this.setupControls();
+                this.checkWebGLSupport();
+                this.loadBasicSystem();
+                this.animate();
+            }
+            
+            init() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000, 1);
+                
+                this.camera.position.set(0, 10, 30);
+                this.controls = new OrbitControls(this.camera, this.canvas);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.maxDistance = 100;
+                
+                // Add stars background
+                this.addStarField();
+                
+                // Mouse interaction
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+            }
+            
+            addStarField() {
+                // Create a simple star field effect
+                const starsGeometry = new BufferGeometry();
+                const starCount = 1000;
+                const positions = new Float32Array(starCount * 3);
+                const colors = new Float32Array(starCount * 3);
+                
+                for (let i = 0; i < starCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 200;
+                    positions[i * 3 + 1] = (Math.random() - 0.5) * 200;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+                    
+                    colors[i * 3] = Math.random() * 0.5 + 0.5;
+                    colors[i * 3 + 1] = Math.random() * 0.5 + 0.5;
+                    colors[i * 3 + 2] = 1.0;
+                }
+                
+                starsGeometry.setAttribute('position', new BufferAttribute(positions, 3));
+                starsGeometry.setAttribute('color', new BufferAttribute(colors, 3));
+                
+                const starsMaterial = new PointsMaterial({
+                    size: 0.5,
+                    vertexColors: true
+                });
+                
+                const stars = new Points(starsGeometry, starsMaterial);
+                this.scene.add(stars);
+            }
+            
+            checkWebGLSupport() {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl2');
+                
+                if (!gl) {
+                    document.getElementById('warning').textContent = 'WebGL2 not supported! GPU features disabled.';
+                    document.getElementById('gpuSupport').textContent = 'NOT SUPPORTED';
+                    document.getElementById('gpuSupport').style.color = '#ff0000';
+                    return false;
+                }
+                
+                // Check for compute shader support
+                const ext = gl.getExtension('EXT_color_buffer_float');
+                if (!ext) {
+                    document.getElementById('warning').textContent = 'Some GPU features may be limited';
+                    document.getElementById('computeSupport').textContent = 'Limited';
+                    document.getElementById('computeSupport').style.color = '#ffaa00';
+                } else {
+                    document.getElementById('computeSupport').textContent = 'FULL';
+                    document.getElementById('computeSupport').style.color = '#00ff00';
+                }
+                
+                document.getElementById('gpuSupport').textContent = 'SUPPORTED';
+                document.getElementById('gpuSupport').style.color = '#00ff00';
+                
+                canvas.remove();
+                return true;
+            }
+            
+            setupControls() {
+                // Particle count control
+                const particleCountSlider = document.getElementById('particleCount');
+                const particleCountValue = document.getElementById('particleCountValue');
+                
+                particleCountSlider.addEventListener('input', (e) => {
+                    particleCountValue.textContent = e.target.value;
+                    this.loadBasicSystem(parseInt(e.target.value));
+                });
+                
+                // Emission rate control
+                const emissionRateSlider = document.getElementById('emissionRate');
+                const emissionRateValue = document.getElementById('emissionRateValue');
+                
+                emissionRateSlider.addEventListener('input', (e) => {
+                    emissionRateValue.textContent = e.target.value;
+                    if (this.particleSystem) {
+                        this.particleSystem.emissionRate = parseInt(e.target.value);
+                    }
+                });
+                
+                // Particle size control
+                const particleSizeSlider = document.getElementById('particleSize');
+                const particleSizeValue = document.getElementById('particleSizeValue');
+                
+                particleSizeSlider.addEventListener('input', (e) => {
+                    particleSizeValue.textContent = parseFloat(e.target.value).toFixed(1);
+                    if (this.particleSystem) {
+                        this.particleSystem.pointSize = parseFloat(e.target.value);
+                    }
+                });
+                
+                // Wind controls
+                const windXSlider = document.getElementById('windX');
+                const windXValue = document.getElementById('windXValue');
+                const windZSlider = document.getElementById('windZ');
+                const windZValue = document.getElementById('windZValue');
+                
+                windXSlider.addEventListener('input', (e) => {
+                    windXValue.textContent = parseFloat(e.target.value).toFixed(1);
+                    this.updateWind();
+                });
+                
+                windZSlider.addEventListener('input', (e) => {
+                    windZValue.textContent = parseFloat(e.target.value).toFixed(1);
+                    this.updateWind();
+                });
+                
+                // Drag control
+                const dragSlider = document.getElementById('drag');
+                const dragValue = document.getElementById('dragValue');
+                
+                dragSlider.addEventListener('input', (e) => {
+                    dragValue.textContent = parseFloat(e.target.value).toFixed(2);
+                    if (this.particleSystem) {
+                        this.particleSystem.uniforms.drag = parseFloat(e.target.value);
+                    }
+                });
+                
+                // Gravity control
+                document.getElementById('gravityY').addEventListener('input', (e) => {
+                    this.updateGravity(parseFloat(e.target.value));
+                });
+                
+                // Action buttons
+                document.getElementById('burst').addEventListener('click', () => {
+                    if (this.particleSystem) {
+                        this.particleSystem.burst(50000);
+                    }
+                });
+                
+                document.getElementById('bigExplosion').addEventListener('click', () => {
+                    if (this.particleSystem) {
+                        const pos = new Vector3(0, 0, 0);
+                        this.particleSystem.explode(pos, 3.0);
+                    }
+                });
+                
+                document.getElementById('clear').addEventListener('click', () => {
+                    if (this.particleSystem) {
+                        this.particleSystem.clear();
+                    }
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.loadBasicSystem();
+                });
+                
+                // Preset buttons
+                document.getElementById('fireworks').addEventListener('click', () => {
+                    this.loadFireworkSystem();
+                });
+                
+                document.getElementById('explosion').addEventListener('click', () => {
+                    this.loadExplosionSystem();
+                });
+                
+                document.getElementById('fountain').addEventListener('click', () => {
+                    this.loadFountainSystem();
+                });
+                
+                document.getElementById('nebula').addEventListener('click', () => {
+                    this.loadNebulaSystem();
+                });
+            }
+            
+            updateWind() {
+                if (this.particleSystem) {
+                    const windX = parseFloat(document.getElementById('windX').value);
+                    const windZ = parseFloat(document.getElementById('windZ').value);
+                    this.particleSystem.setWind(new Vector3(windX, 0, windZ));
+                }
+            }
+            
+            updateGravity(gravityY) {
+                if (this.particleSystem) {
+                    this.particleSystem.uniforms.gravity.y = gravityY;
+                }
+            }
+            
+            loadBasicSystem(maxParticles = 100000) {
+                this.currentSystemType = 'basic';
+                
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                    this.particleSystem.dispose();
+                }
+                
+                try {
+                    this.particleSystem = new GPUParticleSystem({
+                        maxParticles: maxParticles,
+                        emitRate: parseInt(document.getElementById('emissionRate').value),
+                        particleSize: parseFloat(document.getElementById('particleSize').value),
+                        blending: 'additive'
+                    });
+                    
+                    // Set initial emission position
+                    this.particleSystem.setEmission(new Vector3(0, 0, 0), new Vector3(0, 0, 0), 1000);
+                    
+                    this.scene.add(this.particleSystem);
+                    
+                    document.getElementById('maxParticles').textContent = maxParticles.toLocaleString();
+                    
+                    console.log(`GPU particle system loaded: ${maxParticles.toLocaleString()} max particles`);
+                } catch (error) {
+                    console.error('GPU particle system error:', error);
+                    this.loadFallbackSystem();
+                }
+            }
+            
+            loadFireworkSystem() {
+                this.currentSystemType = 'fireworks';
+                
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                    this.particleSystem.dispose();
+                }
+                
+                try {
+                    this.particleSystem = new GPUFireworkSystem({
+                        maxParticles: 200000,
+                        frequency: 2000,
+                        maxLife: 3.0
+                    });
+                    
+                    this.scene.add(this.particleSystem);
+                    console.log('Firework system loaded');
+                } catch (error) {
+                    console.error('Firework system error:', error);
+                }
+            }
+            
+            loadExplosionSystem() {
+                this.currentSystemType = 'explosion';
+                
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                    this.particleSystem.dispose();
+                }
+                
+                try {
+                    this.particleSystem = new GPUExplosionSystem({
+                        maxParticles: 500000,
+                        maxLife: 5.0
+                    });
+                    
+                    // Immediate explosion
+                    setTimeout(() => {
+                        this.particleSystem.explode(new Vector3(0, 0, 0), 2.0);
+                    }, 500);
+                    
+                    this.scene.add(this.particleSystem);
+                    console.log('Explosion system loaded');
+                } catch (error) {
+                    console.error('Explosion system error:', error);
+                }
+            }
+            
+            loadFountainSystem() {
+                this.currentSystemType = 'fountain';
+                
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                    this.particleSystem.dispose();
+                }
+                
+                try {
+                    this.particleSystem = new GPUParticleSystem({
+                        maxParticles: 150000,
+                        emitRate: 8000,
+                        particleSize: 1.5,
+                        blending: 'additive'
+                    });
+                    
+                    // Continuous fountain emission
+                    this.particleSystem.setEmission(
+                        new Vector3(0, -5, 0),
+                        new Vector3(0, 15, 0),
+                        8000
+                    );
+                    
+                    this.scene.add(this.particleSystem);
+                    console.log('Fountain system loaded');
+                } catch (error) {
+                    console.error('Fountain system error:', error);
+                }
+            }
+            
+            loadNebulaSystem() {
+                this.currentSystemType = 'nebula';
+                
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                    this.particleSystem.dispose();
+                }
+                
+                try {
+                    this.particleSystem = new GPUParticleSystem({
+                        maxParticles: 1000000,
+                        emitRate: 2000,
+                        particleSize: 3.0,
+                        blending: 'additive'
+                    });
+                    
+                    // Spherical emission for nebula effect
+                    for (let i = 0; i < 10; i++) {
+                        const angle = (i / 10) * Math.PI * 2;
+                        const radius = 20;
+                        const x = Math.cos(angle) * radius;
+                        const z = Math.sin(angle) * radius;
+                        
+                        setTimeout(() => {
+                            this.particleSystem.setEmission(
+                                new Vector3(x, 0, z),
+                                new Vector3(0, 0, 0),
+                                200
+                            );
+                            this.particleSystem.burst(5000);
+                        }, i * 500);
+                    }
+                    
+                    this.scene.add(this.particleSystem);
+                    console.log('Nebula system loaded');
+                } catch (error) {
+                    console.error('Nebula system error:', error);
+                }
+            }
+            
+            loadFallbackSystem() {
+                // Fallback to basic particle system if GPU not supported
+                console.warn('Loading fallback particle system');
+                this.particleSystem = {
+                    update: () => {},
+                    render: () => {},
+                    dispose: () => {},
+                    getParticleCount: () => 0,
+                    clear: () => {},
+                    burst: () => {},
+                    explode: () => {}
+                };
+                
+                document.getElementById('warning').textContent = 'GPU features not available - using fallback mode';
+            }
+            
+            handleClick(event) {
+                if (!this.particleSystem) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                const worldX = mouseX * 20;
+                const worldY = (1 - mouseY) * 15;
+                const worldZ = 0;
+                
+                const clickPos = new Vector3(worldX, worldY, worldZ);
+                
+                if (this.currentSystemType === 'explosion') {
+                    this.particleSystem.explode(clickPos, Math.random() * 2 + 0.5);
+                } else {
+                    this.particleSystem.setEmission(clickPos, new Vector3(0, 0, 0), 10000);
+                    this.particleSystem.burst(20000);
+                }
+            }
+            
+            handleKeyDown(event) {
+                if (event.code === 'Space') {
+                    event.preventDefault();
+                    if (this.particleSystem) {
+                        this.particleSystem.burst(100000);
+                    }
+                }
+            }
+            
+            updateStats() {
+                const currentTime = performance.now();
+                this.frameCount++;
+                
+                if (currentTime >= this.lastTime + 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                    
+                    document.getElementById('fps').textContent = this.fps;
+                }
+                
+                if (this.particleSystem) {
+                    const particleCount = this.particleSystem.getParticleCount();
+                    document.getElementById('activeParticles').textContent = particleCount.toLocaleString();
+                    
+                    // Estimate memory usage
+                    const memoryMB = Math.round((particleCount * 64) / (1024 * 1024) * 100) / 100;
+                    document.getElementById('memoryUsage').textContent = memoryMB + ' MB';
+                    
+                    // Estimate GPU memory
+                    const gpuMemoryMB = Math.round((particleCount * 128) / (1024 * 1024) * 100) / 100;
+                    document.getElementById('gpuMemory').textContent = gpuMemoryMB + ' MB';
+                }
+                
+                document.getElementById('drawCalls').textContent = '1';
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = Math.min(0.016, (performance.now() - this.lastTime) / 1000);
+                const computeStart = performance.now();
+                
+                if (this.particleSystem && this.particleSystem.update) {
+                    this.particleSystem.update(deltaTime);
+                }
+                
+                const computeEnd = performance.now();
+                const computeTime = computeEnd - computeStart;
+                this.computeTimeHistory.push(computeTime);
+                
+                if (this.computeTimeHistory.length > 60) {
+                    this.computeTimeHistory.shift();
+                }
+                
+                const avgComputeTime = this.computeTimeHistory.reduce((a, b) => a + b, 0) / this.computeTimeHistory.length;
+                document.getElementById('computeTime').textContent = avgComputeTime.toFixed(2) + ' ms';
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                
+                this.updateStats();
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+            window.location.reload();
+        });
+        
+        window.addEventListener('load', () => {
+            new GPUParticleDemo();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soft Body Simulation Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a0f2e, #2d1b69);
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas {
+            display: block;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        
+        #info h1 {
+            margin: 0 0 10px 0;
+            color: #FF6B6B;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .control {
+            margin: 10px 0;
+        }
+        
+        .control label {
+            display: inline-block;
+            width: 100px;
+        }
+        
+        .control input[type="range"] {
+            width: 150px;
+        }
+        
+        .control input[type="checkbox"] {
+            margin-left: 10px;
+        }
+        
+        button {
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #ff5252;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        
+        .preset-buttons {
+            margin-top: 15px;
+        }
+        
+        .preset-buttons button {
+            margin: 2px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="info">
+        <h1>Soft Body Simulation</h1>
+        <p><strong>Verlet Integration</strong> based cloth and soft body physics.</p>
+        <p>Features:</p>
+        <ul>
+            <li>Position-based dynamics</li>
+            <li>Distance, bend, and shear constraints</li>
+            <li>Wind simulation</li>
+            <li>Sphere and plane collisions</li>
+        </ul>
+        <p><strong>Instructions:</strong> Click cloth to pin/unpin particles. Watch realistic fabric behavior!</p>
+        
+        <div class="preset-buttons">
+            <h4>Presets:</h4>
+            <button id="hangingCloth">Hanging Cloth</button>
+            <button id="flagCloth">Flag</button>
+            <button id="rope">Rope</button>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <div class="control">
+            <label>Wind:</label>
+            <input type="checkbox" id="windEnabled">
+        </div>
+        <div class="control">
+            <label>Wind X:</label>
+            <input type="range" id="windX" min="-10" max="10" value="3" step="0.5">
+            <span id="windXValue">3.0</span>
+        </div>
+        <div class="control">
+            <label>Wind Z:</label>
+            <input type="range" id="windZ" min="-10" max="10" value="0" step="0.5">
+            <span id="windZValue">0.0</span>
+        </div>
+        <div class="control">
+            <label>Iterations:</label>
+            <input type="range" id="iterations" min="1" max="10" value="5" step="1">
+            <span id="iterationsValue">5</span>
+        </div>
+        <div class="control">
+            <label>Stiffness:</label>
+            <input type="range" id="stiffness" min="0.5" max="1.0" value="0.9" step="0.05">
+            <span id="stiffnessValue">0.9</span>
+        </div>
+        <div class="control">
+            <label>Damping:</label>
+            <input type="range" id="damping" min="0.9" max="1.0" value="0.98" step="0.01">
+            <span id="dampingValue">0.98</span>
+        </div>
+        <button id="reset">Reset</button>
+        <button id="addSphere">Add Sphere</button>
+        <button id="randomForce">Random Force</button>
+    </div>
+    
+    <div id="stats">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Particles: <span id="particleCount">0</span></div>
+        <div>Constraints: <span id="constraintCount">0</span></div>
+        <div>Pinned: <span id="pinnedCount">0</span></div>
+    </div>
+
+    <script type="module">
+        import { Scene, PerspectiveCamera, WebGLRenderer } from '../../core/index.js';
+        import { OrbitControls } from '../../controls/index.js';
+        import { Vector3, Color } from '../../core/math/index.js';
+        import { SoftBodySimulation, SoftBodyRope } from '../SoftBodySimulation.js';
+
+        class SoftBodyDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+                this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true });
+                this.controls = null;
+                this.softBodySystem = null;
+                this.currentPreset = 'hanging';
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 0;
+                
+                this.init();
+                this.setupControls();
+                this.loadHangingCloth();
+                this.animate();
+            }
+            
+            init() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x1a0f2e, 1);
+                
+                this.camera.position.set(0, 5, 15);
+                this.controls = new OrbitControls(this.camera, this.canvas);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                
+                // Add lights
+                const ambientLight = new AmbientLight(0x404040, 0.6);
+                const directionalLight = new DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                this.scene.add(ambientLight);
+                this.scene.add(directionalLight);
+                
+                // Add ground plane
+                this.addGround();
+                
+                // Mouse interaction
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+            }
+            
+            addGround() {
+                const groundGeometry = new PlaneGeometry(30, 30, 10, 10);
+                const groundMaterial = new MeshBasicMaterial({ 
+                    color: 0x333333, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const ground = new Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.y = -8;
+                this.scene.add(ground);
+            }
+            
+            setupControls() {
+                // Wind controls
+                const windEnabled = document.getElementById('windEnabled');
+                const windXSlider = document.getElementById('windX');
+                const windXValue = document.getElementById('windXValue');
+                const windZSlider = document.getElementById('windZ');
+                const windZValue = document.getElementById('windZValue');
+                
+                windEnabled.addEventListener('change', (e) => {
+                    if (this.softBodySystem) {
+                        this.softBodySystem.setWindEnabled(e.target.checked);
+                    }
+                });
+                
+                windXSlider.addEventListener('input', (e) => {
+                    windXValue.textContent = parseFloat(e.target.value).toFixed(1);
+                    this.updateWind();
+                });
+                
+                windZSlider.addEventListener('input', (e) => {
+                    windZValue.textContent = parseFloat(e.target.value).toFixed(1);
+                    this.updateWind();
+                });
+                
+                // Physics controls
+                const iterationsSlider = document.getElementById('iterations');
+                const iterationsValue = document.getElementById('iterationsValue');
+                const stiffnessSlider = document.getElementById('stiffness');
+                const stiffnessValue = document.getElementById('stiffnessValue');
+                const dampingSlider = document.getElementById('damping');
+                const dampingValue = document.getElementById('dampingValue');
+                
+                iterationsSlider.addEventListener('input', (e) => {
+                    iterationsValue.textContent = e.target.value;
+                    if (this.softBodySystem) {
+                        this.softBodySystem.iterations = parseInt(e.target.value);
+                    }
+                });
+                
+                stiffnessSlider.addEventListener('input', (e) => {
+                    stiffnessValue.textContent = parseFloat(e.target.value).toFixed(2);
+                    // Note: Would need to update constraint stiffness in real implementation
+                });
+                
+                dampingSlider.addEventListener('input', (e) => {
+                    dampingValue.textContent = parseFloat(e.target.value).toFixed(2);
+                    if (this.softBodySystem) {
+                        this.softBodySystem.damping = parseFloat(e.target.value);
+                    }
+                });
+                
+                // Action buttons
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.loadCurrentPreset();
+                });
+                
+                document.getElementById('addSphere').addEventListener('click', () => {
+                    this.addRandomSphere();
+                });
+                
+                document.getElementById('randomForce').addEventListener('click', () => {
+                    this.applyRandomForce();
+                });
+                
+                // Preset buttons
+                document.getElementById('hangingCloth').addEventListener('click', () => {
+                    this.loadHangingCloth();
+                });
+                
+                document.getElementById('flagCloth').addEventListener('click', () => {
+                    this.loadFlagCloth();
+                });
+                
+                document.getElementById('rope').addEventListener('click', () => {
+                    this.loadRope();
+                });
+            }
+            
+            updateWind() {
+                if (this.softBodySystem && this.softBodySystem instanceof SoftBodySimulation) {
+                    const windX = parseFloat(document.getElementById('windX').value);
+                    const windZ = parseFloat(document.getElementById('windZ').value);
+                    this.softBodySystem.setWind(new Vector3(windX, 0, windZ));
+                }
+            }
+            
+            loadHangingCloth() {
+                this.currentPreset = 'hanging';
+                
+                if (this.softBodySystem) {
+                    this.scene.remove(this.softBodySystem);
+                    this.softBodySystem.dispose();
+                }
+                
+                this.softBodySystem = SoftBodySimulation.createHangingCloth(10, 8, 20);
+                this.softBodySystem.iterations = parseInt(document.getElementById('iterations').value);
+                this.softBodySystem.damping = parseFloat(document.getElementById('damping').value);
+                
+                // Add ground collision
+                this.softBodySystem.addPlaneCollider(new Vector3(0, 1, 0), -6);
+                
+                // Add some spheres for collision
+                this.softBodySystem.addSphereCollider(new Vector3(-3, -4, 0), 1.5);
+                this.softBodySystem.addSphereCollider(new Vector3(3, -3, 0), 2);
+                
+                this.scene.add(this.softBodySystem);
+                this.loadCurrentPreset = () => this.loadHangingCloth();
+                
+                console.log('Hanging cloth simulation loaded');
+            }
+            
+            loadFlagCloth() {
+                this.currentPreset = 'flag';
+                
+                if (this.softBodySystem) {
+                    this.scene.remove(this.softBodySystem);
+                    this.softBodySystem.dispose();
+                }
+                
+                this.softBodySystem = SoftBodySimulation.createFlag(15, 10, 25);
+                this.softBodySystem.iterations = parseInt(document.getElementById('iterations').value);
+                this.softBodySystem.damping = parseFloat(document.getElementById('damping').value);
+                
+                // Enable wind
+                const windX = parseFloat(document.getElementById('windX').value);
+                this.softBodySystem.setWindEnabled(true);
+                this.softBodySystem.setWind(new Vector3(windX, 0, 0));
+                
+                this.scene.add(this.softBodySystem);
+                this.loadCurrentPreset = () => this.loadFlagCloth();
+                
+                console.log('Flag cloth simulation loaded');
+            }
+            
+            loadRope() {
+                this.currentPreset = 'rope';
+                
+                if (this.softBodySystem) {
+                    this.scene.remove(this.softBodySystem);
+                    this.softBodySystem.dispose();
+                }
+                
+                this.softBodySystem = new SoftBodyRope({
+                    points: 30,
+                    length: 8,
+                    pinStart: true,
+                    pinEnd: false
+                });
+                
+                // Position rope
+                this.softBodySystem.position.set(0, 2, 0);
+                
+                this.scene.add(this.softBodySystem);
+                this.loadCurrentPreset = () => this.loadRope();
+                
+                console.log('Rope simulation loaded');
+            }
+            
+            addRandomSphere() {
+                if (!this.softBodySystem || !(this.softBodySystem instanceof SoftBodySimulation)) return;
+                
+                const x = (Math.random() - 0.5) * 10;
+                const y = Math.random() * 5;
+                const z = (Math.random() - 0.5) * 10;
+                const radius = Math.random() * 2 + 0.5;
+                
+                this.softBodySystem.addSphereCollider(new Vector3(x, y, z), radius);
+                
+                // Visual representation
+                const sphereGeometry = new SphereGeometry(radius, 16, 16);
+                const sphereMaterial = new MeshBasicMaterial({ 
+                    color: 0xFF6B6B,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.5
+                });
+                const sphere = new Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.set(x, y, z);
+                this.scene.add(sphere);
+            }
+            
+            applyRandomForce() {
+                if (!this.softBodySystem) return;
+                
+                const force = new Vector3(
+                    (Math.random() - 0.5) * 100,
+                    Math.random() * 50,
+                    (Math.random() - 0.5) * 100
+                );
+                
+                if (this.softBodySystem instanceof SoftBodyRope) {
+                    this.softBodySystem.applyForce(force);
+                } else {
+                    // Apply to random particles
+                    const randomParticle = Math.floor(Math.random() * this.softBodySystem.particles.length);
+                    this.softBodySystem.applyImpulse(randomParticle, force.multiplyScalar(0.1));
+                }
+            }
+            
+            handleClick(event) {
+                if (!this.softBodySystem) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Convert to world coordinates
+                const worldX = mouseX * 10;
+                const worldY = (1 - mouseY) * 8;
+                const worldZ = 0;
+                
+                const clickPos = new Vector3(worldX, worldY, worldZ);
+                
+                if (this.softBodySystem instanceof SoftBodySimulation) {
+                    // Find closest particle and toggle pinning
+                    let minDist = Infinity;
+                    let closestParticle = null;
+                    
+                    for (const particle of this.softBodySystem.particles) {
+                        const dist = particle.position.distanceTo(clickPos);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closestParticle = particle;
+                        }
+                    }
+                    
+                    if (closestParticle && minDist < 2) {
+                        closestParticle.pinned = !closestParticle.pinned;
+                    }
+                }
+            }
+            
+            updateStats() {
+                const currentTime = performance.now();
+                this.frameCount++;
+                
+                if (currentTime >= this.lastTime + 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                    
+                    document.getElementById('fps').textContent = this.fps;
+                }
+                
+                if (this.softBodySystem) {
+                    const stats = this.softBodySystem.getStats();
+                    document.getElementById('particleCount').textContent = stats.particles;
+                    document.getElementById('constraintCount').textContent = stats.constraints;
+                    document.getElementById('pinnedCount').textContent = stats.pinnedParticles;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = Math.min(0.016, (performance.now() - this.lastTime) / 1000);
+                
+                if (this.softBodySystem) {
+                    this.softBodySystem.update(deltaTime);
+                }
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                
+                this.updateStats();
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+            window.location.reload();
+        });
+        
+        window.addEventListener('load', () => {
+            new SoftBodyDemo();
+        });
+    </script>
+</body>
+</html>

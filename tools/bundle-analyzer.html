@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundle Analyzer - Developer Tools Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toolbar h1 {
+            font-size: 18px;
+            color: #00ff88;
+            margin-right: 30px;
+        }
+
+        .tool-btn {
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #505050;
+            border-color: #00ff88;
+        }
+
+        .tool-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            color: #00ff88;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 15px 15px 0 15px;
+        }
+
+        .upload-panel {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .upload-zone {
+            border: 2px dashed #555;
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 24px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .summary-panel {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #3a3a3a;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .file-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            margin: 1px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .tree-item:hover {
+            background: #3a3a3a;
+        }
+
+        .tree-item.selected {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .tree-indent {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+        }
+
+        .tree-arrow {
+            width: 0;
+            height: 0;
+            border-left: 5px solid #666;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            margin-right: 4px;
+            transition: transform 0.2s;
+        }
+
+        .tree-item.expanded .tree-arrow {
+            transform: rotate(90deg);
+        }
+
+        .tree-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tree-size {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-tabs {
+            background: #2d2d2d;
+            display: flex;
+            border-bottom: 1px solid #444;
+        }
+
+        .chart-tab {
+            padding: 10px 20px;
+            background: #3a3a3a;
+            border-right: 1px solid #444;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .chart-tab.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .chart-content {
+            flex: 1;
+            position: relative;
+            display: flex;
+        }
+
+        .chart-panel {
+            flex: 1;
+            position: relative;
+            background: #1a1a1a;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .details-panel {
+            width: 350px;
+            background: #2d2d2d;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .details-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .details-header {
+            background: #3a3a3a;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .file-path {
+            font-family: monospace;
+            font-size: 11px;
+            color: #00ff88;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+
+        .file-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+        }
+
+        .dependencies-list {
+            margin-top: 15px;
+        }
+
+        .dep-item {
+            background: #3a3a3a;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dep-size {
+            color: #888;
+        }
+
+        .optimization-suggestions {
+            background: #2a2a2a;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #ffaa00;
+        }
+
+        .suggestion-item {
+            font-size: 11px;
+            margin-bottom: 5px;
+            padding-left: 10px;
+            position: relative;
+        }
+
+        .suggestion-item:before {
+            content: '•';
+            color: #ffaa00;
+            position: absolute;
+            left: 0;
+        }
+
+        .treemap-cell {
+            position: absolute;
+            border: 1px solid #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .treemap-cell:hover {
+            border-color: #00ff88;
+            z-index: 10;
+        }
+
+        .treemap-cell.selected {
+            border-color: #00ff88;
+            border-width: 2px;
+            z-index: 11;
+        }
+
+        .treemap-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .treemap-cell:hover .treemap-label {
+            opacity: 1;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #00ff88;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .analysis-controls {
+            padding: 15px;
+            border-top: 1px solid #444;
+            background: #252525;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            flex: 1;
+            min-width: 60px;
+        }
+
+        .export-btn:hover {
+            background: #454545;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+
+        .filter-controls {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .filter-input {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .filter-input::placeholder {
+            color: #666;
+        }
+
+        .view-controls {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .view-btn {
+            flex: 1;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .view-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .category-bar {
+            height: 20px;
+            display: flex;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .category-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #000;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .category-segment:hover {
+            opacity: 0.8;
+        }
+
+        .category-js { background: #ff6b6b; }
+        .category-css { background: #4ecdc4; }
+        .category-img { background: #45b7d1; }
+        .category-font { background: #96ceb4; }
+        .category-json { background: #ffd93d; }
+        .category-other { background: #a8e6cf; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>📦 Bundle Analyzer</h1>
+        <button class="tool-btn" onclick="analyzer.selectBundle()">Load Bundle</button>
+        <button class="tool-btn" onclick="analyzer.analyzeBundle()">Analyze</button>
+        <button class="tool-btn" onclick="analyzer.generateReport()">Generate Report</button>
+        <button class="tool-btn" onclick="analyzer.exportData()">Export</button>
+        <button class="tool-btn" onclick="analyzer.resetView()">Reset</button>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="section-title">Bundle Summary</div>
+            <div class="summary-panel">
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalSize">0 KB</div>
+                        <div class="stat-label">Total Size</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="fileCount">0</div>
+                        <div class="stat-label">Files</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="gzipSize">0 KB</div>
+                        <div class="stat-label">Gzipped</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="optimization">0%</div>
+                        <div class="stat-label">Savings</div>
+                    </div>
+                </div>
+                
+                <div class="category-bar" id="categoryBar">
+                    <div class="category-segment category-js" data-category="js">JS</div>
+                    <div class="category-segment category-css" data-category="css">CSS</div>
+                    <div class="category-segment category-img" data-category="img">IMG</div>
+                    <div class="category-segment category-font" data-category="font">FONT</div>
+                    <div class="category-segment category-json" data-category="json">JSON</div>
+                    <div class="category-segment category-other" data-category="other">OTHER</div>
+                </div>
+            </div>
+
+            <div class="section-title">Files</div>
+            <div class="filter-controls">
+                <input type="text" class="filter-input" placeholder="Filter files..." id="filterInput">
+                <div class="view-controls">
+                    <button class="view-btn active" data-view="tree">Tree</button>
+                    <button class="view-btn" data-view="list">List</button>
+                    <button class="view-btn" data-view="treemap">Map</button>
+                </div>
+            </div>
+            <div class="file-tree" id="fileTree"></div>
+        </div>
+
+        <div class="canvas-container">
+            <div class="chart-tabs">
+                <div class="chart-tab active" data-chart="overview">Overview</div>
+                <div class="chart-tab" data-chart="treemap">Treemap</div>
+                <div class="chart-tab" data-chart="dependencies">Dependencies</div>
+                <div class="chart-tab" data-chart="timeline">Build Timeline</div>
+            </div>
+            
+            <div class="chart-content">
+                <div class="chart-panel" id="chartPanel">
+                    <canvas id="chartCanvas" class="chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="details-panel">
+            <div class="section-title">File Details</div>
+            <div class="details-container" id="detailsContainer">
+                <div style="color: #666; font-style: italic; padding: 20px;">
+                    Select a file to view details
+                </div>
+            </div>
+
+            <div class="analysis-controls">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="analyzer.exportJSON()">JSON</button>
+                    <button class="export-btn" onclick="analyzer.exportCSV()">CSV</button>
+                    <button class="export-btn" onclick="analyzer.exportHTML()">HTML</button>
+                    <button class="export-btn" onclick="analyzer.copyReport()">Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        class BundleAnalyzer {
+            constructor() {
+                this.bundle = null;
+                this.files = [];
+                this.selectedFile = null;
+                this.currentView = 'tree';
+                this.currentChart = 'overview';
+                this.filteredFiles = [];
+
+                this.chartCanvas = document.getElementById('chartCanvas');
+                this.chartCtx = this.chartCanvas.getContext('2d');
+
+                this.init();
+                this.setupEventListeners();
+                this.loadDemoBundle();
+            }
+
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            setupEventListeners() {
+                // File input
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.json,.js,.css,.html,.zip';
+                fileInput.multiple = true;
+                fileInput.onchange = (e) => this.handleFileUpload(e.target.files);
+                this.fileInput = fileInput;
+
+                // Filter input
+                document.getElementById('filterInput').addEventListener('input', (e) => {
+                    this.filterFiles(e.target.value);
+                });
+
+                // View controls
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.currentView = btn.dataset.view;
+                        this.updateFileView();
+                    });
+                });
+
+                // Chart tabs
+                document.querySelectorAll('.chart-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        this.currentChart = tab.dataset.chart;
+                        this.updateChart();
+                    });
+                });
+
+                // Category bar
+                document.getElementById('categoryBar').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('category-segment')) {
+                        const category = e.target.dataset.category;
+                        this.filterByCategory(category);
+                    }
+                });
+
+                // Canvas interactions
+                this.chartCanvas.addEventListener('click', (e) => this.handleChartClick(e));
+                this.chartCanvas.addEventListener('mousemove', (e) => this.handleChartHover(e));
+            }
+
+            selectBundle() {
+                this.fileInput.click();
+            }
+
+            handleFileUpload(files) {
+                Array.from(files).forEach(file => {
+                    if (file.name.endsWith('.zip')) {
+                        // Handle zip file (simplified)
+                        this.loadZipBundle(file);
+                    } else {
+                        this.loadSingleFile(file);
+                    }
+                });
+            }
+
+            loadZipBundle(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Simulate zip extraction
+                    this.bundle = this.generateMockBundleFromZip(file);
+                    this.processBundle();
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            loadSingleFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.files && data.bundle) {
+                            this.bundle = data;
+                        } else {
+                            this.bundle = this.generateMockBundle(file);
+                        }
+                        this.processBundle();
+                    } catch (error) {
+                        // Not a JSON file, treat as regular file
+                        this.bundle = this.generateMockBundle(file);
+                        this.processBundle();
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            generateMockBundleFromZip(file) {
+                return {
+                    name: file.name,
+                    timestamp: new Date().toISOString(),
+                    files: [
+                        {
+                            path: 'dist/main.js',
+                            size: 145280,
+                            gzipped: 45230,
+                            type: 'js',
+                            dependencies: ['react', 'react-dom'],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'dist/main.css',
+                            size: 12450,
+                            gzipped: 3200,
+                            type: 'css',
+                            dependencies: [],
+                            chunks: ['main'],
+                            warnings: ['Unused CSS rules']
+                        },
+                        {
+                            path: 'dist/assets/logo.png',
+                            size: 23450,
+                            gzipped: 0,
+                            type: 'img',
+                            dependencies: [],
+                            chunks: [],
+                            warnings: []
+                        }
+                    ]
+                };
+            }
+
+            generateMockBundle(file) {
+                return {
+                    name: file.name || 'Mock Bundle',
+                    timestamp: new Date().toISOString(),
+                    files: [
+                        {
+                            path: 'src/main.js',
+                            size: 89340,
+                            gzipped: 28150,
+                            type: 'js',
+                            dependencies: ['react@17.0.2', 'react-dom@17.0.2', 'lodash@4.17.21'],
+                            chunks: ['main'],
+                            warnings: ['Large bundle size', 'Consider code splitting']
+                        },
+                        {
+                            path: 'src/App.js',
+                            size: 23450,
+                            gzipped: 7450,
+                            type: 'js',
+                            dependencies: ['react'],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'src/components/Button.js',
+                            size: 12800,
+                            gzipped: 4100,
+                            type: 'js',
+                            dependencies: ['react'],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'src/utils/helpers.js',
+                            size: 5600,
+                            gzipped: 1800,
+                            type: 'js',
+                            dependencies: ['lodash'],
+                            chunks: ['main'],
+                            warnings: ['Underscore could be replaced with native methods']
+                        },
+                        {
+                            path: 'src/styles/main.css',
+                            size: 15600,
+                            gzipped: 4200,
+                            type: 'css',
+                            dependencies: [],
+                            chunks: ['main'],
+                            warnings: ['Unused CSS selectors: 23%']
+                        },
+                        {
+                            path: 'src/styles/components.css',
+                            size: 8900,
+                            gzipped: 2400,
+                            type: 'css',
+                            dependencies: [],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'public/assets/logo.png',
+                            size: 34560,
+                            gzipped: 0,
+                            type: 'img',
+                            dependencies: [],
+                            chunks: [],
+                            warnings: ['Consider WebP format']
+                        },
+                        {
+                            path: 'public/assets/background.jpg',
+                            size: 128400,
+                            gzipped: 0,
+                            type: 'img',
+                            dependencies: [],
+                            chunks: [],
+                            warnings: ['Image is too large', 'Consider compression']
+                        },
+                        {
+                            node_modules/react/umd/react.production.min.js: 134000,
+                            node_modules/react-dom/umd/react-dom.production.min.js: 78000,
+                            node_modules/lodash/lodash.min.js: 67000
+                        }
+                    ]
+                };
+            }
+
+            processBundle() {
+                this.files = this.bundle.files || [];
+                this.filteredFiles = [...this.files];
+                this.updateSummary();
+                this.updateFileView();
+                this.updateChart();
+                this.log('info', `Loaded bundle: ${this.bundle.name} with ${this.files.length} files`);
+            }
+
+            loadDemoBundle() {
+                this.bundle = {
+                    name: 'demo-bundle.js',
+                    timestamp: new Date().toISOString(),
+                    files: [
+                        {
+                            path: 'src/main.js',
+                            size: 145280,
+                            gzipped: 45230,
+                            type: 'js',
+                            dependencies: ['react@17.0.2', 'react-dom@17.0.2', 'lodash@4.17.21'],
+                            chunks: ['main'],
+                            warnings: ['Large bundle size', 'Consider code splitting']
+                        },
+                        {
+                            path: 'src/App.js',
+                            size: 23450,
+                            gzipped: 7450,
+                            type: 'js',
+                            dependencies: ['react'],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'src/components/Button.js',
+                            size: 12800,
+                            gzipped: 4100,
+                            type: 'js',
+                            dependencies: ['react'],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'src/utils/helpers.js',
+                            size: 5600,
+                            gzipped: 1800,
+                            type: 'js',
+                            dependencies: ['lodash'],
+                            chunks: ['main'],
+                            warnings: ['Underscore could be replaced with native methods']
+                        },
+                        {
+                            path: 'src/styles/main.css',
+                            size: 15600,
+                            gzipped: 4200,
+                            type: 'css',
+                            dependencies: [],
+                            chunks: ['main'],
+                            warnings: ['Unused CSS selectors: 23%']
+                        },
+                        {
+                            path: 'src/styles/components.css',
+                            size: 8900,
+                            gzipped: 2400,
+                            type: 'css',
+                            dependencies: [],
+                            chunks: ['main'],
+                            warnings: []
+                        },
+                        {
+                            path: 'public/assets/logo.png',
+                            size: 34560,
+                            gzipped: 0,
+                            type: 'img',
+                            dependencies: [],
+                            chunks: [],
+                            warnings: ['Consider WebP format']
+                        },
+                        {
+                            path: 'public/assets/background.jpg',
+                            size: 128400,
+                            gzipped: 0,
+                            type: 'img',
+                            dependencies: [],
+                            chunks: [],
+                            warnings: ['Image is too large', 'Consider compression']
+                        },
+                        {
+                            path: 'public/fonts/Roboto-Regular.ttf',
+                            size: 67800,
+                            gzipped: 0,
+                            type: 'font',
+                            dependencies: [],
+                            chunks: [],
+                            warnings: []
+                        }
+                    ]
+                };
+
+                this.processBundle();
+            }
+
+            updateSummary() {
+                const totalSize = this.files.reduce((sum, file) => sum + (file.size || 0), 0);
+                const totalGzipped = this.files.reduce((sum, file) => sum + (file.gzipped || 0), 0);
+                const fileCount = this.files.length;
+                const savings = totalSize > 0 ? ((totalSize - totalGzipped) / totalSize * 100) : 0;
+
+                document.getElementById('totalSize').textContent = this.formatBytes(totalSize);
+                document.getElementById('fileCount').textContent = fileCount;
+                document.getElementById('gzipSize').textContent = this.formatBytes(totalGzipped);
+                document.getElementById('optimization').textContent = savings.toFixed(1) + '%';
+
+                // Update category bar
+                this.updateCategoryBar();
+            }
+
+            updateCategoryBar() {
+                const categories = {};
+                const totalSize = this.files.reduce((sum, file) => sum + (file.size || 0), 0);
+
+                this.files.forEach(file => {
+                    const category = this.getFileCategory(file);
+                    categories[category] = (categories[category] || 0) + (file.size || 0);
+                });
+
+                const segments = document.querySelectorAll('.category-segment');
+                segments.forEach(segment => {
+                    const category = segment.dataset.category;
+                    const size = categories[category] || 0;
+                    const percentage = totalSize > 0 ? (size / totalSize * 100) : 0;
+                    segment.style.flex = percentage;
+                    segment.textContent = `${category.toUpperCase()} ${percentage.toFixed(0)}%`;
+                });
+            }
+
+            getFileCategory(file) {
+                const ext = file.path.split('.').pop().toLowerCase();
+                if (['js', 'jsx', 'ts', 'tsx'].includes(ext)) return 'js';
+                if (['css', 'scss', 'sass'].includes(ext)) return 'css';
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'img';
+                if (['ttf', 'woff', 'woff2', 'eot', 'otf'].includes(ext)) return 'font';
+                if (['json', 'xml', 'yml', 'yaml'].includes(ext)) return 'json';
+                return 'other';
+            }
+
+            filterFiles(query) {
+                if (!query.trim()) {
+                    this.filteredFiles = [...this.files];
+                } else {
+                    const lowerQuery = query.toLowerCase();
+                    this.filteredFiles = this.files.filter(file => 
+                        file.path.toLowerCase().includes(lowerQuery)
+                    );
+                }
+                this.updateFileView();
+            }
+
+            filterByCategory(category) {
+                if (category === 'all') {
+                    this.filteredFiles = [...this.files];
+                } else {
+                    this.filteredFiles = this.files.filter(file => this.getFileCategory(file) === category);
+                }
+                this.updateFileView();
+            }
+
+            updateFileView() {
+                const tree = document.getElementById('fileTree');
+                
+                if (this.currentView === 'tree') {
+                    this.renderTreeView(tree);
+                } else if (this.currentView === 'list') {
+                    this.renderListView(tree);
+                } else {
+                    this.renderTreemapView(tree);
+                }
+            }
+
+            renderTreeView(container) {
+                container.innerHTML = '';
+                
+                // Group files by directory
+                const directories = {};
+                this.filteredFiles.forEach(file => {
+                    const parts = file.path.split('/');
+                    const dir = parts.slice(0, -1).join('/');
+                    const name = parts[parts.length - 1];
+                    
+                    if (!directories[dir]) directories[dir] = [];
+                    directories[dir].push({ ...file, name });
+                });
+
+                // Sort and render
+                Object.keys(directories).sort().forEach(dir => {
+                    const files = directories[dir].sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    if (dir) {
+                        const dirElement = this.createTreeItem(dir, null, true);
+                        container.appendChild(dirElement);
+                        
+                        files.forEach(file => {
+                            const fileElement = this.createTreeItem(file.name, file);
+                            dirElement.appendChild(fileElement);
+                        });
+                    } else {
+                        files.forEach(file => {
+                            const fileElement = this.createTreeItem(file.name, file);
+                            container.appendChild(fileElement);
+                        });
+                    }
+                });
+            }
+
+            renderListView(container) {
+                container.innerHTML = '';
+                
+                this.filteredFiles.forEach(file => {
+                    const item = this.createListItem(file);
+                    container.appendChild(item);
+                });
+            }
+
+            renderTreemapView(container) {
+                container.innerHTML = '';
+                
+                const treemapContainer = document.createElement('div');
+                treemapContainer.style.position = 'relative';
+                treemapContainer.style.width = '100%';
+                treemapContainer.style.height = '100%';
+                
+                const totalSize = this.filteredFiles.reduce((sum, file) => sum + (file.size || 0), 0);
+                let currentX = 0;
+                let currentY = 0;
+                let maxHeight = 0;
+
+                this.filteredFiles.forEach((file, index) => {
+                    const size = file.size || 0;
+                    const width = (size / totalSize) * container.clientWidth;
+                    const height = Math.max(20, (size / totalSize) * container.clientHeight / 3);
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'treemap-cell';
+                    cell.style.left = currentX + 'px';
+                    cell.style.top = currentY + 'px';
+                    cell.style.width = width + 'px';
+                    cell.style.height = height + 'px';
+                    cell.style.backgroundColor = this.getCategoryColor(this.getFileCategory(file));
+                    cell.dataset.file = JSON.stringify(file);
+                    
+                    const label = document.createElement('div');
+                    label.className = 'treemap-label';
+                    label.textContent = `${file.path} (${this.formatBytes(size)})`;
+                    cell.appendChild(label);
+                    
+                    cell.onclick = () => this.selectFile(file);
+                    
+                    treemapContainer.appendChild(cell);
+                    
+                    currentX += width;
+                    maxHeight = Math.max(maxHeight, height);
+                    
+                    if (currentX >= container.clientWidth - 50) {
+                        currentX = 0;
+                        currentY += maxHeight;
+                        maxHeight = 0;
+                    }
+                });
+                
+                container.appendChild(treemapContainer);
+            }
+
+            createTreeItem(name, file, isDirectory = false) {
+                const item = document.createElement('div');
+                item.className = 'tree-item' + (isDirectory ? ' expanded' : '');
+                
+                const indent = document.createElement('div');
+                indent.className = 'tree-indent';
+                
+                const arrow = document.createElement('div');
+                arrow.className = 'tree-arrow';
+                if (!isDirectory) arrow.style.display = 'none';
+                
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'tree-name';
+                nameSpan.textContent = name;
+                
+                const sizeSpan = document.createElement('div');
+                sizeSpan.className = 'tree-size';
+                sizeSpan.textContent = file ? this.formatBytes(file.size || 0) : '';
+                
+                item.appendChild(indent);
+                item.appendChild(arrow);
+                item.appendChild(nameSpan);
+                item.appendChild(sizeSpan);
+                
+                if (file) {
+                    item.onclick = () => this.selectFile(file);
+                }
+                
+                if (isDirectory) {
+                    const children = document.createElement('div');
+                    children.style.marginLeft = '16px';
+                    item.appendChild(children);
+                    
+                    item.onclick = (e) => {
+                        if (e.target === item || e.target === arrow) {
+                            item.classList.toggle('expanded');
+                        }
+                    };
+                }
+                
+                return item;
+            }
+
+            createListItem(file) {
+                const item = document.createElement('div');
+                item.className = 'tree-item';
+                
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'tree-name';
+                nameSpan.textContent = file.path;
+                
+                const sizeSpan = document.createElement('div');
+                sizeSpan.className = 'tree-size';
+                sizeSpan.textContent = this.formatBytes(file.size || 0);
+                
+                item.appendChild(nameSpan);
+                item.appendChild(sizeSpan);
+                item.onclick = () => this.selectFile(file);
+                
+                return item;
+            }
+
+            getCategoryColor(category) {
+                const colors = {
+                    js: '#ff6b6b',
+                    css: '#4ecdc4',
+                    img: '#45b7d1',
+                    font: '#96ceb4',
+                    json: '#ffd93d',
+                    other: '#a8e6cf'
+                };
+                return colors[category] || colors.other;
+            }
+
+            selectFile(file) {
+                this.selectedFile = file;
+                this.updateDetails();
+                
+                // Update UI selection
+                document.querySelectorAll('.tree-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                // Highlight in treemap
+                document.querySelectorAll('.treemap-cell').forEach(cell => {
+                    cell.classList.remove('selected');
+                    if (cell.dataset.file && JSON.parse(cell.dataset.file) === file) {
+                        cell.classList.add('selected');
+                    }
+                });
+            }
+
+            updateDetails() {
+                const container = document.getElementById('detailsContainer');
+                
+                if (!this.selectedFile) {
+                    container.innerHTML = '<div style="color: #666; font-style: italic; padding: 20px;">Select a file to view details</div>';
+                    return;
+                }
+                
+                const file = this.selectedFile;
+                const category = this.getFileCategory(file);
+                const compressionRatio = file.gzipped > 0 ? 
+                    ((file.size - file.gzipped) / file.size * 100).toFixed(1) : 'N/A';
+                
+                let html = `
+                    <div class="details-header">
+                        <div class="file-path">${file.path}</div>
+                        <div class="file-meta">
+                            <span>Size: ${this.formatBytes(file.size || 0)}</span>
+                            <span>Type: ${file.type || category}</span>
+                        </div>
+                        ${file.gzipped ? `
+                        <div class="file-meta" style="margin-top: 5px;">
+                            <span>Gzipped: ${this.formatBytes(file.gzipped)}</span>
+                            <span>Compression: ${compressionRatio}%</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                if (file.dependencies && file.dependencies.length > 0) {
+                    html += `
+                        <div class="dependencies-list">
+                            <div style="color: #00ff88; font-weight: 600; margin-bottom: 8px;">Dependencies</div>
+                            ${file.dependencies.map(dep => `
+                                <div class="dep-item">
+                                    <span>${dep}</span>
+                                    <span class="dep-size">${this.formatBytes(Math.random() * 50000 + 10000)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                if (file.chunks && file.chunks.length > 0) {
+                    html += `
+                        <div class="dependencies-list">
+                            <div style="color: #00ff88; font-weight: 600; margin-bottom: 8px;">Chunks</div>
+                            ${file.chunks.map(chunk => `
+                                <div class="dep-item">
+                                    <span>${chunk}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                if (file.warnings && file.warnings.length > 0) {
+                    html += `
+                        <div class="optimization-suggestions">
+                            <div style="color: #ffaa00; font-weight: 600; margin-bottom: 8px;">⚠ Warnings</div>
+                            ${file.warnings.map(warning => `
+                                <div class="suggestion-item">${warning}</div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = html;
+            }
+
+            updateChart() {
+                const panel = document.getElementById('chartPanel');
+                
+                switch (this.currentChart) {
+                    case 'overview':
+                        this.renderOverviewChart();
+                        break;
+                    case 'treemap':
+                        this.renderChartTreemap();
+                        break;
+                    case 'dependencies':
+                        this.renderDependenciesChart();
+                        break;
+                    case 'timeline':
+                        this.renderTimelineChart();
+                        break;
+                }
+            }
+
+            renderOverviewChart() {
+                const ctx = this.chartCtx;
+                const canvas = this.chartCanvas;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (this.filteredFiles.length === 0) return;
+                
+                // Group by type
+                const types = {};
+                this.filteredFiles.forEach(file => {
+                    const category = this.getFileCategory(file);
+                    types[category] = (types[category] || 0) + (file.size || 0);
+                });
+                
+                const totalSize = Object.values(types).reduce((sum, size) => sum + size, 0);
+                
+                // Draw pie chart
+                let currentAngle = -Math.PI / 2;
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(centerX, centerY) * 0.6;
+                
+                Object.entries(types).forEach(([type, size]) => {
+                    const sliceAngle = (size / totalSize) * 2 * Math.PI;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                    ctx.closePath();
+                    
+                    ctx.fillStyle = this.getCategoryColor(type);
+                    ctx.fill();
+                    
+                    // Add label
+                    const labelAngle = currentAngle + sliceAngle / 2;
+                    const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                    const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(
+                        `${type.toUpperCase()}\n${((size / totalSize) * 100).toFixed(1)}%`,
+                        labelX,
+                        labelY
+                    );
+                    
+                    currentAngle += sliceAngle;
+                });
+            }
+
+            renderChartTreemap() {
+                const ctx = this.chartCtx;
+                const canvas = this.chartCanvas;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (this.filteredFiles.length === 0) return;
+                
+                const totalSize = this.filteredFiles.reduce((sum, file) => sum + (file.size || 0), 0);
+                let x = 0, y = 0;
+                let rowHeight = 0;
+                let maxWidth = canvas.width;
+                
+                this.filteredFiles.forEach(file => {
+                    const size = file.size || 0;
+                    const width = (size / totalSize) * maxWidth;
+                    const height = Math.max(30, (size / totalSize) * canvas.height / 3);
+                    
+                    ctx.fillStyle = this.getCategoryColor(this.getFileCategory(file));
+                    ctx.fillRect(x, y, width, height);
+                    
+                    // Add border
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, y, width, height);
+                    
+                    // Add text if there's enough space
+                    if (width > 50 && height > 20) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const fileName = file.path.split('/').pop();
+                        ctx.fillText(
+                            `${fileName}\n${this.formatBytes(size)}`,
+                            x + width / 2,
+                            y + height / 2
+                        );
+                    }
+                    
+                    x += width;
+                    rowHeight = Math.max(rowHeight, height);
+                    
+                    if (x >= maxWidth - 10) {
+                        x = 0;
+                        y += rowHeight;
+                        rowHeight = 0;
+                    }
+                });
+            }
+
+            renderDependenciesChart() {
+                const ctx = this.chartCtx;
+                const canvas = this.chartCanvas;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Create a simple dependency visualization
+                const dependencies = new Map();
+                
+                this.filteredFiles.forEach(file => {
+                    if (file.dependencies) {
+                        file.dependencies.forEach(dep => {
+                            dependencies.set(dep, (dependencies.get(dep) || 0) + 1);
+                        });
+                    }
+                });
+                
+                if (dependencies.size === 0) {
+                    ctx.fillStyle = '#666';
+                    ctx.font = '16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No dependencies to display', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                
+                const entries = Array.from(dependencies.entries()).sort((a, b) => b[1] - a[1]);
+                const maxCount = entries[0][1];
+                
+                entries.slice(0, 10).forEach(([dep, count], index) => {
+                    const barWidth = canvas.width * 0.8;
+                    const barHeight = 30;
+                    const x = canvas.width * 0.1;
+                    const y = 50 + index * 35;
+                    const width = (count / maxCount) * barWidth;
+                    
+                    ctx.fillStyle = '#4ecdc4';
+                    ctx.fillRect(x, y, width, barHeight);
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${dep} (${count})`, x + 5, y + barHeight / 2 + 4);
+                });
+            }
+
+            renderTimelineChart() {
+                const ctx = this.chartCtx;
+                const canvas = this.chartCanvas;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Simulate build timeline
+                const steps = [
+                    { name: 'Bundle Analysis', time: 1200, color: '#ff6b6b' },
+                    { name: 'Code Splitting', time: 800, color: '#4ecdc4' },
+                    { name: 'Minification', time: 2100, color: '#45b7d1' },
+                    { name: 'Compression', time: 1500, color: '#96ceb4' },
+                    { name: 'Hash Generation', time: 400, color: '#ffd93d' }
+                ];
+                
+                const totalTime = steps.reduce((sum, step) => sum + step.time, 0);
+                let currentX = 50;
+                
+                steps.forEach((step, index) => {
+                    const width = (step.time / totalTime) * (canvas.width - 100);
+                    const height = 40;
+                    const y = 100 + index * 60;
+                    
+                    ctx.fillStyle = step.color;
+                    ctx.fillRect(currentX, y, width, height);
+                    
+                    // Add border
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(currentX, y, width, height);
+                    
+                    // Add label
+                    ctx.fillStyle = '#000';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(
+                        `${step.name}\n${step.time}ms`,
+                        currentX + width / 2,
+                        y + height / 2
+                    );
+                    
+                    currentX += width;
+                });
+            }
+
+            handleChartClick(event) {
+                // Handle chart interactions
+            }
+
+            handleChartHover(event) {
+                const rect = this.chartCanvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                // Show tooltip for chart data
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.display = 'none';
+            }
+
+            resizeCanvas() {
+                const panel = document.getElementById('chartPanel');
+                this.chartCanvas.width = panel.clientWidth;
+                this.chartCanvas.height = panel.clientHeight;
+                this.updateChart();
+            }
+
+            analyzeBundle() {
+                if (!this.bundle) {
+                    alert('Please load a bundle first');
+                    return;
+                }
+                
+                this.updateProgress(0);
+                
+                setTimeout(() => this.updateProgress(25), 500);
+                setTimeout(() => this.updateProgress(50), 1000);
+                setTimeout(() => this.updateProgress(75), 1500);
+                setTimeout(() => this.updateProgress(100), 2000);
+                
+                setTimeout(() => {
+                    alert('Analysis complete! Check the details panel for insights.');
+                    this.log('info', 'Bundle analysis completed');
+                }, 2100);
+            }
+
+            generateReport() {
+                if (!this.bundle) {
+                    alert('No bundle loaded');
+                    return;
+                }
+                
+                const report = this.createAnalysisReport();
+                this.downloadFile(`bundle-report-${Date.now()}.txt`, report);
+            }
+
+            createAnalysisReport() {
+                const totalSize = this.files.reduce((sum, file) => sum + (file.size || 0), 0);
+                const totalGzipped = this.files.reduce((sum, file) => sum + (file.gzipped || 0), 0);
+                
+                let report = `Bundle Analysis Report
+Generated: ${new Date().toISOString()}
+Bundle: ${this.bundle.name}
+
+=== SUMMARY ===
+Total Size: ${this.formatBytes(totalSize)}
+Gzipped Size: ${this.formatBytes(totalGzipped)}
+Compression Ratio: ${totalSize > 0 ? ((totalSize - totalGzipped) / totalSize * 100).toFixed(1) : 0}%
+Total Files: ${this.files.length}
+
+=== LARGEST FILES ===
+`;
+                
+                const sortedFiles = [...this.files].sort((a, b) => (b.size || 0) - (a.size || 0));
+                sortedFiles.slice(0, 10).forEach((file, index) => {
+                    report += `${index + 1}. ${file.path} - ${this.formatBytes(file.size || 0)}\n`;
+                });
+                
+                report += `\n=== OPTIMIZATION SUGGESTIONS ===\n`;
+                
+                const suggestions = this.generateSuggestions();
+                suggestions.forEach(suggestion => {
+                    report += `• ${suggestion}\n`;
+                });
+                
+                report += `\n=== DEPENDENCIES ===\n`;
+                
+                const dependencies = new Set();
+                this.files.forEach(file => {
+                    if (file.dependencies) {
+                        file.dependencies.forEach(dep => dependencies.add(dep));
+                    }
+                });
+                
+                Array.from(dependencies).sort().forEach(dep => {
+                    report += `• ${dep}\n`;
+                });
+                
+                return report;
+            }
+
+            generateSuggestions() {
+                const suggestions = [];
+                
+                this.files.forEach(file => {
+                    if ((file.size || 0) > 100000) {
+                        suggestions.push(`${file.path} is large (${this.formatBytes(file.size || 0)}). Consider code splitting.`);
+                    }
+                    
+                    if (file.warnings) {
+                        file.warnings.forEach(warning => {
+                            suggestions.push(`${file.path}: ${warning}`);
+                        });
+                    }
+                });
+                
+                const jsFiles = this.files.filter(f => this.getFileCategory(f) === 'js');
+                const cssFiles = this.files.filter(f => this.getFileCategory(f) === 'css');
+                const imgFiles = this.files.filter(f => this.getFileCategory(f) === 'img');
+                
+                if (jsFiles.length > 3) {
+                    suggestions.push('Consider combining JavaScript files to reduce HTTP requests.');
+                }
+                
+                if (cssFiles.length > 2) {
+                    suggestions.push('Consider combining CSS files to reduce HTTP requests.');
+                }
+                
+                const largeImages = imgFiles.filter(f => (f.size || 0) > 50000);
+                if (largeImages.length > 0) {
+                    suggestions.push('Consider optimizing large images with compression or different formats.');
+                }
+                
+                return suggestions;
+            }
+
+            exportData() {
+                if (!this.bundle) {
+                    alert('No bundle loaded');
+                    return;
+                }
+                
+                this.updateProgress(0);
+                
+                setTimeout(() => {
+                    const data = {
+                        bundle: this.bundle,
+                        analysis: {
+                            totalSize: this.files.reduce((sum, file) => sum + (file.size || 0), 0),
+                            totalGzipped: this.files.reduce((sum, file) => sum + (file.gzipped || 0), 0),
+                            fileCount: this.files.length,
+                            categories: this.getFileCategoryBreakdown(),
+                            suggestions: this.generateSuggestions()
+                        }
+                    };
+                    
+                    this.downloadFile('bundle-analysis.json', JSON.stringify(data, null, 2));
+                    this.updateProgress(100);
+                    this.log('info', 'Data exported successfully');
+                }, 1000);
+            }
+
+            exportJSON() {
+                const data = {
+                    bundle: this.bundle,
+                    files: this.files,
+                    analysis: this.createAnalysisReport()
+                };
+                
+                this.downloadFile('bundle-analysis.json', JSON.stringify(data, null, 2));
+            }
+
+            exportCSV() {
+                let csv = 'File Path,Size,Gzipped,Type,Dependencies,Warnings\n';
+                
+                this.files.forEach(file => {
+                    const deps = file.dependencies ? file.dependencies.join(';') : '';
+                    const warnings = file.warnings ? file.warnings.join(';') : '';
+                    csv += `"${file.path}",${file.size || 0},${file.gzipped || 0},${file.type || ''},"${deps}","${warnings}"\n`;
+                });
+                
+                this.downloadFile('bundle-analysis.csv', csv);
+            }
+
+            exportHTML() {
+                const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bundle Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .file-list { margin-top: 20px; }
+        .file-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .suggestions { background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Bundle Analysis Report</h1>
+        <p>Generated: ${new Date().toISOString()}</p>
+        <p>Bundle: ${this.bundle.name}</p>
+    </div>
+    
+    <div class="file-list">
+        <h2>Files</h2>
+        ${this.files.map(file => `
+            <div class="file-item">
+                <strong>${file.path}</strong><br>
+                Size: ${this.formatBytes(file.size || 0)} | 
+                Type: ${file.type || 'unknown'}
+                ${file.gzipped ? `| Gzipped: ${this.formatBytes(file.gzipped)}` : ''}
+                ${file.warnings ? `<br><small style="color: orange;">Warnings: ${file.warnings.join(', ')}</small>` : ''}
+            </div>
+        `).join('')}
+    </div>
+    
+    <div class="suggestions">
+        <h2>Optimization Suggestions</h2>
+        ${this.generateSuggestions().map(s => `<p>• ${s}</p>`).join('')}
+    </div>
+</body>
+</html>
+                `;
+                
+                this.downloadFile('bundle-report.html', html);
+            }
+
+            copyReport() {
+                const report = this.createAnalysisReport();
+                navigator.clipboard.writeText(report).then(() => {
+                    alert('Report copied to clipboard!');
+                });
+            }
+
+            getFileCategoryBreakdown() {
+                const breakdown = {};
+                this.files.forEach(file => {
+                    const category = this.getFileCategory(file);
+                    breakdown[category] = (breakdown[category] || 0) + (file.size || 0);
+                });
+                return breakdown;
+            }
+
+            downloadFile(filename, content) {
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            updateProgress(percent) {
+                document.getElementById('progressFill').style.width = percent + '%';
+            }
+
+            resetView() {
+                this.bundle = null;
+                this.files = [];
+                this.selectedFile = null;
+                this.filteredFiles = [];
+                
+                document.getElementById('fileTree').innerHTML = '';
+                document.getElementById('detailsContainer').innerHTML = '<div style="color: #666; font-style: italic; padding: 20px;">Select a file to view details</div>';
+                document.getElementById('totalSize').textContent = '0 KB';
+                document.getElementById('fileCount').textContent = '0';
+                document.getElementById('gzipSize').textContent = '0 KB';
+                document.getElementById('optimization').textContent = '0%';
+                document.getElementById('progressFill').style.width = '0%';
+                
+                this.chartCtx.clearRect(0, 0, this.chartCanvas.width, this.chartCanvas.height);
+                this.loadDemoBundle();
+            }
+
+            formatBytes(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            log(type, message) {
+                console.log(`[BundleAnalyzer ${type.toUpperCase()}] ${message}`);
+            }
+        }
+
+        // Initialize analyzer
+        const analyzer = new BundleAnalyzer();
+        window.analyzer = analyzer;
+    </script>
+</body>
+</html>

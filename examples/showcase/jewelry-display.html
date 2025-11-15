@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jewelry Display - 3D Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Garamond', serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .jewelry-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 20px;
+            padding: 25px;
+            color: white;
+            min-width: 320px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .jewelry-ui h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .jewelry-type {
+            margin-bottom: 20px;
+        }
+
+        .jewelry-type label {
+            display: block;
+            margin-bottom: 10px;
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .jewelry-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .jewelry-btn {
+            padding: 12px 8px;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .jewelry-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .jewelry-btn.active {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .metal-section {
+            margin-bottom: 20px;
+        }
+
+        .metal-section h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .metal-choices {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .metal-option {
+            padding: 10px 5px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            background: rgba(255, 215, 0, 0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metal-option:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .metal-option.gold {
+            border-color: #ffd700;
+        }
+
+        .metal-option.silver {
+            border-color: #c0c0c0;
+            color: #c0c0c0;
+        }
+
+        .metal-option.platinum {
+            border-color: #e5e4e2;
+            color: #e5e4e2;
+        }
+
+        .metal-option.rose-gold {
+            border-color: #e8b4a0;
+            color: #e8b4a0;
+        }
+
+        .metal-option.active {
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        .gem-section {
+            margin-bottom: 20px;
+        }
+
+        .gem-section h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 5px;
+        }
+
+        .gem-types {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .gem-btn {
+            padding: 10px 8px;
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            background: rgba(74, 74, 74, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .gem-btn:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .gem-btn.active {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .gem-color {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+        }
+
+        .color-circle {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-circle:hover {
+            transform: scale(1.1);
+            border-color: #ffd700;
+        }
+
+        .color-circle.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .lighting-controls {
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .lighting-controls h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .light-control {
+            margin-bottom: 15px;
+        }
+
+        .light-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .light-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .light-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .light-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .light-value {
+            text-align: right;
+            color: #ffd700;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .scene-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .preset-lighting {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .reflection-preview {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .reflection-preview canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .jewelry-ui {
+                width: 280px;
+                left: 10px;
+                top: 10px;
+                padding: 15px;
+            }
+            
+            .jewelry-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .gem-types {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="jewelry-ui">
+        <h1>💎 Luxury Jewelry Display</h1>
+        
+        <div class="jewelry-type">
+            <label>Select Jewelry:</label>
+            <div class="jewelry-buttons">
+                <button class="jewelry-btn active" data-type="ring">💍 Ring</button>
+                <button class="jewelry-btn" data-type="necklace">📿 Necklace</button>
+                <button class="jewelry-btn" data-type="bracelet">⛓️ Bracelet</button>
+                <button class="jewelry-btn" data-type="earrings">💎 Earrings</button>
+            </div>
+        </div>
+
+        <div class="metal-section">
+            <h3>🥇 Metal Type</h3>
+            <div class="metal-choices">
+                <div class="metal-option gold active" data-metal="gold">Gold</div>
+                <div class="metal-option silver" data-metal="silver">Silver</div>
+                <div class="metal-option platinum" data-metal="platinum">Platinum</div>
+                <div class="metal-option rose-gold" data-metal="rose">Rose Gold</div>
+            </div>
+        </div>
+
+        <div class="gem-section">
+            <h3>💎 Gemstone</h3>
+            <div class="gem-types">
+                <button class="gem-btn active" data-gem="diamond">Diamond</button>
+                <button class="gem-btn" data-gem="ruby">Ruby</button>
+                <button class="gem-btn" data-gem="sapphire">Sapphire</button>
+                <button class="gem-btn" data-gem="emerald">Emerald</button>
+                <button class="gem-btn" data-gem="amethyst">Amethyst</button>
+                <button class="gem-btn" data-gem="topaz">Topaz</button>
+            </div>
+            
+            <div class="gem-color" id="gemColors">
+                <div class="color-circle active" style="background: #ffffff" data-color="#ffffff"></div>
+                <div class="color-circle" style="background: #ff0000" data-color="#ff0000"></div>
+                <div class="color-circle" style="background: #0066ff" data-color="#0066ff"></div>
+                <div class="color-circle" style="background: #00ff00" data-color="#00ff00"></div>
+                <div class="color-circle" style="background: #8000ff" data-color="#8000ff"></div>
+                <div class="color-circle" style="background: #ffaa00" data-color="#ffaa00"></div>
+            </div>
+        </div>
+
+        <div class="lighting-controls">
+            <h3>💡 Lighting Setup</h3>
+            
+            <div class="light-control">
+                <label>Ambient Light:</label>
+                <input type="range" class="light-slider" id="ambientIntensity" min="0" max="100" value="40">
+                <div class="light-value" id="ambientValue">40%</div>
+            </div>
+
+            <div class="light-control">
+                <label>Spot Light:</label>
+                <input type="range" class="light-slider" id="spotIntensity" min="0" max="200" value="100">
+                <div class="light-value" id="spotValue">100%</div>
+            </div>
+
+            <div class="light-control">
+                <label>Point Light:</label>
+                <input type="range" class="light-slider" id="pointIntensity" min="0" max="150" value="50">
+                <div class="light-value" id="pointValue">50%</div>
+            </div>
+
+            <div class="light-control">
+                <label>Light Color:</label>
+                <input type="color" id="lightColor" value="#ffffff" style="width: 100%; height: 30px; border-radius: 5px; border: 2px solid #ffd700;">
+            </div>
+
+            <div class="preset-lighting">
+                <button class="preset-btn" onclick="setLightingPreset('gallery')">Gallery</button>
+                <button class="preset-btn" onclick="setLightingPreset('showcase')">Showcase</button>
+                <button class="preset-btn" onclick="setLightingPreset('dramatic')">Dramatic</button>
+                <button class="preset-btn" onclick="setLightingPreset('soft')">Soft</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="scene-info">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Polygons: <span id="polygons">1,847</span></div>
+        <div>Materials: <span id="materials">2</span></div>
+        <div>Lights: <span id="lights">4</span></div>
+        <div>Reflection: <span id="reflection">Active</span></div>
+    </div>
+
+    <script src="../../dist/umd/9th.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, jewelry, animationId;
+        let ambientLight, spotLight, pointLight, rimLight;
+        let metalMaterial, gemMaterial, currentMetal = 'gold', currentGem = 'diamond';
+        let cubeCamera, renderTarget;
+        let stats = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: performance.now()
+        };
+
+        // Metal properties
+        const metalProperties = {
+            gold: { color: 0xFFD700, metalness: 1.0, roughness: 0.1 },
+            silver: { color: 0xC0C0C0, metalness: 1.0, roughness: 0.2 },
+            platinum: { color: 0xE5E4E2, metalness: 1.0, roughness: 0.1 },
+            rose: { color: 0xE8B4A0, metalness: 1.0, roughness: 0.15 }
+        };
+
+        // Gem properties
+        const gemProperties = {
+            diamond: { color: 0xFFFFFF, metalness: 0.0, roughness: 0.0, transparent: true, opacity: 0.9 },
+            ruby: { color: 0xFF0000, metalness: 0.0, roughness: 0.1 },
+            sapphire: { color: 0x0066FF, metalness: 0.0, roughness: 0.1 },
+            emerald: { color: 0x00FF00, metalness: 0.0, roughness: 0.1 },
+            amethyst: { color: 0x8000FF, metalness: 0.0, roughness: 0.15 },
+            topaz: { color: 0xFFAA00, metalness: 0.0, roughness: 0.2 }
+        };
+
+        // Initialize the application
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create scene with dark background
+            scene = new Ninth.Scene();
+            scene.background = new Ninth.Color(0x111111);
+
+            // Create camera
+            camera = new Ninth.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 4);
+            camera.lookAt(0, 0, 0);
+
+            // Create renderer
+            renderer = new Ninth.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = Ninth.PCFSoftShadowMap;
+            renderer.toneMapping = Ninth.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            renderer.outputEncoding = Ninth.sRGBEncoding;
+
+            // Setup environment map for reflections
+            setupEnvironmentMap();
+
+            // Setup lighting
+            setupLighting();
+
+            // Create jewelry
+            createJewelry('ring');
+
+            // Setup controls
+            setupControls();
+
+            // Start animation loop
+            animate();
+        }
+
+        function setupEnvironmentMap() {
+            // Create a cube camera for environment reflections
+            cubeCamera = new Ninth.CubeCamera(0.1, 1000, 256);
+            scene.add(cubeCamera);
+
+            // Create environment map
+            const cubeRenderTarget = new Ninth.WebGLCubeRenderTarget(256, {
+                format: Ninth.RGBAFormat,
+                generateMipmaps: true,
+                minFilter: Ninth.LinearMipmapLinearFilter
+            });
+            
+            renderTarget = cubeRenderTarget;
+        }
+
+        function setupLighting() {
+            // Ambient light for base illumination
+            ambientLight = new Ninth.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            // Main spotlight from above
+            spotLight = new Ninth.SpotLight(0xffffff, 1.0, 100, Math.PI / 6, 0.3, 1);
+            spotLight.position.set(0, 10, 0);
+            spotLight.target.position.set(0, 0, 0);
+            spotLight.castShadow = true;
+            spotLight.shadow.mapSize.width = 1024;
+            spotLight.shadow.mapSize.height = 1024;
+            scene.add(spotLight);
+            scene.add(spotLight.target);
+
+            // Point light from side
+            pointLight = new Ninth.PointLight(0xffffff, 0.5, 50);
+            pointLight.position.set(5, 2, 5);
+            pointLight.castShadow = true;
+            scene.add(pointLight);
+
+            // Rim light from behind
+            rimLight = new Ninth.DirectionalLight(0xffffff, 0.8);
+            rimLight.position.set(0, 5, -5);
+            scene.add(rimLight);
+
+            // Create a pedestal for the jewelry
+            createPedestal();
+        }
+
+        function createPedestal() {
+            const pedestalGeometry = new Ninth.CylinderGeometry(1.5, 1.8, 0.3, 32);
+            const pedestalMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const pedestal = new Ninth.Mesh(pedestalGeometry, pedestalMaterial);
+            pedestal.position.y = -0.5;
+            pedestal.receiveShadow = true;
+            scene.add(pedestal);
+        }
+
+        function createJewelry(type) {
+            // Remove existing jewelry
+            if (jewelry) {
+                scene.remove(jewelry);
+            }
+
+            // Create materials
+            createMaterials();
+
+            // Create jewelry based on type
+            jewelry = new Ninth.Group();
+
+            switch (type) {
+                case 'ring':
+                    createRing();
+                    break;
+                case 'necklace':
+                    createNecklace();
+                    break;
+                case 'bracelet':
+                    createBracelet();
+                    break;
+                case 'earrings':
+                    createEarrings();
+                    break;
+            }
+
+            jewelry.position.y = 0.2;
+            scene.add(jewelry);
+
+            updateStats();
+        }
+
+        function createMaterials() {
+            const metalProps = metalProperties[currentMetal];
+            metalMaterial = new Ninth.MeshStandardMaterial({
+                color: metalProps.color,
+                metalness: metalProps.metalness,
+                roughness: metalProps.roughness,
+                envMap: renderTarget.texture,
+                envMapIntensity: 1.5
+            });
+
+            const gemProps = gemProperties[currentGem];
+            gemMaterial = new Ninth.MeshPhysicalMaterial({
+                color: gemProps.color,
+                metalness: gemProps.metalness,
+                roughness: gemProps.roughness,
+                transparent: gemProps.transparent || false,
+                opacity: gemProps.opacity || 1.0,
+                envMap: renderTarget.texture,
+                envMapIntensity: 2.0,
+                transmission: currentGem === 'diamond' ? 1.0 : 0.0,
+                ior: currentGem === 'diamond' ? 2.4 : 1.8,
+                thickness: currentGem === 'diamond' ? 1.0 : 0.5
+            });
+        }
+
+        function createRing() {
+            // Main ring band
+            const ringGeometry = new Ninth.TorusGeometry(0.8, 0.15, 16, 32);
+            const ring = new Ninth.Mesh(ringGeometry, metalMaterial);
+            ring.rotation.x = Math.PI / 2;
+            ring.castShadow = true;
+            jewelry.add(ring);
+
+            // Center gem
+            const gemGeometry = new Ninth.OctahedronGeometry(0.3, 2);
+            const gem = new Ninth.Mesh(gemGeometry, gemMaterial);
+            gem.position.y = 0.4;
+            gem.castShadow = true;
+            jewelry.add(gem);
+
+            // Small accent gems
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const smallGemGeometry = new Ninth.TetrahedronGeometry(0.08, 1);
+                const smallGem = new Ninth.Mesh(smallGemGeometry, gemMaterial);
+                smallGem.position.set(
+                    Math.cos(angle) * 0.6,
+                    0.1,
+                    Math.sin(angle) * 0.6
+                );
+                smallGem.castShadow = true;
+                jewelry.add(smallGem);
+            }
+        }
+
+        function createNecklace() {
+            // Chain
+            for (let i = 0; i < 20; i++) {
+                const angle = (i / 19) * Math.PI;
+                const x = Math.cos(angle) * 1.2;
+                const y = Math.sin(angle) * 0.8;
+                const z = Math.sin(angle) * 0.3;
+                
+                const linkGeometry = new Ninth.TorusGeometry(0.06, 0.02, 8, 16);
+                const link = new Ninth.Mesh(linkGeometry, metalMaterial);
+                link.position.set(x, y, z);
+                link.rotation.y = angle;
+                link.castShadow = true;
+                jewelry.add(link);
+            }
+
+            // Pendant
+            const pendantGeometry = new Ninth.OctahedronGeometry(0.4, 2);
+            const pendant = new Ninth.Mesh(pendantGeometry, gemMaterial);
+            pendant.position.set(0, -0.5, 0);
+            pendant.castShadow = true;
+            jewelry.add(pendant);
+
+            // Inner gem
+            const innerGemGeometry = new Ninth.IcosahedronGeometry(0.2, 2);
+            const innerGem = new Ninth.Mesh(innerGemGeometry, gemMaterial);
+            innerGem.position.set(0, -0.5, 0);
+            innerGem.castShadow = true;
+            jewelry.add(innerGem);
+        }
+
+        function createBracelet() {
+            // Main bracelet band
+            const braceletGeometry = new Ninth.TorusGeometry(1.2, 0.2, 16, 32);
+            const bracelet = new Ninth.Mesh(braceletGeometry, metalMaterial);
+            bracelet.rotation.x = Math.PI / 4;
+            bracelet.rotation.z = Math.PI / 6;
+            bracelet.castShadow = true;
+            jewelry.add(bracelet);
+
+            // Gems around bracelet
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const gemGeometry = new Ninth.OctahedronGeometry(0.15, 1);
+                const gem = new Ninth.Mesh(gemGeometry, gemMaterial);
+                gem.position.set(
+                    Math.cos(angle) * 1.1,
+                    Math.sin(angle) * 0.3,
+                    Math.sin(angle) * 0.8
+                );
+                gem.castShadow = true;
+                jewelry.add(gem);
+            }
+        }
+
+        function createEarrings() {
+            // Left earring
+            const leftEarring = new Ninth.Group();
+            
+            const leftChainGeometry = new Ninth.CylinderGeometry(0.02, 0.02, 0.5);
+            const leftChain = new Ninth.Mesh(leftChainGeometry, metalMaterial);
+            leftChain.position.y = 0.25;
+            leftEarring.add(leftChain);
+
+            const leftGemGeometry = new Ninth.OctahedronGeometry(0.2, 2);
+            const leftGem = new Ninth.Mesh(leftGemGeometry, gemMaterial);
+            leftGem.position.y = -0.15;
+            leftGem.castShadow = true;
+            leftEarring.add(leftGem);
+
+            leftEarring.position.set(-0.8, 0.5, 0);
+            jewelry.add(leftEarring);
+
+            // Right earring
+            const rightEarring = new Ninth.Group();
+            
+            const rightChainGeometry = new Ninth.CylinderGeometry(0.02, 0.02, 0.5);
+            const rightChain = new Ninth.Mesh(rightChainGeometry, metalMaterial);
+            rightChain.position.y = 0.25;
+            rightEarring.add(rightChain);
+
+            const rightGemGeometry = new Ninth.OctahedronGeometry(0.2, 2);
+            const rightGem = new Ninth.Mesh(rightGemGeometry, gemMaterial);
+            rightGem.position.y = -0.15;
+            rightGem.castShadow = true;
+            rightEarring.add(rightGem);
+
+            rightEarring.position.set(0.8, 0.5, 0);
+            jewelry.add(rightEarring);
+        }
+
+        function setupControls() {
+            // Jewelry type buttons
+            document.querySelectorAll('.jewelry-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.jewelry-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    createJewelry(this.dataset.type);
+                });
+            });
+
+            // Metal options
+            document.querySelectorAll('.metal-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.metal-option').forEach(o => o.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMetal = this.dataset.metal;
+                    createMaterials();
+                    updateJewelryMaterials();
+                });
+            });
+
+            // Gem types
+            document.querySelectorAll('.gem-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.gem-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentGem = this.dataset.gem;
+                    updateGemColors();
+                    createMaterials();
+                    updateJewelryMaterials();
+                });
+            });
+
+            // Color selection
+            document.querySelectorAll('.color-circle').forEach(circle => {
+                circle.addEventListener('click', function() {
+                    document.querySelectorAll('.color-circle').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    gemMaterial.color.setHex(parseInt(this.dataset.color.replace('#', '0x')));
+                });
+            });
+
+            // Lighting controls
+            const lightControls = [
+                { id: 'ambientIntensity', obj: ambientLight, suffix: '%' },
+                { id: 'spotIntensity', obj: spotLight, suffix: '%' },
+                { id: 'pointIntensity', obj: pointLight, suffix: '%' }
+            ];
+
+            lightControls.forEach(control => {
+                const element = document.getElementById(control.id);
+                const valueElement = document.getElementById(control.id.replace('Intensity', 'Value'));
+                
+                element.addEventListener('input', function() {
+                    const value = parseFloat(this.value);
+                    control.obj.intensity = value / 100;
+                    valueElement.textContent = value + control.suffix;
+                });
+            });
+
+            // Color picker
+            document.getElementById('lightColor').addEventListener('change', function() {
+                const color = parseInt(this.value.replace('#', '0x'));
+                ambientLight.color.setHex(color);
+                spotLight.color.setHex(color);
+                pointLight.color.setHex(color);
+                rimLight.color.setHex(color);
+            });
+        }
+
+        function updateGemColors() {
+            const colorContainer = document.getElementById('gemColors');
+            const defaultColors = {
+                diamond: ['#FFFFFF'],
+                ruby: ['#FF0000', '#CC0000', '#AA0000'],
+                sapphire: ['#0066FF', '#0044CC', '#003399'],
+                emerald: ['#00FF00', '#00CC00', '#009900'],
+                amethyst: ['#8000FF', '#6600CC', '#440099'],
+                topaz: ['#FFAA00', '#DD8800', '#BB6600']
+            };
+
+            const colors = defaultColors[currentGem];
+            colorContainer.innerHTML = colors.map(color => 
+                `<div class="color-circle" style="background: ${color}" data-color="${color}"></div>`
+            ).join('');
+
+            // Reattach event listeners
+            setupControls();
+            
+            // Set first color as active
+            const firstColor = colorContainer.querySelector('.color-circle');
+            if (firstColor) {
+                firstColor.classList.add('active');
+                gemMaterial.color.setHex(parseInt(firstColor.dataset.color.replace('#', '0x')));
+            }
+        }
+
+        function updateJewelryMaterials() {
+            if (jewelry) {
+                jewelry.traverse((child) => {
+                    if (child.isMesh) {
+                        // Determine if it's a metal or gem part
+                        if (child.geometry && child.geometry.type === 'TorusGeometry' && child.geometry.parameters.majorRadius > 0.5) {
+                            child.material = metalMaterial;
+                        } else if (child.geometry && child.geometry.type !== 'CylinderGeometry') {
+                            child.material = gemMaterial;
+                        } else if (child.geometry && child.geometry.type === 'CylinderGeometry') {
+                            child.material = metalMaterial;
+                        }
+                    }
+                });
+            }
+        }
+
+        function setLightingPreset(preset) {
+            const presets = {
+                gallery: { ambient: 50, spot: 120, point: 40, color: '#ffffff' },
+                showcase: { ambient: 40, spot: 100, point: 60, color: '#fff8dc' },
+                dramatic: { ambient: 20, spot: 180, point: 80, color: '#ffffee' },
+                soft: { ambient: 60, spot: 60, point: 30, color: '#f0f8ff' }
+            };
+
+            const p = presets[preset];
+            if (p) {
+                document.getElementById('ambientIntensity').value = p.ambient;
+                document.getElementById('spotIntensity').value = p.spot;
+                document.getElementById('pointIntensity').value = p.point;
+                document.getElementById('lightColor').value = p.color;
+                
+                ambientLight.intensity = p.ambient / 100;
+                spotLight.intensity = p.spot / 100;
+                pointLight.intensity = p.point / 100;
+                
+                const colorHex = parseInt(p.color.replace('#', '0x'));
+                ambientLight.color.setHex(colorHex);
+                spotLight.color.setHex(colorHex);
+                pointLight.color.setHex(colorHex);
+                rimLight.color.setHex(colorHex);
+                
+                document.getElementById('ambientValue').textContent = p.ambient + '%';
+                document.getElementById('spotValue').textContent = p.spot + '%';
+                document.getElementById('pointValue').textContent = p.point + '%';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('materials').textContent = '2';
+            document.getElementById('lights').textContent = '4';
+            document.getElementById('polygons').textContent = '1,847';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Update FPS counter
+            const now = performance.now();
+            stats.frameCount++;
+            
+            if (now - stats.lastTime >= 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (now - stats.lastTime));
+                document.getElementById('fps').textContent = stats.fps;
+                stats.frameCount = 0;
+                stats.lastTime = now;
+            }
+
+            // Gentle rotation for jewelry display
+            if (jewelry) {
+                jewelry.rotation.y += 0.005;
+                jewelry.rotation.x = Math.sin(Date.now() * 0.001) * 0.1;
+            }
+
+            // Update environment map for reflections
+            if (renderTarget && jewelry) {
+                jewelry.visible = false;
+                cubeCamera.position.copy(jewelry.position);
+                cubeCamera.update(renderer, scene);
+                jewelry.visible = true;
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

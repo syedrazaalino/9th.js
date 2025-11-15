@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>07 - Camera Controls: Orbital Navigation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #4fc3f7;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #4fc3f7;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls button.active {
+            background: #4fc3f7;
+            border-color: #4fc3f7;
+        }
+        
+        .control-hints {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            max-width: 200px;
+        }
+        
+        code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>📷 Tutorial 07: Camera Controls</h1>
+        <div class="step">
+            <strong>Goal:</strong> Master camera navigation and controls
+        </div>
+        <div class="step">
+            <strong>Controls You'll Learn:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li><code>OrbitControls</code> - Mouse rotation and zoom</li>
+                <li><code>Mouse</code> - Left: rotate, Right: pan, Wheel: zoom</li>
+                <li><code>Keyboard</code> - WASD movement</li>
+                <li><code>Smooth transitions</code> - Auto-rotation</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>Demo Controls:</strong><br>
+            <button id="auto-rotate" onclick="toggleAutoRotate()">Auto Rotate</button><br>
+            <button id="reset-camera" onclick="resetCamera()">Reset Camera</button><br>
+            <button id="focus-object" onclick="focusOnObject()">Focus on Object</button>
+        </div>
+        <div class="step">
+            <span class="highlight">🖱️ Try using your mouse to orbit around the scene!</span>
+        </div>
+    </div>
+    
+    <div class="control-hints">
+        <strong>Mouse Controls:</strong><br>
+        Left Click + Drag: Rotate<br>
+        Right Click + Drag: Pan<br>
+        Scroll Wheel: Zoom<br><br>
+        <strong>Keyboard:</strong><br>
+        W/A/S/D: Move camera<br>
+        Q/E: Move up/down
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <!-- Load OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 07: CAMERA CONTROLS
+         * ==========================================
+         * 
+         * Camera controls allow users to navigate 3D scenes intuitively.
+         * OrbitControls provides mouse-based interaction:
+         * - Left mouse: Rotate around target
+         * - Right mouse: Pan the view
+         * - Mouse wheel: Zoom in/out
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer, controls;
+        let objects = [];
+        let focusedObject = null;
+        let animationId;
+        let autoRotateEnabled = false;
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(10, 8, 10);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Setup OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;  // Smooth motion
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = true;
+            controls.enablePan = true;
+            controls.autoRotate = false;
+            controls.autoRotateSpeed = 2.0;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+        }
+        
+        // ==========================================
+        // CREATE SCENE OBJECTS
+        // ==========================================
+        function createSceneObjects() {
+            // Create a colorful arrangement of objects
+            const positions = [
+                { x: 0, y: 0, z: 0, color: 0xff6b6b, type: 'sphere' },
+                { x: -4, y: 2, z: -3, color: 0x4ecdc4, type: 'box' },
+                { x: 4, y: 1, z: -3, color: 0x45b7d1, type: 'cone' },
+                { x: -2, y: 0, z: -6, color: 0xf7b731, type: 'cylinder' },
+                { x: 2, y: 3, z: -6, color: 0x5f27cd, type: 'torus' },
+                { x: 0, y: -1, z: -4, color: 0x00d2d3, type: 'torusKnot' }
+            ];
+            
+            positions.forEach((pos, index) => {
+                let geometry, material;
+                const meshMaterial = new THREE.MeshStandardMaterial({ 
+                    color: pos.color,
+                    roughness: 0.3,
+                    metalness: 0.2
+                });
+                
+                switch (pos.type) {
+                    case 'sphere':
+                        geometry = new THREE.SphereGeometry(1.5, 32, 32);
+                        break;
+                    case 'box':
+                        geometry = new THREE.BoxGeometry(2, 2, 2);
+                        break;
+                    case 'cone':
+                        geometry = new THREE.ConeGeometry(1, 3, 8);
+                        break;
+                    case 'cylinder':
+                        geometry = new THREE.CylinderGeometry(1, 1, 2.5, 8);
+                        break;
+                    case 'torus':
+                        geometry = new THREE.TorusGeometry(1.2, 0.4, 8, 16);
+                        break;
+                    case 'torusKnot':
+                        geometry = new THREE.TorusKnotGeometry(0.8, 0.3, 100, 16);
+                        break;
+                }
+                
+                const mesh = new THREE.Mesh(geometry, meshMaterial);
+                mesh.position.set(pos.x, pos.y, pos.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                // Store original position for reset
+                mesh.userData.originalPosition = mesh.position.clone();
+                mesh.userData.originalRotation = mesh.rotation.clone();
+                
+                scene.add(mesh);
+                objects.push(mesh);
+                
+                // Add a point light for each object (except the main sphere)
+                if (index > 0) {
+                    const pointLight = new THREE.PointLight(pos.color, 0.5, 10);
+                    pointLight.position.copy(mesh.position);
+                    pointLight.position.y += 2;
+                    scene.add(pointLight);
+                    
+                    mesh.userData.light = pointLight;
+                }
+            });
+            
+            // Add ground plane
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -3;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Add grid helper
+            const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+            scene.add(gridHelper);
+        }
+        
+        // ==========================================
+        // CAMERA CONTROL FUNCTIONS
+        // ==========================================
+        function toggleAutoRotate() {
+            const button = document.getElementById('auto-rotate');
+            autoRotateEnabled = !autoRotateEnabled;
+            controls.autoRotate = autoRotateEnabled;
+            
+            if (autoRotateEnabled) {
+                button.classList.add('active');
+                button.textContent = 'Stop Auto Rotate';
+            } else {
+                button.classList.remove('active');
+                button.textContent = 'Auto Rotate';
+            }
+        }
+        
+        function resetCamera() {
+            // Reset camera position and controls
+            camera.position.set(10, 8, 10);
+            controls.reset();
+            controls.target.set(0, 0, 0);
+            
+            // Reset all objects to original positions
+            objects.forEach(obj => {
+                obj.position.copy(obj.userData.originalPosition);
+                obj.rotation.copy(obj.userData.originalRotation);
+            });
+            
+            focusedObject = null;
+        }
+        
+        function focusOnObject() {
+            if (objects.length > 0) {
+                // Cycle through objects
+                const currentIndex = objects.indexOf(focusedObject);
+                focusedObject = objects[(currentIndex + 1) % objects.length];
+                
+                // Smooth transition to focus on object
+                const targetPosition = focusedObject.position.clone();
+                controls.target.copy(targetPosition);
+                
+                // Move camera to a good viewing position
+                const cameraOffset = new THREE.Vector3(5, 3, 5);
+                const newCameraPosition = targetPosition.clone().add(cameraOffset);
+                
+                // Simple animation for camera movement
+                animateCameraTo(newCameraPosition, targetPosition, 2000);
+            }
+        }
+        
+        // ==========================================
+        // CAMERA ANIMATION
+        // ==========================================
+        function animateCameraTo(targetPosition, targetLookAt, duration) {
+            const startPosition = camera.position.clone();
+            const startLookAt = controls.target.clone();
+            const startTime = Date.now();
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function (ease-out)
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                // Interpolate position
+                camera.position.lerpVectors(startPosition, targetPosition, easeProgress);
+                
+                // Interpolate target
+                controls.target.lerpVectors(startLookAt, targetLookAt, easeProgress);
+                
+                controls.update();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+        
+        // ==========================================
+        // KEYBOARD CONTROLS
+        // ==========================================
+        function setupKeyboardControls() {
+            const keys = {};
+            
+            window.addEventListener('keydown', (event) => {
+                keys[event.code] = true;
+            });
+            
+            window.addEventListener('keyup', (event) => {
+                keys[event.code] = false;
+            });
+            
+            function updateKeyboardControls() {
+                const moveSpeed = 0.5;
+                const rotateSpeed = 0.05;
+                
+                // Camera rotation with arrow keys
+                if (keys['ArrowLeft']) {
+                    camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotateSpeed);
+                }
+                if (keys['ArrowRight']) {
+                    camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -rotateSpeed);
+                }
+                if (keys['ArrowUp']) {
+                    camera.position.y += moveSpeed;
+                }
+                if (keys['ArrowDown']) {
+                    camera.position.y -= moveSpeed;
+                }
+                
+                // WASD movement
+                const direction = new THREE.Vector3();
+                if (keys['KeyW']) direction.z -= moveSpeed;
+                if (keys['KeyS']) direction.z += moveSpeed;
+                if (keys['KeyA']) direction.x -= moveSpeed;
+                if (keys['KeyD']) direction.x += moveSpeed;
+                
+                if (direction.length() > 0) {
+                    direction.normalize().applyQuaternion(camera.quaternion);
+                    camera.position.add(direction);
+                }
+                
+                // Q/E for up/down
+                if (keys['KeyQ']) camera.position.y += moveSpeed;
+                if (keys['KeyE']) camera.position.y -= moveSpeed;
+            }
+            
+            return updateKeyboardControls;
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate(updateKeyboardControls) {
+            animationId = requestAnimationFrame(() => animate(updateKeyboardControls));
+            
+            const time = Date.now() * 0.001;
+            
+            // Update keyboard controls
+            if (updateKeyboardControls) {
+                updateKeyboardControls();
+            }
+            
+            // Animate objects
+            objects.forEach((obj, index) => {
+                obj.rotation.x += 0.01;
+                obj.rotation.y += 0.02;
+                
+                // Gentle floating motion
+                obj.position.y = obj.userData.originalPosition.y + Math.sin(time + index) * 0.5;
+                
+                // Update associated light position
+                if (obj.userData.light) {
+                    obj.userData.light.position.copy(obj.position);
+                    obj.userData.light.position.y += 2;
+                }
+            });
+            
+            // Update controls
+            controls.update();
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('📷 Starting Camera Controls Demo...');
+            
+            setupScene();
+            createSceneObjects();
+            
+            const updateKeyboardControls = setupKeyboardControls();
+            
+            window.addEventListener('resize', handleResize);
+            animate(updateKeyboardControls);
+            
+            console.log('✅ Camera controls demo initialized!');
+            console.log('💡 Try using your mouse to orbit, pan, and zoom around the scene!');
+        }
+        
+        // Make functions globally available
+        window.toggleAutoRotate = toggleAutoRotate;
+        window.resetCamera = resetCamera;
+        window.focusOnObject = focusOnObject;
+        
+        init();
+    </script>
+</body>
+</html>

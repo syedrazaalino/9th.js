@@ -1,0 +1,193 @@
+{
+  "name": "9th.js-experimental",
+  "version": "0.2.0-experimental.1",
+  "description": "Experimental 3D graphics library - bleeding-edge features and APIs",
+  "type": "module",
+  "main": "dist/experimental/cjs/index.js",
+  "module": "dist/experimental/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/experimental/esm/index.js",
+      "require": "./dist/experimental/cjs/index.js",
+      "types": "./dist/experimental/esm/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/experimental/esm/core/index.js",
+      "require": "./dist/experimental/cjs/core/index.js",
+      "types": "./dist/experimental/esm/core/index.d.ts"
+    },
+    "./geometry": {
+      "import": "./dist/experimental/esm/geometry/index.js",
+      "require": "./dist/experimental/cjs/geometry/index.js",
+      "types": "./dist/experimental/esm/geometry/index.d.ts"
+    },
+    "./materials": {
+      "import": "./dist/experimental/esm/materials/index.js",
+      "require": "./dist/experimental/cjs/materials/index.js",
+      "types": "./dist/experimental/esm/materials/index.d.ts"
+    },
+    "./rendering": {
+      "import": "./dist/experimental/esm/rendering/index.js",
+      "require": "./dist/experimental/cjs/rendering/index.js",
+      "types": "./dist/experimental/esm/rendering/index.d.ts"
+    },
+    "./animation": {
+      "import": "./dist/experimental/esm/animation/index.js",
+      "require": "./dist/experimental/cjs/animation/index.js",
+      "types": "./dist/experimental/esm/animation/index.d.ts"
+    },
+    "./loaders": {
+      "import": "./dist/experimental/esm/loaders/index.js",
+      "require": "./dist/experimental/cjs/loaders/index.js",
+      "types": "./dist/experimental/esm/loaders/index.d.ts"
+    },
+    "./lights": {
+      "import": "./dist/experimental/esm/lights/index.js",
+      "require": "./dist/experimental/cjs/lights/index.js",
+      "types": "./dist/experimental/esm/lights/index.d.ts"
+    },
+    "./particles": {
+      "import": "./dist/experimental/esm/particles/index.js",
+      "require": "./dist/experimental/cjs/particles/index.js",
+      "types": "./dist/experimental/esm/particles/index.d.ts"
+    },
+    "./physics": {
+      "import": "./dist/experimental/esm/physics/index.js",
+      "require": "./dist/experimental/cjs/physics/index.js",
+      "types": "./dist/experimental/esm/physics/index.d.ts"
+    },
+    "./controls": {
+      "import": "./dist/experimental/esm/controls/index.js",
+      "require": "./dist/experimental/cjs/controls/index.js",
+      "types": "./dist/experimental/esm/controls/index.d.ts"
+    },
+    "./textures": {
+      "import": "./dist/experimental/esm/textures/index.js",
+      "require": "./dist/experimental/cjs/textures/index.js",
+      "types": "./dist/experimental/esm/textures/index.d.ts"
+    },
+    "./experimental/ai": {
+      "import": "./dist/experimental/esm/experimental/ai/index.js",
+      "require": "./dist/experimental/cjs/experimental/ai/index.js",
+      "types": "./dist/experimental/esm/experimental/ai/index.d.ts"
+    },
+    "./experimental/webgpu": {
+      "import": "./dist/experimental/esm/experimental/webgpu/index.js",
+      "require": "./dist/experimental/cjs/experimental/webgpu/index.js",
+      "types": "./dist/experimental/esm/experimental/webgpu/index.d.ts"
+    },
+    "./experimental/realtime-gi": {
+      "import": "./dist/experimental/esm/experimental/realtime-gi/index.js",
+      "require": "./dist/experimental/cjs/experimental/realtime-gi/index.js",
+      "types": "./dist/experimental/esm/experimental/realtime-gi/index.d.ts"
+    },
+    "./experimental/hybrid-rendering": {
+      "import": "./dist/experimental/esm/experimental/hybrid-rendering/index.js",
+      "require": "./dist/experimental/cjs/experimental/hybrid-rendering/index.js",
+      "types": "./dist/experimental/esm/experimental/hybrid-rendering/index.d.ts"
+    },
+    "./bundle": {
+      "import": "./dist/experimental/umd/9th.js",
+      "types": "./dist/experimental/umd/9th.d.ts"
+    }
+  },
+  "files": [
+    "dist/experimental",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:experimental && npm run build:types",
+    "build:experimental": "node build-experimental.js",
+    "build:esm": "node build-experimental.js --esm",
+    "build:umd": "node build-experimental.js --umd",
+    "build:dev": "node build-experimental.js --dev",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/experimental/esm --project tsconfig.experimental.json",
+    "dev": "node build-experimental.js --watch",
+    "test": "jest --testPathPattern=experimental",
+    "test:experimental": "jest --testPathPattern=\"experimental.*integration\" --verbose",
+    "validate": "npm run type-check && npm run lint && npm run test:experimental",
+    "prepublishOnly": "npm run validate && npm run build",
+    "clean": "rm -rf dist/experimental",
+    "release:experimental": "npm version prerelease --preid=experimental && npm publish --tag experimental",
+    "release:alpha": "npm version prerelease --preid=alpha && npm publish --tag alpha",
+    "release:beta": "npm version prerelease --preid=beta && npm publish --tag beta",
+    "release:rc": "npm version prerelease --preid=rc && npm publish --tag next",
+    "size": "npm run build && npx vite-bundle-analyzer dist/experimental/**/*.js",
+    "analyze": "npm run build && open dist/experimental/bundle-analysis.html"
+  },
+  "keywords": [
+    "3d",
+    "graphics",
+    "experimental",
+    "bleeding-edge",
+    "webgl",
+    "webgpu",
+    "visualization",
+    "library",
+    "javascript",
+    "typescript",
+    "ai",
+    "machine-learning",
+    "realtime-gi",
+    "hybrid-rendering",
+    "advanced",
+    "beta",
+    "alpha"
+  ],
+  "author": {
+    "name": "9th.js Team",
+    "email": "team@9thjs.com",
+    "url": "https://github.com/9thjs"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/9th.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/9th.js/issues"
+  },
+  "homepage": "https://github.com/username/9th.js#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/9thjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "tag": "experimental"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "browserslist": [
+    "last 2 versions",
+    "not dead",
+    "supports webgpu"
+  ],
+  "size-limit": [
+    {
+      "name": "Experimental UMD Production",
+      "path": "dist/experimental/umd/9th.umd.min.js",
+      "limit": "400 KB"
+    },
+    {
+      "name": "Experimental ES Module Minified",
+      "path": "dist/experimental/esm/9th.esm.min.js",
+      "limit": "350 KB"
+    }
+  ],
+  "deprecated": "This package contains experimental features and APIs that may change or be removed in future versions. Use at your own risk."
+}

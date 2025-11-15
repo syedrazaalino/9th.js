@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Weather System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: linear-gradient(to bottom, #87ceeb, #e6f3ff); font-family: 'Arial', sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #weather-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(255,255,255,0.95); padding: 20px; border-radius: 15px;
+            color: #333; min-width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        #weather-controls h3 { color: #2c3e50; margin-bottom: 15px; font-size: 20px; text-align: center; }
+        #weather-controls label { display: block; margin: 12px 0 6px; color: #34495e; font-weight: 500; font-size: 13px; }
+        #weather-controls input, #weather-controls select {
+            width: 100%; padding: 10px; margin-bottom: 10px;
+            background: rgba(255,255,255,0.8); border: 1px solid #bdc3c7;
+            border-radius: 8px; color: #2c3e50; font-size: 14px;
+        }
+        #weather-controls button {
+            width: 100%; padding: 12px; margin: 8px 0;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none; border-radius: 8px; color: white; cursor: pointer;
+            font-weight: 600; transition: all 0.3s; font-size: 14px;
+        }
+        #weather-controls button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); 
+        }
+        #weather-controls button.danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        #weather-controls button.success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; transform: scale(1.2); }
+        .slider-group { margin: 15px 0; }
+        .slider-group input[type="range"] { width: 100%; margin: 8px 0; }
+        .value-display { float: right; color: #3498db; font-weight: bold; }
+        #weather-stats {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px;
+            color: #2c3e50; font-size: 13px; line-height: 1.8; min-width: 220px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1);
+        }
+        #weather-map {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            background: rgba(255,255,255,0.95); padding: 15px; border-radius: 15px;
+            color: #2c3e50; font-size: 12px; min-width: 300px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.1);
+        }
+        #temp-chart {
+            width: 100%; height: 80px; background: linear-gradient(to right, 
+                #3498db, #f39c12, #e74c3c); border-radius: 5px; margin: 10px 0;
+            position: relative; overflow: hidden;
+        }
+        #temp-indicator {
+            position: absolute; bottom: 0; width: 4px; height: 100%;
+            background: #2c3e50; transition: left 0.5s;
+        }
+        #wind-compass {
+            width: 100px; height: 100px; border: 3px solid #3498db;
+            border-radius: 50%; margin: 10px auto; position: relative;
+            background: radial-gradient(circle, rgba(52, 152, 219, 0.1) 0%, transparent 70%);
+        }
+        #wind-arrow {
+            position: absolute; top: 50%; left: 50%; transform-origin: bottom center;
+            width: 4px; height: 40px; background: #e74c3c;
+            transform: translate(-50%, -100%) rotate(0deg);
+            transition: transform 0.5s;
+        }
+        #wind-arrow::after {
+            content: ''; position: absolute; bottom: 0; left: -8px;
+            width: 20px; height: 20px; border-left: 10px solid transparent;
+            border-right: 10px solid transparent; border-bottom: 20px solid #e74c3c;
+        }
+        .weather-icon {
+            font-size: 24px; text-align: center; margin: 10px 0;
+        }
+        #time-display {
+            position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%);
+            color: rgba(255,255,255,0.8); font-size: 16px; z-index: 999;
+            background: rgba(0,0,0,0.3); padding: 10px 20px; border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        #radar-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 500;
+        }
+        .particle-system {
+            position: absolute; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <canvas id="radar-overlay"></canvas>
+    
+    <div id="time-display">
+        <div id="current-time">12:00</div>
+        <div id="current-date">Monday, January 1</div>
+    </div>
+    
+    <div id="weather-controls">
+        <h3>🌤️ Weather System</h3>
+        
+        <div class="weather-icon" id="weather-icon">☀️</div>
+        <div style="text-align: center; font-size: 24px; font-weight: bold; color: #2c3e50;">
+            <span id="temperature-display">22°C</span>
+            <span id="weather-condition">Sunny</span>
+        </div>
+        
+        <label>Weather Pattern:</label>
+        <select id="weather-pattern">
+            <option value="sunny">Sunny</option>
+            <option value="cloudy">Cloudy</option>
+            <option value="rainy">Rainy</option>
+            <option value="stormy">Stormy</option>
+            <option value="snowy">Snowy</option>
+            <option value="foggy">Foggy</option>
+            <option value="random">Random</option>
+        </select>
+        
+        <div class="slider-group">
+            <label>Temperature: <span class="value-display" id="temp-value">22°C</span></label>
+            <input type="range" id="temperature" min="-20" max="40" value="22">
+        </div>
+        
+        <div class="slider-group">
+            <label>Humidity: <span class="value-display" id="humidity-value">65%</span></label>
+            <input type="range" id="humidity" min="0" max="100" value="65">
+        </div>
+        
+        <div class="slider-group">
+            <label>Wind Speed: <span class="value-display" id="wind-value">5 m/s</span></label>
+            <input type="range" id="wind-speed" min="0" max="30" value="5">
+        </div>
+        
+        <div class="slider-group">
+            <label>Wind Direction: <span class="value-display" id="wind-dir-value">0°</span></label>
+            <input type="range" id="wind-direction" min="0" max="360" value="0">
+        </div>
+        
+        <div class="slider-group">
+            <label>Precipitation: <span class="value-display" id="precip-value">0%</span></label>
+            <input type="range" id="precipitation" min="0" max="100" value="0">
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="rain-enabled" checked>
+            <label for="rain-enabled">Rain Effects</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="snow-enabled">
+            <label for="snow-enabled">Snow Effects</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="lightning-enabled">
+            <label for="lightning-enabled">Lightning</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="clouds-enabled" checked>
+            <label for="clouds-enabled">Dynamic Clouds</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="fog-enabled">
+            <label for="fog-enabled">Atmospheric Fog</label>
+        </div>
+        
+        <button id="cycle-weather">🌈 Cycle Weather</button>
+        <button id="reset-weather">🔄 Reset</button>
+        <button id="random-weather" class="success">🎲 Random</button>
+        
+        <div style="margin-top: 15px; font-size: 11px; color: #7f8c8d; text-align: center;">
+            Advanced atmospheric simulation with real-time weather effects
+        </div>
+    </div>
+    
+    <div id="weather-stats">
+        <div><strong>📊 Weather Data</strong></div>
+        <div>Atmospheric Pressure: <span id="pressure">1013 hPa</span></div>
+        <div>Visibility: <span id="visibility">10 km</span></div>
+        <div>UV Index: <span id="uv-index">5</span></div>
+        <div>Cloud Cover: <span id="cloud-cover">20%</span></div>
+        <div>Rainfall Rate: <span id="rainfall-rate">0 mm/h</span></div>
+        <div>Snow Depth: <span id="snow-depth">0 cm</span></div>
+        <div>Air Quality: <span id="air-quality">Good</span></div>
+        
+        <div id="wind-compass">
+            <div id="wind-arrow"></div>
+        </div>
+        <div style="text-align: center; font-size: 11px; color: #7f8c8d;">Wind Direction</div>
+        
+        <div id="temp-chart">
+            <div id="temp-indicator"></div>
+        </div>
+        <div style="text-align: center; font-size: 11px; color: #7f8c8d;">Temperature Trend</div>
+    </div>
+    
+    <div id="weather-map">
+        <div><strong>🗺️ Weather Radar</strong></div>
+        <div>System Status: <span id="radar-status">Active</span></div>
+        <div>Coverage Area: <span id="coverage">Regional</span></div>
+        <div>Storm Cells: <span id="storm-cells">0</span></div>
+        <div>Alert Level: <span id="alert-level">None</span></div>
+        <div style="margin-top: 10px; font-size: 11px; color: #7f8c8d;">
+            Real-time precipitation tracking and atmospheric monitoring
+        </div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class WeatherSystem {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.radarCanvas = document.getElementById('radar-overlay');
+                this.gl = this.canvas.getContext('webgl');
+                this.radarCtx = this.radarCanvas.getContext('2d');
+                
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.radarCanvas.width = this.width;
+                this.radarCanvas.height = this.height;
+                
+                // Weather systems
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                // Weather state
+                this.currentWeather = 'sunny';
+                this.temperature = 22;
+                this.humidity = 65;
+                this.windSpeed = 5;
+                this.windDirection = 0;
+                this.precipitation = 0;
+                this.atmosphericPressure = 1013;
+                this.cloudCover = 20;
+                this.uvIndex = 5;
+                this.visibility = 10000;
+                
+                // Time simulation
+                this.currentTime = new Date();
+                this.timeScale = 1; // 1x real time
+                this.startTime = Date.now();
+                
+                // Weather systems
+                this.clouds = [];
+                this.rainDrops = [];
+                this.snowFlakes = [];
+                this.lightningBolts = [];
+                this.fogLayers = [];
+                this.particles = [];
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 60;
+                
+                this.setupLighting();
+                this.setupEnvironment();
+                this.setupControls();
+                this.createWeatherSystems();
+                this.initializeRadar();
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                // Ambient sky lighting
+                this.ambientLight = new Engine.AmbientLight(0x87ceeb, 0.6);
+                this.scene.add(this.ambientLight);
+                
+                // Main sun light
+                this.sunLight = new Engine.DirectionalLight(0xffffff, 1.0);
+                this.sunLight.position.set(100, 100, 50);
+                this.sunLight.castShadow = true;
+                this.sunLight.shadow.mapSize.width = 2048;
+                this.sunLight.shadow.mapSize.height = 2048;
+                this.scene.add(this.sunLight);
+                
+                // Atmospheric scattering light
+                this.skyLight = new Engine.HemisphereLight(0x87ceeb, 0x8B4513, 0.4);
+                this.scene.add(this.skyLight);
+            }
+            
+            setupEnvironment() {
+                // Ground plane
+                const groundGeometry = new Engine.PlaneGeometry(1000, 1000);
+                const groundMaterial = new Engine.MeshLambertMaterial({
+                    color: 0x228B22,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                this.ground = new Engine.Mesh(groundGeometry, groundMaterial);
+                this.ground.rotation.x = -Math.PI / 2;
+                this.ground.receiveShadow = true;
+                this.scene.add(this.ground);
+                
+                // Horizon
+                const horizonGeometry = new Engine.CylinderGeometry(800, 800, 200, 32, 1, true);
+                const horizonMaterial = new Engine.MeshBasicMaterial({
+                    color: 0x87ceeb,
+                    side: Engine.BackSide,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                this.horizon = new Engine.Mesh(horizonGeometry, horizonMaterial);
+                this.horizon.position.y = -100;
+                this.scene.add(this.horizon);
+            }
+            
+            setupControls() {
+                // Weather pattern selection
+                document.getElementById('weather-pattern').addEventListener('change', (e) => {
+                    this.changeWeatherPattern(e.target.value);
+                });
+                
+                // Temperature control
+                document.getElementById('temperature').addEventListener('input', (e) => {
+                    this.temperature = parseInt(e.target.value);
+                    this.updateTemperatureDisplay();
+                    this.updateLighting();
+                });
+                
+                // Humidity control
+                document.getElementById('humidity').addEventListener('input', (e) => {
+                    this.humidity = parseInt(e.target.value);
+                    this.updateHumidityDisplay();
+                    this.updateWeatherEffects();
+                });
+                
+                // Wind controls
+                document.getElementById('wind-speed').addEventListener('input', (e) => {
+                    this.windSpeed = parseInt(e.target.value);
+                    this.updateWindDisplay();
+                    this.updateWeatherEffects();
+                });
+                
+                document.getElementById('wind-direction').addEventListener('input', (e) => {
+                    this.windDirection = parseInt(e.target.value);
+                    this.updateWindDisplay();
+                    this.updateWindDirection();
+                });
+                
+                // Precipitation control
+                document.getElementById('precipitation').addEventListener('input', (e) => {
+                    this.precipitation = parseInt(e.target.value);
+                    this.updatePrecipitationDisplay();
+                    this.updatePrecipitationEffects();
+                });
+                
+                // Weather system toggles
+                const toggles = ['rain-enabled', 'snow-enabled', 'lightning-enabled', 'clouds-enabled', 'fog-enabled'];
+                toggles.forEach(toggle => {
+                    document.getElementById(toggle).addEventListener('change', (e) => {
+                        this.toggleWeatherSystem(toggle.replace('-enabled', ''), e.target.checked);
+                    });
+                });
+                
+                // Button controls
+                document.getElementById('cycle-weather').addEventListener('click', () => this.cycleWeather());
+                document.getElementById('reset-weather').addEventListener('click', () => this.resetWeather());
+                document.getElementById('random-weather').addEventListener('click', () => this.generateRandomWeather());
+            }
+            
+            createWeatherSystems() {
+                this.createClouds();
+                this.createAtmosphericEffects();
+                this.updateWeatherDisplay();
+            }
+            
+            createClouds() {
+                this.clouds = [];
+                
+                for (let i = 0; i < 20; i++) {
+                    const cloud = this.createCloud(
+                        (Math.random() - 0.5) * 1000,
+                        Math.random() * 200 + 100,
+                        (Math.random() - 0.5) * 1000,
+                        Math.random() * 50 + 20
+                    );
+                    this.clouds.push(cloud);
+                    this.scene.add(cloud.mesh);
+                }
+            }
+            
+            createCloud(x, y, z, size) {
+                const cloudGroup = new Engine.Group();
+                
+                // Create cloud puffs
+                const puffCount = Math.floor(Math.random() * 8) + 3;
+                for (let i = 0; i < puffCount; i++) {
+                    const puffSize = size * (0.3 + Math.random() * 0.4);
+                    const puffGeometry = new Engine.SphereGeometry(puffSize, 8, 6);
+                    const puffMaterial = new Engine.MeshLambertMaterial({
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    const puff = new Engine.Mesh(puffGeometry, puffMaterial);
+                    
+                    puff.position.set(
+                        (Math.random() - 0.5) * size,
+                        (Math.random() - 0.5) * size * 0.5,
+                        (Math.random() - 0.5) * size
+                    );
+                    
+                    cloudGroup.add(puff);
+                }
+                
+                cloudGroup.position.set(x, y, z);
+                
+                return {
+                    mesh: cloudGroup,
+                    velocity: new Engine.Vector3(
+                        (Math.random() - 0.5) * this.windSpeed * 0.01,
+                        0,
+                        (Math.random() - 0.5) * this.windSpeed * 0.01
+                    ),
+                    opacity: 0.7,
+                    size: size
+                };
+            }
+            
+            createRainSystem() {
+                this.rainDrops = [];
+                
+                for (let i = 0; i < 1000; i++) {
+                    const drop = {
+                        position: new Engine.Vector3(
+                            (Math.random() - 0.5) * 1000,
+                            Math.random() * 200 + 300,
+                            (Math.random() - 0.5) * 1000
+                        ),
+                        velocity: new Engine.Vector3(
+                            this.windSpeed * 0.1,
+                            -20 - Math.random() * 10,
+                            0
+                        ),
+                        length: Math.random() * 0.5 + 0.2
+                    };
+                    
+                    this.rainDrops.push(drop);
+                }
+            }
+            
+            createSnowSystem() {
+                this.snowFlakes = [];
+                
+                for (let i = 0; i < 500; i++) {
+                    const flake = {
+                        position: new Engine.Vector3(
+                            (Math.random() - 0.5) * 1000,
+                            Math.random() * 200 + 200,
+                            (Math.random() - 0.5) * 1000
+                        ),
+                        velocity: new Engine.Vector3(
+                            this.windSpeed * 0.05,
+                            -2 - Math.random() * 2,
+                            0
+                        ),
+                        size: Math.random() * 0.1 + 0.05,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotationSpeed: (Math.random() - 0.5) * 0.1
+                    };
+                    
+                    this.snowFlakes.push(flake);
+                }
+            }
+            
+            createFogSystem() {
+                this.fogLayers = [];
+                
+                for (let i = 0; i < 5; i++) {
+                    const fog = {
+                        position: new Engine.Vector3(
+                            (Math.random() - 0.5) * 500,
+                            Math.random() * 50,
+                            (Math.random() - 0.5) * 500
+                        ),
+                        size: Math.random() * 100 + 50,
+                        opacity: 0.1,
+                        velocity: new Engine.Vector3(
+                            this.windSpeed * 0.02,
+                            0,
+                            0
+                        )
+                    };
+                    
+                    const fogGeometry = new Engine.SphereGeometry(fog.size, 8, 6);
+                    const fogMaterial = new Engine.MeshLambertMaterial({
+                        color: 0xcccccc,
+                        transparent: true,
+                        opacity: fog.opacity
+                    });
+                    const fogMesh = new Engine.Mesh(fogGeometry, fogMaterial);
+                    fogMesh.position.copy(fog.position);
+                    
+                    fog.mesh = fogMesh;
+                    this.fogLayers.push(fog);
+                    this.scene.add(fogMesh);
+                }
+            }
+            
+            createAtmosphericEffects() {
+                // Create atmospheric particles
+                for (let i = 0; i < 200; i++) {
+                    const particle = {
+                        position: new Engine.Vector3(
+                            (Math.random() - 0.5) * 1000,
+                            Math.random() * 100 + 50,
+                            (Math.random() - 0.5) * 1000
+                        ),
+                        velocity: new Engine.Vector3(
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.05,
+                            (Math.random() - 0.5) * 0.1
+                        ),
+                        size: Math.random() * 0.05 + 0.01,
+                        opacity: Math.random() * 0.3 + 0.1
+                    };
+                    
+                    this.particles.push(particle);
+                }
+            }
+            
+            createLightning() {
+                const startPoint = new Engine.Vector3(
+                    (Math.random() - 0.5) * 200,
+                    200,
+                    (Math.random() - 0.5) * 200
+                );
+                
+                const endPoint = new Engine.Vector3(
+                    startPoint.x + (Math.random() - 0.5) * 50,
+                    0,
+                    startPoint.z + (Math.random() - 0.5) * 50
+                );
+                
+                this.createLightningBolt(startPoint, endPoint);
+            }
+            
+            createLightningBolt(start, end) {
+                const points = [];
+                let current = start.clone();
+                const direction = end.clone().sub(start).normalize();
+                
+                // Generate jagged lightning path
+                points.push(current.clone());
+                const segments = 10;
+                
+                for (let i = 0; i < segments; i++) {
+                    const randomOffset = new Engine.Vector3(
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 10
+                    );
+                    current.add(direction.clone().multiplyScalar(5)).add(randomOffset);
+                    points.push(current.clone());
+                }
+                
+                points.push(end.clone());
+                
+                const geometry = new Engine.BufferGeometry().setFromPoints(points);
+                const material = new Engine.LineBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8,
+                    linewidth: 3
+                });
+                
+                const lightning = new Engine.Line(geometry, material);
+                this.lightningBolts.push({ mesh: lightning, lifetime: 0.2 });
+                this.scene.add(lightning);
+                
+                // Flash effect
+                this.ambientLight.intensity = 2.0;
+                setTimeout(() => {
+                    this.ambientLight.intensity = 0.6;
+                }, 200);
+            }
+            
+            updateWeatherEffects() {
+                // Update cloud positions
+                this.clouds.forEach(cloud => {
+                    cloud.mesh.position.add(cloud.velocity);
+                    
+                    // Wrap around screen
+                    if (Math.abs(cloud.mesh.position.x) > 500) {
+                        cloud.mesh.position.x = -Math.sign(cloud.mesh.position.x) * 500;
+                    }
+                    if (Math.abs(cloud.mesh.position.z) > 500) {
+                        cloud.mesh.position.z = -Math.sign(cloud.mesh.position.z) * 500;
+                    }
+                    
+                    // Update opacity based on cloud cover
+                    cloud.mesh.children.forEach(puff => {
+                        puff.material.opacity = cloud.opacity * (this.cloudCover / 100);
+                    });
+                });
+                
+                // Update rain
+                if (document.getElementById('rain-enabled').checked) {
+                    this.updateRainSystem();
+                }
+                
+                // Update snow
+                if (document.getElementById('snow-enabled').checked) {
+                    this.updateSnowSystem();
+                }
+                
+                // Update fog
+                if (document.getElementById('fog-enabled').checked) {
+                    this.updateFogSystem();
+                }
+                
+                // Update particles
+                this.updateParticles();
+                
+                // Update lightning
+                this.updateLightning();
+            }
+            
+            updateRainSystem() {
+                this.rainDrops.forEach(drop => {
+                    drop.position.add(drop.velocity);
+                    
+                    // Reset when hitting ground
+                    if (drop.position.y < 0) {
+                        drop.position.y = 300;
+                        drop.position.x = (Math.random() - 0.5) * 1000;
+                        drop.position.z = (Math.random() - 0.5) * 1000;
+                    }
+                });
+            }
+            
+            updateSnowSystem() {
+                this.snowFlakes.forEach(flake => {
+                    flake.position.add(flake.velocity);
+                    flake.rotation += flake.rotationSpeed;
+                    
+                    // Reset when hitting ground
+                    if (flake.position.y < 0) {
+                        flake.position.y = 200;
+                        flake.position.x = (Math.random() - 0.5) * 1000;
+                        flake.position.z = (Math.random() - 0.5) * 1000;
+                    }
+                });
+            }
+            
+            updateFogSystem() {
+                this.fogLayers.forEach(fog => {
+                    fog.mesh.position.add(fog.velocity);
+                    
+                    // Wrap around
+                    if (Math.abs(fog.mesh.position.x) > 250) {
+                        fog.mesh.position.x = -Math.sign(fog.mesh.position.x) * 250;
+                    }
+                });
+            }
+            
+            updateParticles() {
+                this.particles.forEach(particle => {
+                    particle.position.add(particle.velocity);
+                    
+                    // Wrap around
+                    if (Math.abs(particle.position.x) > 500) {
+                        particle.position.x = -Math.sign(particle.position.x) * 500;
+                    }
+                    if (Math.abs(particle.position.z) > 500) {
+                        particle.position.z = -Math.sign(particle.position.z) * 500;
+                    }
+                });
+            }
+            
+            updateLightning() {
+                this.lightningBolts.forEach(lightning => {
+                    lightning.lifetime -= 0.016;
+                    
+                    if (lightning.lifetime <= 0) {
+                        this.scene.remove(lightning.mesh);
+                        const index = this.lightningBolts.indexOf(lightning);
+                        if (index > -1) {
+                            this.lightningBolts.splice(index, 1);
+                        }
+                    } else {
+                        lightning.mesh.material.opacity = lightning.lifetime * 4;
+                    }
+                });
+            }
+            
+            updateLighting() {
+                // Adjust lighting based on weather conditions
+                const temperatureFactor = Math.max(0, Math.min(1, (this.temperature + 20) / 60));
+                const humidityFactor = this.humidity / 100;
+                const cloudFactor = this.cloudCover / 100;
+                
+                // Ambient light changes
+                this.ambientLight.intensity = 0.6 * (1 - cloudFactor) + 0.3;
+                
+                // Sun intensity changes with clouds
+                this.sunLight.intensity = 1.0 * (1 - cloudFactor * 0.8);
+                
+                // Sky color changes with weather
+                const skyColor = new Engine.Color();
+                if (this.currentWeather === 'stormy') {
+                    skyColor.setHSL(0.6, 0.5, 0.3);
+                } else if (this.currentWeather === 'sunny') {
+                    skyColor.setHSL(0.6, 0.8, 0.8);
+                } else {
+                    skyColor.setHSL(0.6, 0.4, 0.7);
+                }
+                
+                this.ambientLight.color = skyColor;
+                this.skyLight.color = skyColor;
+            }
+            
+            updateWindDirection() {
+                const arrow = document.getElementById('wind-arrow');
+                arrow.style.transform = `translate(-50%, -100%) rotate(${this.windDirection}deg)`;
+            }
+            
+            initializeRadar() {
+                this.radarCenter = { x: this.width / 2, y: this.height / 2 };
+                this.radarRadius = 100;
+                
+                setInterval(() => {
+                    this.updateRadarDisplay();
+                }, 1000);
+            }
+            
+            updateRadarDisplay() {
+                this.radarCtx.clearRect(0, 0, this.width, this.height);
+                
+                // Draw radar grid
+                this.radarCtx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+                this.radarCtx.lineWidth = 1;
+                
+                for (let i = 1; i <= 5; i++) {
+                    this.radarCtx.beginPath();
+                    this.radarCtx.arc(this.radarCenter.x, this.radarCenter.y, (this.radarRadius / 5) * i, 0, Math.PI * 2);
+                    this.radarCtx.stroke();
+                }
+                
+                // Draw cross lines
+                this.radarCtx.beginPath();
+                this.radarCtx.moveTo(this.radarCenter.x - this.radarRadius, this.radarCenter.y);
+                this.radarCtx.lineTo(this.radarCenter.x + this.radarRadius, this.radarCenter.y);
+                this.radarCtx.moveTo(this.radarCenter.x, this.radarCenter.y - this.radarRadius);
+                this.radarCtx.lineTo(this.radarCenter.x, this.radarCenter.y + this.radarRadius);
+                this.radarCtx.stroke();
+                
+                // Draw precipitation
+                if (this.precipitation > 0) {
+                    this.radarCtx.fillStyle = `rgba(0, 255, 0, ${this.precipitation / 200})`;
+                    const intensity = this.precipitation / 100;
+                    
+                    for (let i = 0; i < intensity * 20; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.random() * this.radarRadius;
+                        const x = this.radarCenter.x + Math.cos(angle) * distance;
+                        const y = this.radarCenter.y + Math.sin(angle) * distance;
+                        
+                        this.radarCtx.fillRect(x, y, 2, 2);
+                    }
+                }
+            }
+            
+            updateTime() {
+                const realTimeElapsed = (Date.now() - this.startTime) / 1000;
+                const simulatedTimeElapsed = realTimeElapsed * this.timeScale;
+                this.currentTime = new Date(Date.now() + simulatedTimeElapsed * 1000);
+                
+                // Update time display
+                const hours = this.currentTime.getHours().toString().padStart(2, '0');
+                const minutes = this.currentTime.getMinutes().toString().padStart(2, '0');
+                document.getElementById('current-time').textContent = `${hours}:${minutes}`;
+                
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+                
+                document.getElementById('current-date').textContent = 
+                    `${days[this.currentTime.getDay()]}, ${months[this.currentTime.getMonth()]} ${this.currentTime.getDate()}`;
+            }
+            
+            updateWeatherDisplay() {
+                // Update main weather display
+                document.getElementById('temperature-display').textContent = `${this.temperature}°C`;
+                
+                const weatherIcons = {
+                    sunny: '☀️',
+                    cloudy: '☁️',
+                    rainy: '🌧️',
+                    stormy: '⛈️',
+                    snowy: '❄️',
+                    foggy: '🌫️'
+                };
+                
+                document.getElementById('weather-icon').textContent = weatherIcons[this.currentWeather] || '☀️';
+                document.getElementById('weather-condition').textContent = 
+                    this.currentWeather.charAt(0).toUpperCase() + this.currentWeather.slice(1);
+                
+                // Update stats
+                document.getElementById('pressure').textContent = `${this.atmosphericPressure} hPa`;
+                document.getElementById('visibility').textContent = `${this.visibility / 1000} km`;
+                document.getElementById('uv-index').textContent = this.uvIndex;
+                document.getElementById('cloud-cover').textContent = `${this.cloudCover}%`;
+                document.getElementById('rainfall-rate').textContent = `${this.precipitation * 0.1} mm/h`;
+                document.getElementById('snow-depth').textContent = `${this.precipitation * 0.05} cm`;
+                
+                // Air quality based on weather
+                let airQuality = 'Good';
+                if (this.currentWeather === 'stormy') airQuality = 'Poor';
+                else if (this.humidity > 80) airQuality = 'Moderate';
+                
+                document.getElementById('air-quality').textContent = airQuality;
+                
+                // Update temperature indicator
+                const tempRange = 60; // -20 to 40°C
+                const tempPercent = (this.temperature + 20) / tempRange * 100;
+                document.getElementById('temp-indicator').style.left = `${tempPercent}%`;
+                
+                // Update radar
+                const stormCells = this.precipitation > 50 ? Math.floor(this.precipitation / 10) : 0;
+                document.getElementById('storm-cells').textContent = stormCells;
+                
+                let alertLevel = 'None';
+                if (this.windSpeed > 20) alertLevel = 'Wind Warning';
+                if (this.precipitation > 80) alertLevel = 'Heavy Rain';
+                if (this.currentWeather === 'stormy') alertLevel = 'Storm Alert';
+                
+                document.getElementById('alert-level').textContent = alertLevel;
+            }
+            
+            updateTemperatureDisplay() {
+                document.getElementById('temp-value').textContent = `${this.temperature}°C`;
+            }
+            
+            updateHumidityDisplay() {
+                document.getElementById('humidity-value').textContent = `${this.humidity}%`;
+            }
+            
+            updateWindDisplay() {
+                document.getElementById('wind-value').textContent = `${this.windSpeed} m/s`;
+                document.getElementById('wind-dir-value').textContent = `${this.windDirection}°`;
+            }
+            
+            updatePrecipitationDisplay() {
+                document.getElementById('precip-value').textContent = `${this.precipitation}%`;
+            }
+            
+            changeWeatherPattern(pattern) {
+                this.currentWeather = pattern;
+                
+                const patterns = {
+                    sunny: { temp: 25, humidity: 30, wind: 3, precip: 0, cloud: 10 },
+                    cloudy: { temp: 18, humidity: 70, wind: 5, precip: 0, cloud: 80 },
+                    rainy: { temp: 15, humidity: 90, wind: 8, precip: 70, cloud: 90 },
+                    stormy: { temp: 12, humidity: 95, wind: 15, precip: 90, cloud: 100 },
+                    snowy: { temp: -5, humidity: 85, wind: 5, precip: 60, cloud: 95 },
+                    foggy: { temp: 8, humidity: 100, wind: 2, precip: 0, cloud: 70 }
+                };
+                
+                if (pattern !== 'random' && patterns[pattern]) {
+                    const config = patterns[pattern];
+                    this.temperature = config.temp;
+                    this.humidity = config.humidity;
+                    this.windSpeed = config.wind;
+                    this.precipitation = config.precip;
+                    this.cloudCover = config.cloud;
+                    
+                    // Update UI controls
+                    document.getElementById('temperature').value = config.temp;
+                    document.getElementById('humidity').value = config.humidity;
+                    document.getElementById('wind-speed').value = config.wind;
+                    document.getElementById('precipitation').value = config.precip;
+                }
+                
+                this.updateWeatherDisplay();
+                this.updateLighting();
+                this.updateWeatherEffects();
+            }
+            
+            toggleWeatherSystem(system, enabled) {
+                switch (system) {
+                    case 'rain':
+                        if (enabled && this.rainDrops.length === 0) {
+                            this.createRainSystem();
+                        } else if (!enabled) {
+                            this.rainDrops = [];
+                        }
+                        break;
+                    case 'snow':
+                        if (enabled && this.snowFlakes.length === 0) {
+                            this.createSnowSystem();
+                        } else if (!enabled) {
+                            this.snowFlakes = [];
+                        }
+                        break;
+                    case 'lightning':
+                        if (enabled) {
+                            this.lightningInterval = setInterval(() => {
+                                if (Math.random() < 0.3) {
+                                    this.createLightning();
+                                }
+                            }, 3000);
+                        } else {
+                            clearInterval(this.lightningInterval);
+                        }
+                        break;
+                    case 'clouds':
+                        this.clouds.forEach(cloud => {
+                            cloud.mesh.visible = enabled;
+                        });
+                        break;
+                    case 'fog':
+                        if (enabled && this.fogLayers.length === 0) {
+                            this.createFogSystem();
+                        } else if (!enabled) {
+                            this.fogLayers.forEach(fog => this.scene.remove(fog.mesh));
+                            this.fogLayers = [];
+                        }
+                        break;
+                }
+            }
+            
+            cycleWeather() {
+                const patterns = ['sunny', 'cloudy', 'rainy', 'stormy', 'snowy', 'foggy'];
+                const currentIndex = patterns.indexOf(this.currentWeather);
+                const nextPattern = patterns[(currentIndex + 1) % patterns.length];
+                
+                document.getElementById('weather-pattern').value = nextPattern;
+                this.changeWeatherPattern(nextPattern);
+            }
+            
+            resetWeather() {
+                this.temperature = 22;
+                this.humidity = 65;
+                this.windSpeed = 5;
+                this.windDirection = 0;
+                this.precipitation = 0;
+                this.cloudCover = 20;
+                
+                document.getElementById('temperature').value = 22;
+                document.getElementById('humidity').value = 65;
+                document.getElementById('wind-speed').value = 5;
+                document.getElementById('wind-direction').value = 0;
+                document.getElementById('precipitation').value = 0;
+                
+                this.currentWeather = 'sunny';
+                document.getElementById('weather-pattern').value = 'sunny';
+                
+                this.updateWeatherDisplay();
+                this.updateLighting();
+            }
+            
+            generateRandomWeather() {
+                const patterns = ['sunny', 'cloudy', 'rainy', 'stormy', 'snowy', 'foggy'];
+                const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
+                
+                document.getElementById('weather-pattern').value = randomPattern;
+                this.changeWeatherPattern(randomPattern);
+                
+                // Add some randomness to the values
+                this.temperature += Math.floor((Math.random() - 0.5) * 20);
+                this.humidity += Math.floor((Math.random() - 0.5) * 40);
+                this.windSpeed += Math.floor((Math.random() - 0.5) * 10);
+                
+                document.getElementById('temperature').value = this.temperature;
+                document.getElementById('humidity').value = this.humidity;
+                document.getElementById('wind-speed').value = this.windSpeed;
+                
+                this.updateWeatherDisplay();
+            }
+            
+            updatePrecipitationEffects() {
+                // Update precipitation intensity
+                const isRaining = this.precipitation > 20 && this.temperature > 0;
+                const isSnowing = this.precipitation > 20 && this.temperature <= 0;
+                
+                document.getElementById('rain-enabled').checked = isRaining;
+                document.getElementById('snow-enabled').checked = isSnowing;
+                
+                if (isRaining && this.rainDrops.length === 0) {
+                    this.createRainSystem();
+                } else if (!isRaining) {
+                    this.rainDrops = [];
+                }
+                
+                if (isSnowing && this.snowFlakes.length === 0) {
+                    this.createSnowSystem();
+                } else if (!isSnowing) {
+                    this.snowFlakes = [];
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateTime();
+                this.updateWeatherEffects();
+                this.updateWeatherDisplay();
+                
+                // Gentle camera movement
+                this.camera.position.x += Math.sin(Date.now() * 0.0001) * 0.1;
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer.render(this.scene, this.camera);
+                
+                // Performance tracking
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastTime >= 1000) {
+                    this.fps = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                }
+            }
+        }
+        
+        // Initialize the weather system
+        window.addEventListener('load', () => {
+            new WeatherSystem();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

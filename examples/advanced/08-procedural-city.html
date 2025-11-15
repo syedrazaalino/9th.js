@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural City Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #0f1419; font-family: 'Arial', sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #city-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 20px; border-radius: 12px;
+            color: #fff; min-width: 300px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #city-controls h3 { color: #00ff88; margin-bottom: 15px; text-align: center; }
+        #city-controls label { display: block; margin: 10px 0 5px; color: #ccc; font-size: 13px; }
+        #city-controls input, #city-controls select {
+            width: 100%; padding: 8px; margin-bottom: 10px;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px; color: #fff; font-size: 13px;
+        }
+        #city-controls button {
+            width: 100%; padding: 10px; margin: 5px 0;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            border: none; border-radius: 6px; color: white; cursor: pointer;
+            font-weight: 600; transition: all 0.3s;
+        }
+        #city-controls button:hover { transform: translateY(-2px); }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+        .checkbox-group input { width: auto; }
+        #city-stats {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; line-height: 1.8;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        #minimap {
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            width: 200px; height: 200px; border: 2px solid #00ff88;
+            border-radius: 8px; background: rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="city-controls">
+        <h3>🏙️ Procedural City</h3>
+        
+        <label>City Size:</label>
+        <select id="city-size">
+            <option value="small">Small (500x500m)</option>
+            <option value="medium" selected>Medium (1km x 1km)</option>
+            <option value="large">Large (2km x 2km)</option>
+            <option value="massive">Massive (5km x 5km)</option>
+        </select>
+        
+        <label>Building Density:</label>
+        <input type="range" id="building-density" min="0.1" max="1" step="0.1" value="0.7">
+        
+        <label>Max Building Height:</label>
+        <input type="range" id="max-height" min="10" max="200" value="50">
+        
+        <label>Road Width:</label>
+        <input type="range" id="road-width" min="5" max="30" value="15">
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="add-parks" checked>
+            <label for="add-parks">Add Parks</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="add-water" checked>
+            <label for="add-water">Add Water Bodies</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="add-lighting">
+            <label for="add-lighting">Street Lighting</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="add-traffic">
+            <label for="add-traffic">Traffic Simulation</label>
+        </div>
+        
+        <button id="generate-city">🔨 Generate City</button>
+        <button id="regenerate-city">🔄 Regenerate</button>
+        
+        <div style="margin-top: 15px; font-size: 11px; color: #666; text-align: center;">
+            Advanced procedural generation with real-time optimization
+        </div>
+    </div>
+    
+    <div id="city-stats">
+        <div><strong>📊 City Statistics</strong></div>
+        <div>Buildings: <span id="building-count">0</span></div>
+        <div>Road Length: <span id="road-length">0</span> km</div>
+        <div>Population: <span id="population">0</span></div>
+        <div>Area: <span id="city-area">0</span> km²</div>
+        <div>Green Space: <span id="green-space">0</span>%</div>
+        <div>Water Coverage: <span id="water-coverage">0</span>%</div>
+        <div>Skyscrapers: <span id="skyscrapers">0</span></div>
+    </div>
+    
+    <canvas id="minimap"></canvas>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class ProceduralCityGenerator {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.minimap = document.getElementById('minimap');
+                this.gl = this.canvas.getContext('webgl');
+                this.minimapCtx = this.minimap.getContext('2d');
+                
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.minimap.width = 200;
+                this.minimap.height = 200;
+                
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 10000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                // City parameters
+                this.citySize = { width: 1000, depth: 1000 };
+                this.buildingDensity = 0.7;
+                this.maxHeight = 50;
+                this.roadWidth = 15;
+                this.roadGrid = [];
+                this.buildings = [];
+                this.roads = [];
+                this.trees = [];
+                this.waterBodies = [];
+                this.lights = [];
+                this.cars = [];
+                
+                this.setupLighting();
+                this.setupCamera();
+                this.setupControls();
+                
+                this.generateCity();
+                this.animate();
+            }
+            
+            setupLighting() {
+                const ambientLight = new Engine.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new Engine.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(100, 200, 100);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 4096;
+                directionalLight.shadow.mapSize.height = 4096;
+                this.scene.add(directionalLight);
+                
+                const sunlight = new Engine.DirectionalLight(0xffeb3b, 0.5);
+                sunlight.position.set(-100, 100, -100);
+                this.scene.add(sunlight);
+            }
+            
+            setupCamera() {
+                this.camera.position.set(0, 300, 500);
+                this.camera.lookAt(0, 0, 0);
+                this.cameraAngle = 0;
+                this.cameraHeight = 300;
+            }
+            
+            setupControls() {
+                document.getElementById('city-size').addEventListener('change', (e) => {
+                    this.updateCitySize(e.target.value);
+                });
+                
+                document.getElementById('building-density').addEventListener('input', (e) => {
+                    this.buildingDensity = parseFloat(e.target.value);
+                });
+                
+                document.getElementById('max-height').addEventListener('input', (e) => {
+                    this.maxHeight = parseInt(e.target.value);
+                });
+                
+                document.getElementById('road-width').addEventListener('input', (e) => {
+                    this.roadWidth = parseInt(e.target.value);
+                });
+                
+                document.getElementById('generate-city').addEventListener('click', () => {
+                    this.generateCity();
+                });
+                
+                document.getElementById('regenerate-city').addEventListener('click', () => {
+                    this.regenerateCity();
+                });
+                
+                // Mouse controls for camera
+                this.isMouseDown = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isMouseDown = true;
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.isMouseDown) {
+                        const deltaX = e.clientX - this.mouseX;
+                        const deltaY = e.clientY - this.mouseY;
+                        
+                        this.cameraAngle += deltaX * 0.01;
+                        this.cameraHeight = Math.max(50, Math.min(500, this.cameraHeight - deltaY));
+                        
+                        this.mouseX = e.clientX;
+                        this.mouseY = e.clientY;
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const distance = this.camera.position.length();
+                    const newDistance = Math.max(100, Math.min(2000, distance * (e.deltaY > 0 ? 1.1 : 0.9)));
+                    this.camera.position.normalize().multiplyScalar(newDistance);
+                });
+            }
+            
+            updateCitySize(size) {
+                const sizes = {
+                    small: { width: 500, depth: 500 },
+                    medium: { width: 1000, depth: 1000 },
+                    large: { width: 2000, depth: 2000 },
+                    massive: { width: 5000, depth: 5000 }
+                };
+                
+                this.citySize = sizes[size];
+            }
+            
+            generateCity() {
+                this.clearCity();
+                this.generateRoadGrid();
+                this.generateBuildings();
+                this.generateParks();
+                this.generateWaterBodies();
+                if (document.getElementById('add-lighting').checked) {
+                    this.generateStreetLighting();
+                }
+                if (document.getElementById('add-traffic').checked) {
+                    this.generateTraffic();
+                }
+                this.updateStatistics();
+                this.updateMinimap();
+            }
+            
+            regenerateCity() {
+                this.seed = Math.random();
+                this.generateCity();
+            }
+            
+            clearCity() {
+                // Remove all existing objects from scene
+                while (this.scene.children.length > 0) {
+                    this.scene.remove(this.scene.children[0]);
+                }
+                
+                // Re-add lighting
+                this.setupLighting();
+                
+                this.buildings = [];
+                this.roads = [];
+                this.trees = [];
+                this.waterBodies = [];
+                this.lights = [];
+                this.cars = [];
+            }
+            
+            generateRoadGrid() {
+                const roadSpacing = 100 + Math.random() * 50;
+                const startX = -this.citySize.width / 2;
+                const startZ = -this.citySize.depth / 2;
+                
+                // Generate grid roads
+                for (let x = startX; x <= this.citySize.width / 2; x += roadSpacing) {
+                    this.createRoad(x, startZ, x, startZ + this.citySize.depth, 'vertical');
+                }
+                
+                for (let z = startZ; z <= this.citySize.depth / 2; z += roadSpacing) {
+                    this.createRoad(startX, z, startX + this.citySize.width, z, 'horizontal');
+                }
+                
+                // Add some diagonal roads for variety
+                for (let i = 0; i < 3; i++) {
+                    const angle = (Math.random() - 0.5) * Math.PI / 3;
+                    const length = this.citySize.width * (0.5 + Math.random() * 0.5);
+                    const centerX = (Math.random() - 0.5) * this.citySize.width;
+                    const centerZ = (Math.random() - 0.5) * this.citySize.depth;
+                    
+                    const endX = centerX + Math.cos(angle) * length;
+                    const endZ = centerZ + Math.sin(angle) * length;
+                    
+                    this.createRoad(centerX, centerZ, endX, endZ, 'diagonal');
+                }
+            }
+            
+            createRoad(x1, z1, x2, z2, type) {
+                const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(z2 - z1, 2));
+                const angle = Math.atan2(z2 - z1, x2 - x1);
+                
+                const roadGeometry = new Engine.PlaneGeometry(length, this.roadWidth);
+                const roadMaterial = new Engine.MeshLambertMaterial({
+                    color: 0x2c2c2c,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const road = new Engine.Mesh(roadGeometry, roadMaterial);
+                road.rotation.x = -Math.PI / 2;
+                road.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2);
+                road.rotation.z = angle;
+                
+                road.userData = {
+                    type: type,
+                    length: length,
+                    startX: x1,
+                    startZ: z1,
+                    endX: x2,
+                    endZ: z2
+                };
+                
+                this.roads.push(road);
+                this.scene.add(road);
+            }
+            
+            generateBuildings() {
+                const gridSpacing = 100;
+                const margin = 25;
+                const startX = -this.citySize.width / 2 + margin;
+                const startZ = -this.citySize.depth / 2 + margin;
+                
+                for (let x = startX; x < this.citySize.width / 2 - margin; x += gridSpacing) {
+                    for (let z = startZ; z < this.citySize.depth / 2 - margin; z += gridSpacing) {
+                        if (Math.random() < this.buildingDensity && this.isValidBuildingLocation(x, z)) {
+                            this.createBuilding(x, z);
+                        }
+                    }
+                }
+            }
+            
+            isValidBuildingLocation(x, z) {
+                // Check if location is not on a road
+                for (const road of this.roads) {
+                    const distance = this.getDistanceFromRoad(x, z, road);
+                    if (distance < this.roadWidth + 5) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            
+            getDistanceFromRoad(x, z, road) {
+                // Simplified distance calculation
+                const dx = x - road.userData.startX;
+                const dz = z - road.userData.startZ;
+                return Math.abs(Math.sqrt(dx * dx + dz * dz) - this.roadWidth / 2);
+            }
+            
+            createBuilding(x, z) {
+                const width = 20 + Math.random() * 30;
+                const depth = 20 + Math.random() * 30;
+                const height = 10 + Math.random() * this.maxHeight;
+                
+                // Architectural style based on height
+                let color = 0x8a8a8a;
+                let materialType = 'standard';
+                
+                if (height > 100) {
+                    // Skyscraper
+                    color = 0x444444;
+                    materialType = 'glass';
+                } else if (height > 50) {
+                    // High-rise
+                    color = 0x666666;
+                    materialType = 'modern';
+                } else if (height > 20) {
+                    // Mid-rise
+                    color = 0x888888;
+                    materialType = 'residential';
+                } else {
+                    // Low-rise
+                    color = 0xaaaaaa;
+                    materialType = 'commercial';
+                }
+                
+                const geometry = new Engine.BoxGeometry(width, height, depth);
+                const material = this.getBuildingMaterial(materialType, color);
+                const building = new Engine.Mesh(geometry, material);
+                
+                building.position.set(x, height / 2, z);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                
+                // Add architectural details
+                this.addBuildingDetails(building, height);
+                
+                building.userData = {
+                    width: width,
+                    depth: depth,
+                    height: height,
+                    type: materialType,
+                    floors: Math.floor(height / 3),
+                    population: Math.floor(height / 3 * (width * depth / 100))
+                };
+                
+                this.buildings.push(building);
+                this.scene.add(building);
+            }
+            
+            getBuildingMaterial(type, color) {
+                switch (type) {
+                    case 'glass':
+                        return new Engine.MeshPhysicalMaterial({
+                            color: color,
+                            metalness: 0.8,
+                            roughness: 0.1,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                    case 'modern':
+                        return new Engine.MeshLambertMaterial({
+                            color: color,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                    case 'residential':
+                        return new Engine.MeshLambertMaterial({
+                            color: color,
+                            flatShading: true
+                        });
+                    case 'commercial':
+                        return new Engine.MeshPhongMaterial({
+                            color: color,
+                            shininess: 30
+                        });
+                    default:
+                        return new Engine.MeshLambertMaterial({ color: color });
+                }
+            }
+            
+            addBuildingDetails(building, height) {
+                // Windows for taller buildings
+                if (height > 20) {
+                    const windowCount = Math.floor(height / 5);
+                    for (let i = 0; i < windowCount; i++) {
+                        const windowGeometry = new Engine.PlaneGeometry(2, 3);
+                        const windowMaterial = new Engine.MeshBasicMaterial({
+                            color: Math.random() > 0.7 ? 0x00ff00 : 0x444444,
+                            transparent: true,
+                            opacity: 0.6
+                        });
+                        
+                        const window = new Engine.Mesh(windowGeometry, windowMaterial);
+                        const floorHeight = building.userData.height / building.userData.floors;
+                        window.position.set(
+                            (Math.random() - 0.5) * building.userData.width * 0.8,
+                            -building.userData.height / 2 + (i + 1) * floorHeight,
+                            building.userData.depth / 2 + 0.01
+                        );
+                        
+                        building.add(window);
+                    }
+                }
+                
+                // Roof details
+                if (Math.random() < 0.3) {
+                    const roofGeometry = new Engine.BoxGeometry(5, 2, 5);
+                    const roofMaterial = new Engine.MeshLambertMaterial({ color: 0x333333 });
+                    const roof = new Engine.Mesh(roofGeometry, roofMaterial);
+                    roof.position.y = building.userData.height / 2 + 1;
+                    building.add(roof);
+                }
+            }
+            
+            generateParks() {
+                if (!document.getElementById('add-parks').checked) return;
+                
+                const parkCount = Math.floor(this.buildings.length * 0.1);
+                
+                for (let i = 0; i < parkCount; i++) {
+                    const x = (Math.random() - 0.5) * this.citySize.width;
+                    const z = (Math.random() - 0.5) * this.citySize.depth;
+                    
+                    if (this.isValidBuildingLocation(x, z)) {
+                        this.createPark(x, z);
+                    }
+                }
+            }
+            
+            createPark(x, z) {
+                const size = 50 + Math.random() * 100;
+                
+                const parkGeometry = new Engine.PlaneGeometry(size, size);
+                const parkMaterial = new Engine.MeshLambertMaterial({
+                    color: 0x228b22,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const park = new Engine.Mesh(parkGeometry, parkMaterial);
+                park.rotation.x = -Math.PI / 2;
+                park.position.set(x, 0.01, z);
+                
+                this.scene.add(park);
+                
+                // Add trees to park
+                const treeCount = Math.floor(size / 10);
+                for (let i = 0; i < treeCount; i++) {
+                    const treeX = x + (Math.random() - 0.5) * size;
+                    const treeZ = z + (Math.random() - 0.5) * size;
+                    this.createTree(treeX, treeZ);
+                }
+            }
+            
+            createTree(x, z) {
+                // Tree trunk
+                const trunkGeometry = new Engine.CylinderGeometry(0.5, 0.8, 8, 6);
+                const trunkMaterial = new Engine.MeshLambertMaterial({ color: 0x8B4513 });
+                const trunk = new Engine.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(x, 4, z);
+                
+                // Tree foliage
+                const foliageGeometry = new Engine.SphereGeometry(4, 8, 6);
+                const foliageMaterial = new Engine.MeshLambertMaterial({ color: 0x228b22 });
+                const foliage = new Engine.Mesh(foliageGeometry, foliageMaterial);
+                foliage.position.set(x, 8, z);
+                
+                this.trees.push(trunk, foliage);
+                this.scene.add(trunk);
+                this.scene.add(foliage);
+            }
+            
+            generateWaterBodies() {
+                if (!document.getElementById('add-water').checked) return;
+                
+                const waterCount = Math.floor(Math.random() * 3) + 1;
+                
+                for (let i = 0; i < waterCount; i++) {
+                    const x = (Math.random() - 0.5) * this.citySize.width * 0.8;
+                    const z = (Math.random() - 0.5) * this.citySize.depth * 0.8;
+                    const size = 100 + Math.random() * 200;
+                    
+                    this.createWaterBody(x, z, size);
+                }
+            }
+            
+            createWaterBody(x, z, size) {
+                const waterGeometry = new Engine.CircleGeometry(size, 16);
+                const waterMaterial = new Engine.MeshPhongMaterial({
+                    color: 0x4169e1,
+                    transparent: true,
+                    opacity: 0.7,
+                    shininess: 100
+                });
+                
+                const water = new Engine.Mesh(waterGeometry, waterMaterial);
+                water.rotation.x = -Math.PI / 2;
+                water.position.set(x, -0.5, z);
+                
+                this.waterBodies.push(water);
+                this.scene.add(water);
+            }
+            
+            generateStreetLighting() {
+                const lightSpacing = 50;
+                const startX = -this.citySize.width / 2;
+                const startZ = -this.citySize.depth / 2;
+                
+                for (const road of this.roads) {
+                    const length = road.userData.length;
+                    const lightCount = Math.floor(length / lightSpacing);
+                    
+                    for (let i = 0; i < lightCount; i++) {
+                        const t = i / lightCount;
+                        const lightX = road.userData.startX + t * (road.userData.endX - road.userData.startX);
+                        const lightZ = road.userData.startZ + t * (road.userData.endZ - road.userData.startZ);
+                        
+                        this.createStreetLight(lightX, lightZ);
+                    }
+                }
+            }
+            
+            createStreetLight(x, z) {
+                // Light pole
+                const poleGeometry = new Engine.CylinderGeometry(0.2, 0.3, 8, 6);
+                const poleMaterial = new Engine.MeshLambertMaterial({ color: 0x333333 });
+                const pole = new Engine.Mesh(poleGeometry, poleMaterial);
+                pole.position.set(x, 4, z);
+                
+                // Light source
+                const light = new Engine.PointLight(0xffffaa, 0.5, 30);
+                light.position.set(x, 8, z);
+                
+                this.lights.push(pole, light);
+                this.scene.add(pole);
+                this.scene.add(light);
+            }
+            
+            generateTraffic() {
+                for (const road of this.roads) {
+                    const carCount = Math.floor(Math.random() * 5);
+                    
+                    for (let i = 0; i < carCount; i++) {
+                        this.createCar(road);
+                    }
+                }
+            }
+            
+            createCar(road) {
+                const carGeometry = new Engine.BoxGeometry(4, 1.5, 2);
+                const carMaterial = new Engine.MeshLambertMaterial({
+                    color: Math.random() * 0xffffff
+                });
+                
+                const car = new Engine.Mesh(carGeometry, carMaterial);
+                car.position.set(
+                    road.userData.startX,
+                    0.8,
+                    road.userData.startZ
+                );
+                
+                car.userData = {
+                    road: road,
+                    speed: 10 + Math.random() * 20,
+                    position: 0
+                };
+                
+                this.cars.push(car);
+                this.scene.add(car);
+            }
+            
+            updateTraffic() {
+                this.cars.forEach(car => {
+                    car.userData.position += car.userData.speed * 0.016;
+                    
+                    if (car.userData.position > car.userData.road.userData.length) {
+                        car.userData.position = 0;
+                    }
+                    
+                    const t = car.userData.position / car.userData.road.userData.length;
+                    car.position.x = car.userData.road.userData.startX + t * (car.userData.road.userData.endX - car.userData.road.userData.startX);
+                    car.position.z = car.userData.road.userData.startZ + t * (car.userData.road.userData.endZ - car.userData.road.userData.startZ);
+                    
+                    // Orient car
+                    const angle = Math.atan2(
+                        car.userData.road.userData.endZ - car.userData.road.userData.startZ,
+                        car.userData.road.userData.endX - car.userData.road.userData.startX
+                    );
+                    car.rotation.y = angle;
+                });
+            }
+            
+            updateCamera() {
+                const radius = Math.sqrt(this.citySize.width ** 2 + this.citySize.depth ** 2) / 2;
+                const x = Math.cos(this.cameraAngle) * radius;
+                const z = Math.sin(this.cameraAngle) * radius;
+                
+                this.camera.position.set(x, this.cameraHeight, z);
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            updateStatistics() {
+                const buildingCount = this.buildings.length;
+                const roadLength = this.roads.reduce((sum, road) => sum + road.userData.length, 0) / 1000;
+                const population = this.buildings.reduce((sum, building) => sum + building.userData.population, 0);
+                const area = (this.citySize.width * this.citySize.depth) / 1000000;
+                const greenSpace = (this.trees.length / (buildingCount + this.trees.length)) * 100;
+                const waterCoverage = (this.waterBodies.length / area) * 100;
+                const skyscrapers = this.buildings.filter(b => b.userData.height > 100).length;
+                
+                document.getElementById('building-count').textContent = buildingCount;
+                document.getElementById('road-length').textContent = roadLength.toFixed(1);
+                document.getElementById('population').textContent = population.toLocaleString();
+                document.getElementById('city-area').textContent = area.toFixed(1);
+                document.getElementById('green-space').textContent = greenSpace.toFixed(1);
+                document.getElementById('water-coverage').textContent = waterCoverage.toFixed(1);
+                document.getElementById('skyscrapers').textContent = skyscrapers;
+            }
+            
+            updateMinimap() {
+                const ctx = this.minimapCtx;
+                ctx.clearRect(0, 0, 200, 200);
+                
+                // City bounds
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(10, 10, 180, 180);
+                
+                // Roads
+                ctx.strokeStyle = '#666666';
+                ctx.lineWidth = 2;
+                this.roads.forEach(road => {
+                    const x1 = 10 + ((road.userData.startX + this.citySize.width / 2) / this.citySize.width) * 180;
+                    const z1 = 10 + ((road.userData.startZ + this.citySize.depth / 2) / this.citySize.depth) * 180;
+                    const x2 = 10 + ((road.userData.endX + this.citySize.width / 2) / this.citySize.width) * 180;
+                    const z2 = 10 + ((road.userData.endZ + this.citySize.depth / 2) / this.citySize.depth) * 180;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x1, z1);
+                    ctx.lineTo(x2, z2);
+                    ctx.stroke();
+                });
+                
+                // Buildings
+                ctx.fillStyle = '#ffaa00';
+                this.buildings.forEach(building => {
+                    const x = 10 + ((building.position.x + this.citySize.width / 2) / this.citySize.width) * 180;
+                    const z = 10 + ((building.position.z + this.citySize.depth / 2) / this.citySize.depth) * 180;
+                    
+                    ctx.fillRect(x - 2, z - 2, 4, 4);
+                });
+                
+                // Water
+                ctx.fillStyle = '#4169e1';
+                this.waterBodies.forEach(water => {
+                    const x = 10 + ((water.position.x + this.citySize.width / 2) / this.citySize.width) * 180;
+                    const z = 10 + ((water.position.z + this.citySize.depth / 2) / this.citySize.depth) * 180;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, z, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // Camera position
+                const camX = 10 + ((this.camera.position.x + this.citySize.width / 2) / this.citySize.width) * 180;
+                const camZ = 10 + ((this.camera.position.z + this.citySize.depth / 2) / this.citySize.depth) * 180;
+                
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(camX, camZ, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateTraffic();
+                this.updateCamera();
+                this.updateMinimap();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize city generator
+        window.addEventListener('load', () => {
+            new ProceduralCityGenerator();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

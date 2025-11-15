@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Field Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #hud {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px;
+            color: #0ff; font-size: 14px; line-height: 1.6; min-width: 200px;
+        }
+        #hud h3 { color: #0f0; margin-bottom: 10px; text-align: center; }
+        #stats {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px;
+            color: #0f0; font-size: 12px; line-height: 1.6;
+        }
+        #controls {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; text-align: center;
+            background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px;
+            color: #fff; font-size: 12px;
+        }
+        #controls .key { background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 3px; }
+        #warning {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 999; display: none;
+            background: rgba(255,0,0,0.9); color: white; padding: 20px;
+            border-radius: 10px; text-align: center; font-size: 18px;
+            box-shadow: 0 0 50px rgba(255,0,0,0.5);
+        }
+        #warning.show { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="hud">
+        <h3>ASTEROID TRACKER</h3>
+        <div>Ship Position: <span id="ship-pos">0, 0, 0</span></div>
+        <div>Asteroids Nearby: <span id="asteroid-count">0</span></div>
+        <div>Course: <span id="course">0°</span></div>
+        <div>Speed: <span id="speed">0</span> km/s</div>
+        <div>Shield: <span id="shield">100%</span></div>
+        <div>Danger Level: <span id="danger">LOW</span></div>
+    </div>
+    <div id="stats">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Asteroids: <span id="total-asteroids">0</span></div>
+        <div>Particles: <span id="particles">0</span></div>
+        <div>Stars: <span id="stars">0</span></div>
+        <div>Collisions: <span id="collisions">0</span></div>
+    </div>
+    <div id="controls">
+        <div><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> Rotate Ship</div>
+        <div><span class="key">ARROWS</span> Move | <span class="key">SPACE</span> Thrust | <span class="key">F</span> Fire</div>
+        <div><span class="key">C</span> Camera Mode | <span class="key">M</span> Map | <span class="key">R</span> Reset</div>
+    </div>
+    <div id="warning">
+        <div>⚠️ CRASH IMMINENT ⚠️</div>
+        <div style="font-size: 14px; margin-top: 10px;">Evasion Required!</div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class AsteroidFieldSimulation {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                // Core systems
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 2000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                this.physics = new Engine.PhysicsSystem();
+                
+                // Game state
+                this.isPaused = false;
+                this.cameraMode = 'third-person'; // 'third-person', 'first-person', 'top-down'
+                this.showMap = false;
+                this.collisionCount = 0;
+                this.shieldIntegrity = 100;
+                
+                // Player ship
+                this.ship = this.createShip();
+                this.ship.position.set(0, 0, 0);
+                this.ship.velocity = { x: 0, y: 0, z: 0 };
+                this.ship.rotation = { x: 0, y: 0, z: 0 };
+                this.ship.thrust = 0;
+                
+                // World objects
+                this.asteroids = [];
+                this.stars = [];
+                this.particles = [];
+                this.bullets = [];
+                this.debris = [];
+                
+                this.setupLighting();
+                this.setupControls();
+                this.createStarField();
+                this.generateAsteroidField();
+                
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                this.fps = 60;
+                
+                this.animate();
+            }
+            
+            createShip() {
+                const group = new Engine.Group();
+                
+                // Main hull
+                const hullGeometry = new Engine.BoxGeometry(2, 1, 4);
+                const hullMaterial = new Engine.MeshPhongMaterial({ 
+                    color: 0x0088ff,
+                    shininess: 100,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const hull = new Engine.Mesh(hullGeometry, hullMaterial);
+                group.add(hull);
+                
+                // Cockpit
+                const cockpitGeometry = new Engine.SphereGeometry(0.8, 8, 6);
+                const cockpitMaterial = new Engine.MeshPhongMaterial({
+                    color: 0x88ffff,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const cockpit = new Engine.Mesh(cockpitGeometry, cockpitMaterial);
+                cockpit.position.set(0, 0.5, 0);
+                group.add(cockpit);
+                
+                // Wings
+                const wingGeometry = new Engine.BoxGeometry(3, 0.2, 2);
+                const wingMaterial = new Engine.MeshPhongMaterial({ color: 0x0044aa });
+                
+                const leftWing = new Engine.Mesh(wingGeometry, wingMaterial);
+                leftWing.position.set(-2, 0, 0);
+                group.add(leftWing);
+                
+                const rightWing = new Engine.Mesh(wingGeometry, wingMaterial);
+                rightWing.position.set(2, 0, 0);
+                group.add(rightWing);
+                
+                // Engine exhaust
+                const exhaustGeometry = new Engine.ConeGeometry(0.3, 2, 8);
+                const exhaustMaterial = new Engine.MeshBasicMaterial({
+                    color: 0x00ffff,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const exhaust = new Engine.Mesh(exhaustGeometry, exhaustMaterial);
+                exhaust.position.set(0, 0, -3);
+                exhaust.rotation.x = Math.PI;
+                group.add(exhaust);
+                
+                // Engine lights
+                const engineLight1 = new Engine.PointLight(0x00ffff, 1, 10);
+                engineLight1.position.set(-0.8, 0, -2);
+                group.add(engineLight1);
+                
+                const engineLight2 = new Engine.PointLight(0x00ffff, 1, 10);
+                engineLight2.position.set(0.8, 0, -2);
+                group.add(engineLightLight2);
+                
+                return group;
+            }
+            
+            createAsteroid(size = 1, position = null) {
+                const radius = size * (0.5 + Math.random());
+                const segments = 6 + Math.floor(Math.random() * 6);
+                
+                const geometry = new Engine.IcosahedronGeometry(radius, 1);
+                const material = new Engine.MeshLambertMaterial({ 
+                    color: 0x666666 + Math.random() * 0x333333,
+                    flatShading: true
+                });
+                
+                // Add some random deformation
+                const vertices = geometry.attributes.position.array;
+                for (let i = 0; i < vertices.length; i += 3) {
+                    vertices[i] += (Math.random() - 0.5) * radius * 0.3;
+                    vertices[i + 1] += (Math.random() - 0.5) * radius * 0.3;
+                    vertices[i + 2] += (Math.random() - 0.5) * radius * 0.3;
+                }
+                geometry.attributes.position.needsUpdate = true;
+                geometry.computeVertexNormals();
+                
+                const mesh = new Engine.Mesh(geometry, material);
+                
+                // Random position if not specified
+                if (position) {
+                    mesh.position.set(position.x, position.y, position.z);
+                } else {
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 1000,
+                        (Math.random() - 0.5) * 1000,
+                        (Math.random() - 0.5) * 1000 - 200
+                    );
+                }
+                
+                // Random rotation and velocity
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                
+                const velocity = {
+                    x: (Math.random() - 0.5) * 2,
+                    y: (Math.random() - 0.5) * 2,
+                    z: (Math.random() - 0.5) * 2
+                };
+                
+                const rotationVelocity = {
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: (Math.random() - 0.5) * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                };
+                
+                return {
+                    mesh,
+                    velocity,
+                    rotationVelocity,
+                    size,
+                    radius,
+                    health: size * 10,
+                    mass: size * 10,
+                    isDangerous: size > 3 && this.getDistance(mesh.position, this.ship.position) < 50
+                };
+            }
+            
+            createStar() {
+                const size = Math.random() * 2 + 0.5;
+                const geometry = new Engine.SphereGeometry(size, 4, 2);
+                const material = new Engine.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8 + Math.random() * 0.2
+                });
+                const mesh = new Engine.Mesh(geometry, material);
+                
+                mesh.position.set(
+                    (Math.random() - 0.5) * 5000,
+                    (Math.random() - 0.5) * 5000,
+                    (Math.random() - 0.5) * 5000 - 1000
+                );
+                
+                const brightness = Math.random() * 0.5 + 0.5;
+                material.color.setHSL(Math.random() * 0.1 + 0.5, 0.8, brightness);
+                
+                return {
+                    mesh,
+                    brightness,
+                    twinkle: Math.random() * Math.PI * 2,
+                    twinkleSpeed: 0.01 + Math.random() * 0.02
+                };
+            }
+            
+            createParticle(x, y, z, color = 0xff6600, count = 10) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 20 + 5;
+                    
+                    const geometry = new Engine.SphereGeometry(0.1, 2, 1);
+                    const material = new Engine.MeshBasicMaterial({
+                        color,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const mesh = new Engine.Mesh(geometry, material);
+                    
+                    mesh.position.set(x, y, z);
+                    
+                    this.particles.push({
+                        mesh,
+                        velocity: {
+                            x: Math.cos(angle) * speed,
+                            y: Math.sin(angle) * speed,
+                            z: (Math.random() - 0.5) * 10
+                        },
+                        lifetime: 2,
+                        decay: 0.01
+                    });
+                    
+                    this.scene.add(mesh);
+                }
+            }
+            
+            setupLighting() {
+                // Ambient space lighting
+                const ambientLight = new Engine.AmbientLight(0x111111);
+                this.scene.add(ambientLight);
+                
+                // Main directional light (sun)
+                const sunLight = new Engine.DirectionalLight(0xffffff, 0.3);
+                sunLight.position.set(1000, 1000, 0);
+                this.scene.add(sunLight);
+                
+                // Ship's headlight
+                const headlight = new Engine.SpotLight(0x0088ff, 2, 200, Math.PI / 6);
+                headlight.position.set(0, 0, 2);
+                this.ship.add(headlight);
+                
+                // Shield glow
+                const shieldGlow = new Engine.PointLight(0x00ffff, 0.5, 20);
+                this.ship.add(shieldGlow);
+            }
+            
+            setupControls() {
+                this.keys = {};
+                this.lastShotTime = 0;
+                this.shotCooldown = 0.2;
+                
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    
+                    if (e.code === 'KeyC') this.toggleCameraMode();
+                    if (e.code === 'KeyM') this.toggleMap();
+                    if (e.code === 'KeyR') this.resetSimulation();
+                    if (e.code === 'Space') e.preventDefault();
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+            }
+            
+            toggleCameraMode() {
+                const modes = ['third-person', 'first-person', 'top-down'];
+                const currentIndex = modes.indexOf(this.cameraMode);
+                this.cameraMode = modes[(currentIndex + 1) % modes.length];
+            }
+            
+            toggleMap() {
+                this.showMap = !this.showMap;
+            }
+            
+            resetSimulation() {
+                this.ship.position.set(0, 0, 0);
+                this.ship.velocity = { x: 0, y: 0, z: 0 };
+                this.ship.rotation = { x: 0, y: 0, z: 0 };
+                this.shieldIntegrity = 100;
+                this.collisionCount = 0;
+                
+                this.asteroids.forEach(asteroid => this.scene.remove(asteroid.mesh));
+                this.asteroids = [];
+                this.generateAsteroidField();
+            }
+            
+            generateAsteroidField() {
+                const asteroidCount = 150 + Math.floor(Math.random() * 100);
+                
+                for (let i = 0; i < asteroidCount; i++) {
+                    const size = Math.random() * 5 + 0.5;
+                    const asteroid = this.createAsteroid(size);
+                    
+                    // Ensure asteroids are not too close to the ship initially
+                    if (this.getDistance(asteroid.mesh.position, this.ship.position) < 50) {
+                        asteroid.mesh.position.z -= 100;
+                    }
+                    
+                    this.asteroids.push(asteroid);
+                    this.scene.add(asteroid.mesh);
+                }
+            }
+            
+            createStarField() {
+                const starCount = 2000;
+                
+                for (let i = 0; i < starCount; i++) {
+                    const star = this.createStar();
+                    this.stars.push(star);
+                    this.scene.add(star.mesh);
+                }
+            }
+            
+            handleInput() {
+                const rotationSpeed = 0.02;
+                const thrustPower = 0.5;
+                
+                // Rotation
+                if (this.keys['KeyA']) this.ship.rotation.y += rotationSpeed;
+                if (this.keys['KeyD']) this.ship.rotation.y -= rotationSpeed;
+                if (this.keys['KeyW']) this.ship.rotation.x += rotationSpeed;
+                if (this.keys['KeyS']) this.ship.rotation.x -= rotationSpeed;
+                
+                // Movement
+                if (this.keys['ArrowUp']) this.ship.velocity.y += thrustPower;
+                if (this.keys['ArrowDown']) this.ship.velocity.y -= thrustPower;
+                if (this.keys['ArrowLeft']) this.ship.velocity.x -= thrustPower;
+                if (this.keys['ArrowRight']) this.ship.velocity.x += thrustPower;
+                
+                // Thrust
+                if (this.keys['Space']) {
+                    this.ship.thrust = Math.min(this.ship.thrust + 0.1, 1);
+                    
+                    const thrust = this.ship.thrust * 2;
+                    this.ship.velocity.z -= thrust * 0.5;
+                    
+                    // Engine particles
+                    if (Math.random() < 0.3) {
+                        this.createParticle(
+                            this.ship.position.x,
+                            this.ship.position.y,
+                            this.ship.position.z - 3,
+                            0x00ffff,
+                            3
+                        );
+                    }
+                } else {
+                    this.ship.thrust *= 0.9;
+                }
+                
+                // Apply velocity
+                this.ship.position.x += this.ship.velocity.x * 0.1;
+                this.ship.position.y += this.ship.velocity.y * 0.1;
+                this.ship.position.z += this.ship.velocity.z * 0.1;
+                
+                // Friction
+                this.ship.velocity.x *= 0.95;
+                this.ship.velocity.y *= 0.95;
+                this.ship.velocity.z *= 0.95;
+                
+                // Keep ship in reasonable bounds
+                this.ship.position.x = Math.max(-500, Math.min(500, this.ship.position.x));
+                this.ship.position.y = Math.max(-500, Math.min(500, this.ship.position.y));
+                
+                // Shooting
+                if (this.keys['KeyF'] && performance.now() - this.lastShotTime > this.shotCooldown * 1000) {
+                    this.fireWeapon();
+                    this.lastShotTime = performance.now();
+                }
+            }
+            
+            fireWeapon() {
+                const bulletGeometry = new Engine.SphereGeometry(0.1, 4, 2);
+                const bulletMaterial = new Engine.MeshBasicMaterial({
+                    color: 0xffff00,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const bullet = new Engine.Mesh(bulletGeometry, bulletMaterial);
+                
+                bullet.position.copy(this.ship.position);
+                
+                const direction = new Engine.Vector3(0, 0, -1);
+                direction.applyEuler(this.ship.rotation);
+                
+                this.bullets.push({
+                    mesh: bullet,
+                    velocity: {
+                        x: direction.x * 100,
+                        y: direction.y * 100,
+                        z: direction.z * 100
+                    },
+                    lifetime: 2
+                });
+                
+                this.scene.add(bullet);
+                
+                // Weapon flash
+                this.createParticle(
+                    this.ship.position.x + direction.x * 2,
+                    this.ship.position.y + direction.y * 2,
+                    this.ship.position.z + direction.z * 2,
+                    0xffff00,
+                    5
+                );
+            }
+            
+            updateGameObjects() {
+                const timeDelta = 0.016;
+                
+                // Update asteroids
+                this.asteroids.forEach((asteroid, index) => {
+                    asteroid.mesh.position.x += asteroid.velocity.x * timeDelta;
+                    asteroid.mesh.position.y += asteroid.velocity.y * timeDelta;
+                    asteroid.mesh.position.z += asteroid.velocity.z * timeDelta;
+                    
+                    asteroid.mesh.rotation.x += asteroid.rotationVelocity.x;
+                    asteroid.mesh.rotation.y += asteroid.rotationVelocity.y;
+                    asteroid.mesh.rotation.z += asteroid.rotationVelocity.z;
+                    
+                    // Remove asteroids that are too far away
+                    const distance = this.getDistance(asteroid.mesh.position, this.ship.position);
+                    if (distance > 1500) {
+                        this.scene.remove(asteroid.mesh);
+                        this.asteroids.splice(index, 1);
+                        
+                        // Respawn new asteroid
+                        const newAsteroid = this.createAsteroid(
+                            Math.random() * 5 + 0.5,
+                            { x: (Math.random() - 0.5) * 1000, y: (Math.random() - 0.5) * 1000, z: -1000 }
+                        );
+                        this.asteroids.push(newAsteroid);
+                        this.scene.add(newAsteroid.mesh);
+                    }
+                });
+                
+                // Update bullets
+                this.bullets.forEach((bullet, index) => {
+                    bullet.mesh.position.x += bullet.velocity.x * timeDelta;
+                    bullet.mesh.position.y += bullet.velocity.y * timeDelta;
+                    bullet.mesh.position.z += bullet.velocity.z * timeDelta;
+                    
+                    bullet.lifetime -= timeDelta;
+                    
+                    if (bullet.lifetime <= 0) {
+                        this.scene.remove(bullet.mesh);
+                        this.bullets.splice(index, 1);
+                    }
+                });
+                
+                // Update particles
+                this.particles.forEach((particle, index) => {
+                    particle.mesh.position.x += particle.velocity.x * timeDelta;
+                    particle.mesh.position.y += particle.velocity.y * timeDelta;
+                    particle.mesh.position.z += particle.velocity.z * timeDelta;
+                    
+                    particle.lifetime -= particle.decay;
+                    particle.mesh.material.opacity = particle.lifetime / 2;
+                    
+                    if (particle.lifetime <= 0) {
+                        this.scene.remove(particle.mesh);
+                        this.particles.splice(index, 1);
+                    }
+                });
+                
+                // Update stars
+                this.stars.forEach(star => {
+                    star.twinkle += star.twinkleSpeed;
+                    const alpha = star.brightness + Math.sin(star.twinkle) * 0.2;
+                    star.mesh.material.opacity = Math.max(0.3, Math.min(1, alpha));
+                });
+            }
+            
+            checkCollisions() {
+                let nearbyAsteroids = 0;
+                let dangerousAsteroids = 0;
+                
+                this.asteroids.forEach(asteroid => {
+                    const distance = this.getDistance(asteroid.mesh.position, this.ship.position);
+                    
+                    if (distance < 200) {
+                        nearbyAsteroids++;
+                    }
+                    
+                    if (distance < asteroid.radius + 3 && asteroid.isDangerous) {
+                        dangerousAsteroids++;
+                    }
+                    
+                    // Ship-asteroid collision
+                    if (distance < asteroid.radius + 2) {
+                        this.handleCollision(asteroid);
+                    }
+                    
+                    // Bullet-asteroid collision
+                    this.bullets.forEach((bullet, bulletIndex) => {
+                        const bulletDistance = this.getDistance(bullet.mesh.position, asteroid.mesh.position);
+                        
+                        if (bulletDistance < asteroid.radius + 0.5) {
+                            asteroid.health -= 5;
+                            this.scene.remove(bullet.mesh);
+                            this.bullets.splice(bulletIndex, 1);
+                            
+                            // Create explosion
+                            this.createParticle(
+                                bullet.mesh.position.x,
+                                bullet.mesh.position.y,
+                                bullet.mesh.position.z,
+                                0xff6600,
+                                10
+                            );
+                            
+                            if (asteroid.health <= 0) {
+                                this.destroyAsteroid(asteroid);
+                            }
+                        }
+                    });
+                });
+                
+                // Update UI with danger assessment
+                const dangerElement = document.getElementById('danger');
+                const warningElement = document.getElementById('warning');
+                
+                if (dangerousAsteroids > 0) {
+                    dangerElement.textContent = 'CRITICAL';
+                    dangerElement.style.color = '#ff0000';
+                    warningElement.classList.add('show');
+                } else if (nearbyAsteroids > 10) {
+                    dangerElement.textContent = 'HIGH';
+                    dangerElement.style.color = '#ff8800';
+                    warningElement.classList.remove('show');
+                } else if (nearbyAsteroids > 3) {
+                    dangerElement.textContent = 'MEDIUM';
+                    dangerElement.style.color = '#ffff00';
+                    warningElement.classList.remove('show');
+                } else {
+                    dangerElement.textContent = 'LOW';
+                    dangerElement.style.color = '#00ff00';
+                    warningElement.classList.remove('show');
+                }
+                
+                document.getElementById('asteroid-count').textContent = nearbyAsteroids;
+            }
+            
+            handleCollision(asteroid) {
+                const damage = asteroid.size * 5;
+                this.shieldIntegrity = Math.max(0, this.shieldIntegrity - damage);
+                
+                // Create collision effect
+                this.createParticle(
+                    this.ship.position.x,
+                    this.ship.position.y,
+                    this.ship.position.z,
+                    0xff0000,
+                    20
+                );
+                
+                // Push ship away
+                const direction = new Engine.Vector3();
+                direction.subVectors(this.ship.position, asteroid.mesh.position).normalize();
+                this.ship.velocity.x += direction.x * 5;
+                this.ship.velocity.y += direction.y * 5;
+                this.ship.velocity.z += direction.z * 5;
+                
+                this.collisionCount++;
+                
+                if (this.shieldIntegrity <= 0) {
+                    this.gameOver();
+                }
+            }
+            
+            destroyAsteroid(asteroid) {
+                this.createParticle(
+                    asteroid.mesh.position.x,
+                    asteroid.mesh.position.y,
+                    asteroid.mesh.position.z,
+                    0xffaa00,
+                    30
+                );
+                
+                this.scene.remove(asteroid.mesh);
+                const index = this.asteroids.indexOf(asteroid);
+                if (index > -1) {
+                    this.asteroids.splice(index, 1);
+                }
+                
+                // Create debris
+                const debrisCount = Math.floor(asteroid.size * 3);
+                for (let i = 0; i < debrisCount; i++) {
+                    const debris = this.createAsteroid(asteroid.size * 0.2, {
+                        x: asteroid.mesh.position.x + (Math.random() - 0.5) * 5,
+                        y: asteroid.mesh.position.y + (Math.random() - 0.5) * 5,
+                        z: asteroid.mesh.position.z + (Math.random() - 0.5) * 5
+                    });
+                    
+                    debris.velocity = {
+                        x: (Math.random() - 0.5) * 10,
+                        y: (Math.random() - 0.5) * 10,
+                        z: (Math.random() - 0.5) * 10
+                    };
+                    
+                    this.debris.push(debris);
+                    this.scene.add(debris.mesh);
+                    
+                    // Remove debris after some time
+                    setTimeout(() => {
+                        if (this.scene.children.includes(debris.mesh)) {
+                            this.scene.remove(debris.mesh);
+                        }
+                    }, 10000);
+                }
+            }
+            
+            gameOver() {
+                this.createParticle(this.ship.position.x, this.ship.position.y, this.ship.position.z, 0xff0000, 100);
+                this.scene.remove(this.ship);
+                
+                setTimeout(() => {
+                    alert('Ship Destroyed! Game Over.');
+                    this.resetSimulation();
+                }, 2000);
+            }
+            
+            updateCamera() {
+                switch (this.cameraMode) {
+                    case 'third-person':
+                        this.camera.position.x = this.ship.position.x;
+                        this.camera.position.y = this.ship.position.y + 10;
+                        this.camera.position.z = this.ship.position.z + 20;
+                        this.camera.lookAt(this.ship.position);
+                        break;
+                        
+                    case 'first-person':
+                        this.camera.position.x = this.ship.position.x;
+                        this.camera.position.y = this.ship.position.y + 1;
+                        this.camera.position.z = this.ship.position.z + 3;
+                        this.camera.rotation.copy(this.ship.rotation);
+                        break;
+                        
+                    case 'top-down':
+                        this.camera.position.x = this.ship.position.x;
+                        this.camera.position.y = this.ship.position.y + 50;
+                        this.camera.position.z = this.ship.position.z;
+                        this.camera.lookAt(this.ship.position);
+                        break;
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('ship-pos').textContent = 
+                    `${this.ship.position.x.toFixed(1)}, ${this.ship.position.y.toFixed(1)}, ${this.ship.position.z.toFixed(1)}`;
+                
+                document.getElementById('course').textContent = 
+                    `${(this.ship.rotation.y * 180 / Math.PI).toFixed(0)}°`;
+                
+                const speed = Math.sqrt(
+                    this.ship.velocity.x ** 2 + 
+                    this.ship.velocity.y ** 2 + 
+                    this.ship.velocity.z ** 2
+                );
+                document.getElementById('speed').textContent = speed.toFixed(1);
+                
+                document.getElementById('shield').textContent = `${this.shieldIntegrity.toFixed(0)}%`;
+                
+                // Update stats
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastTime >= 1000) {
+                    this.fps = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                    
+                    document.getElementById('fps').textContent = this.fps;
+                    document.getElementById('total-asteroids').textContent = this.asteroids.length;
+                    document.getElementById('particles').textContent = this.particles.length;
+                    document.getElementById('stars').textContent = this.stars.length;
+                    document.getElementById('collisions').textContent = this.collisionCount;
+                }
+            }
+            
+            getDistance(pos1, pos2) {
+                const dx = pos1.x - pos2.x;
+                const dy = pos1.y - pos2.y;
+                const dz = pos1.z - pos2.z;
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.handleInput();
+                this.updateGameObjects();
+                this.checkCollisions();
+                this.updateCamera();
+                this.updateUI();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the simulation
+        window.addEventListener('load', () => {
+            new AsteroidFieldSimulation();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,649 @@
+/**
+ * HDR Rendering Demo
+ * Demonstrates the HDR rendering pipeline with tone mapping,
+ * automatic exposure, bloom effects, and sky rendering
+ */
+
+import { HDRRenderer } from '../rendering/HDRRendering.js';
+import { Scene } from '../core/Scene.js';
+import { Camera } from '../core/Camera.js';
+import { Mesh } from '../core/Mesh.js';
+import { Material } from '../core/Material.js';
+import { BufferGeometry } from '../core/BufferGeometry.js';
+
+export class HDRDemo {
+    constructor() {
+        this.canvas = document.getElementById('canvas');
+        this.renderer = null;
+        this.scene = null;
+        this.camera = null;
+        this.mesh = null;
+        
+        this.init();
+    }
+
+    /**
+     * Initialize the demo
+     */
+    init() {
+        // Create HDR renderer
+        this.renderer = new HDRRenderer(this.canvas, {
+            antialias: true,
+            alpha: false,
+            powerPreference: 'high-performance'
+        });
+
+        // Create scene
+        this.scene = new Scene();
+        this.scene.root.name = 'HDR Demo Scene';
+
+        // Create camera
+        this.camera = new Camera();
+        this.camera.position.set(0, 0, 5);
+        this.camera.lookAt(0, 0, 0);
+
+        // Create HDR demo objects
+        this.createHDRObjects();
+        this.setupControls();
+        this.startRenderLoop();
+
+        console.log('HDR Demo initialized successfully');
+    }
+
+    /**
+     * Create HDR demo objects
+     */
+    createHDRObjects() {
+        // Create a colorful sphere to demonstrate HDR lighting
+        this.mesh = this.createColorfulSphere();
+        this.scene.root.add(this.mesh);
+
+        // Create multiple objects with different colors
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const radius = 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            const sphere = this.createColorfulSphere();
+            sphere.position.set(x, 0, z);
+            sphere.scale.set(0.3, 0.3, 0.3);
+            
+            this.scene.root.add(sphere);
+        }
+
+        // Create a bright emissive object
+        this.createEmissiveObject();
+    }
+
+    /**
+     * Create a colorful sphere
+     */
+    createColorfulSphere() {
+        // Create sphere geometry
+        const geometry = this.createSphereGeometry(1.0, 32, 16);
+        
+        // Create material with HDR colors
+        const material = new Material();
+        material.shader = this.renderer.shaders.get('hdrBasic');
+        material.uniforms = {
+            baseColor: { value: [1.0, 0.5, 0.2] }, // HDR orange
+            emissiveIntensity: { value: 0.0 },
+            lightDirection: { value: [0, -1, 0] },
+            ambientColor: { value: [0.1, 0.1, 0.1] },
+            lightColor: { value: [10.0, 10.0, 10.0] }, // HDR light intensity
+            lightIntensity: { value: 1.0 }
+        };
+
+        const mesh = new Mesh(geometry, material);
+        mesh.name = 'Colorful Sphere';
+        mesh.position.set(0, 0, 0);
+        
+        // Add HDR rendering method
+        mesh.renderHDR = (renderer, camera, scene) => {
+            const gl = renderer.gl;
+            const programId = renderer.shaders.get('hdrBasic');
+            
+            if (programId) {
+                const program = renderer.programs.get(programId);
+                gl.useProgram(program.program);
+                
+                // Set uniforms
+                this.setMeshUniforms(renderer, mesh);
+                
+                // Render mesh
+                mesh.render(renderer, camera, scene);
+            }
+        };
+
+        return mesh;
+    }
+
+    /**
+     * Create emissive object
+     */
+    createEmissiveObject() {
+        const geometry = this.createSphereGeometry(0.2, 16, 8);
+        
+        const material = new Material();
+        material.shader = this.renderer.shaders.get('hdrBasic');
+        material.uniforms = {
+            baseColor: { value: [20.0, 20.0, 20.0] }, // Very bright HDR color
+            emissiveIntensity: { value: 10.0 }, // High emissive intensity
+            lightDirection: { value: [0, -1, 0] },
+            ambientColor: { value: [0.1, 0.1, 0.1] },
+            lightColor: { value: [1.0, 1.0, 1.0] },
+            lightIntensity: { value: 1.0 }
+        };
+
+        const emissiveMesh = new Mesh(geometry, material);
+        emissiveMesh.name = 'Emissive Object';
+        emissiveMesh.position.set(-3, 1, 0);
+        
+        // Add HDR rendering method
+        emissiveMesh.renderHDR = (renderer, camera, scene) => {
+            const gl = renderer.gl;
+            const programId = renderer.shaders.get('hdrBasic');
+            
+            if (programId) {
+                const program = renderer.programs.get(programId);
+                gl.useProgram(program.program);
+                
+                // Set uniforms for emissive object
+                const uniforms = [
+                    { name: 'baseColor', value: [20.0, 20.0, 20.0] },
+                    { name: 'emissiveIntensity', value: 10.0 },
+                    { name: 'lightDirection', value: [0, -1, 0] },
+                    { name: 'ambientColor', value: [0.1, 0.1, 0.1] },
+                    { name: 'lightColor', value: [1.0, 1.0, 1.0] },
+                    { name: 'lightIntensity', value: 1.0 }
+                ];
+                
+                uniforms.forEach(uniform => {
+                    const location = gl.getUniformLocation(program.program, uniform.name);
+                    if (uniform.name === 'baseColor') {
+                        gl.uniform3f(location, uniform.value[0], uniform.value[1], uniform.value[2]);
+                    } else {
+                        gl.uniform1f(location, uniform.value);
+                    }
+                });
+                
+                // Render mesh
+                emissiveMesh.render(renderer, camera, scene);
+            }
+        };
+
+        this.scene.root.add(emissiveMesh);
+    }
+
+    /**
+     * Create sphere geometry
+     */
+    createSphereGeometry(radius, widthSegments, heightSegments) {
+        const vertices = [];
+        const normals = [];
+        const uvs = [];
+        const indices = [];
+
+        for (let y = 0; y <= heightSegments; y++) {
+            const v = y / heightSegments;
+            const phi = v * Math.PI;
+
+            for (let x = 0; x <= widthSegments; x++) {
+                const u = x / widthSegments;
+                const theta = u * Math.PI * 2;
+
+                const sinPhi = Math.sin(phi);
+                const cosPhi = Math.cos(phi);
+                const sinTheta = Math.sin(theta);
+                const cosTheta = Math.cos(theta);
+
+                const px = -radius * cosTheta * sinPhi;
+                const py = radius * cosPhi;
+                const pz = radius * sinTheta * sinPhi;
+
+                vertices.push(px, py, pz);
+                normals.push(px / radius, py / radius, pz / radius);
+                uvs.push(u, 1 - v);
+            }
+        }
+
+        for (let y = 0; y < heightSegments; y++) {
+            for (let x = 0; x < widthSegments; x++) {
+                const a = (widthSegments + 1) * y + x;
+                const b = (widthSegments + 1) * (y + 1) + x;
+                const c = (widthSegments + 1) * (y + 1) + x + 1;
+                const d = (widthSegments + 1) * y + x + 1;
+
+                indices.push(a, b, d);
+                indices.push(b, c, d);
+            }
+        }
+
+        return new BufferGeometry({
+            attributes: {
+                position: { data: new Float32Array(vertices) },
+                normal: { data: new Float32Array(normals) },
+                uv: { data: new Float32Array(uvs) }
+            },
+            indices: new Uint16Array(indices)
+        });
+    }
+
+    /**
+     * Set mesh uniforms
+     */
+    setMeshUniforms(renderer, mesh) {
+        const gl = renderer.gl;
+        const programId = renderer.shaders.get('hdrBasic');
+        
+        if (programId) {
+            const program = renderer.programs.get(programId);
+            
+            // Animate colors
+            const time = performance.now() * 0.001;
+            const r = Math.sin(time) * 0.5 + 0.5;
+            const g = Math.cos(time * 0.7) * 0.5 + 0.5;
+            const b = Math.sin(time * 1.3) * 0.5 + 0.5;
+            
+            const uniforms = [
+                { name: 'baseColor', value: [r * 2, g * 2, b * 2] }, // HDR values
+                { name: 'emissiveIntensity', value: Math.sin(time * 2) * 0.5 + 0.5 },
+                { name: 'lightDirection', value: [0, -1, 0] },
+                { name: 'ambientColor', value: [0.2, 0.2, 0.2] },
+                { name: 'lightColor', value: [10.0, 10.0, 10.0] },
+                { name: 'lightIntensity', value: 1.0 }
+            ];
+            
+            uniforms.forEach(uniform => {
+                const location = gl.getUniformLocation(program.program, uniform.name);
+                if (uniform.name === 'baseColor') {
+                    gl.uniform3f(location, uniform.value[0], uniform.value[1], uniform.value[2]);
+                } else {
+                    gl.uniform1f(location, uniform.value);
+                }
+            });
+        }
+    }
+
+    /**
+     * Setup control interface
+     */
+    setupControls() {
+        // Create control panel
+        this.createControlPanel();
+        
+        // Setup keyboard controls
+        window.addEventListener('keydown', (event) => {
+            this.handleKeyboardInput(event);
+        });
+    }
+
+    /**
+     * Create HTML control panel
+     */
+    createControlPanel() {
+        const panel = document.createElement('div');
+        panel.id = 'hdr-controls';
+        panel.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            min-width: 300px;
+        `;
+
+        panel.innerHTML = `
+            <h3>HDR Rendering Controls</h3>
+            
+            <div style="margin: 10px 0;">
+                <label>Exposure: </label>
+                <input type="range" id="exposure" min="0.1" max="10" step="0.1" value="1.0">
+                <span id="exposure-value">1.0</span>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>Tone Mapping: </label>
+                <select id="toneMapping">
+                    <option value="ACES">ACES</option>
+                    <option value="Reinhard">Reinhard</option>
+                    <option value="Filmic">Filmic</option>
+                    <option value="Uncharted2">Uncharted2</option>
+                </select>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>Gamma: </label>
+                <input type="range" id="gamma" min="1.0" max="3.0" step="0.1" value="2.2">
+                <span id="gamma-value">2.2</span>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="autoExposure" checked> Auto Exposure
+                </label>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>Adaptation Speed: </label>
+                <input type="range" id="adaptationSpeed" min="0.1" max="5.0" step="0.1" value="1.0">
+                <span id="adaptationSpeed-value">1.0</span>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="bloomEnabled"> Bloom Effect
+                </label>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>Bloom Threshold: </label>
+                <input type="range" id="bloomThreshold" min="0.1" max="5.0" step="0.1" value="1.0">
+                <span id="bloomThreshold-value">1.0</span>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="skyEnabled" checked> HDR Sky
+                </label>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <button id="reset">Reset</button>
+                <button id="save">Save Screenshot</button>
+            </div>
+            
+            <div style="margin: 10px 0; font-size: 10px;">
+                <strong>Current Exposure:</strong> <span id="current-exposure">1.0</span><br>
+                <strong>Performance:</strong> <span id="performance">--</span>
+            </div>
+            
+            <div style="margin: 10px 0; font-size: 10px;">
+                <strong>Controls:</strong><br>
+                Q/E: Change exposure<br>
+                1/2/3/4: Tone mapping<br>
+                A: Toggle auto exposure<br>
+                B: Toggle bloom<br>
+                S: Toggle sky<br>
+                R: Reset
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+        this.bindControlEvents();
+    }
+
+    /**
+     * Bind control events
+     */
+    bindControlEvents() {
+        const controls = {
+            exposure: document.getElementById('exposure'),
+            toneMapping: document.getElementById('toneMapping'),
+            gamma: document.getElementById('gamma'),
+            autoExposure: document.getElementById('autoExposure'),
+            adaptationSpeed: document.getElementById('adaptationSpeed'),
+            bloomEnabled: document.getElementById('bloomEnabled'),
+            bloomThreshold: document.getElementById('bloomThreshold'),
+            skyEnabled: document.getElementById('skyEnabled'),
+            reset: document.getElementById('reset'),
+            save: document.getElementById('save')
+        };
+
+        // Exposure control
+        controls.exposure.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('exposure-value').textContent = value.toFixed(1);
+            this.renderer.setHDRSettings({ exposure: value });
+        });
+
+        // Tone mapping
+        controls.toneMapping.addEventListener('change', (e) => {
+            this.renderer.setHDRSettings({ toneMapping: e.target.value });
+        });
+
+        // Gamma
+        controls.gamma.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('gamma-value').textContent = value.toFixed(1);
+            this.renderer.setHDRSettings({ gamma: value });
+        });
+
+        // Auto exposure
+        controls.autoExposure.addEventListener('change', (e) => {
+            this.renderer.setHDRSettings({ autoExposure: e.target.checked });
+        });
+
+        // Adaptation speed
+        controls.adaptationSpeed.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('adaptationSpeed-value').textContent = value.toFixed(1);
+            this.renderer.setHDRSettings({ adaptationSpeed: value });
+        });
+
+        // Bloom
+        controls.bloomEnabled.addEventListener('change', (e) => {
+            this.renderer.setHDRSettings({ bloomEnabled: e.target.checked });
+        });
+
+        // Bloom threshold
+        controls.bloomThreshold.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('bloomThreshold-value').textContent = value.toFixed(1);
+            this.renderer.setHDRSettings({ bloomThreshold: value });
+        });
+
+        // Sky
+        controls.skyEnabled.addEventListener('change', (e) => {
+            this.renderer.setSkySettings({ enabled: e.target.checked });
+        });
+
+        // Reset
+        controls.reset.addEventListener('click', () => {
+            this.resetSettings();
+        });
+
+        // Save screenshot
+        controls.save.addEventListener('click', () => {
+            this.saveScreenshot();
+        });
+    }
+
+    /**
+     * Handle keyboard input
+     */
+    handleKeyboardInput(event) {
+        switch (event.key.toLowerCase()) {
+            case 'q':
+                this.adjustExposure(-0.1);
+                break;
+            case 'e':
+                this.adjustExposure(0.1);
+                break;
+            case '1':
+                this.renderer.setHDRSettings({ toneMapping: 'ACES' });
+                document.getElementById('toneMapping').value = 'ACES';
+                break;
+            case '2':
+                this.renderer.setHDRSettings({ toneMapping: 'Reinhard' });
+                document.getElementById('toneMapping').value = 'Reinhard';
+                break;
+            case '3':
+                this.renderer.setHDRSettings({ toneMapping: 'Filmic' });
+                document.getElementById('toneMapping').value = 'Filmic';
+                break;
+            case '4':
+                this.renderer.setHDRSettings({ toneMapping: 'Uncharted2' });
+                document.getElementById('toneMapping').value = 'Uncharted2';
+                break;
+            case 'a':
+                const autoExposure = !this.renderer.hdrSettings.autoExposure;
+                this.renderer.setHDRSettings({ autoExposure });
+                document.getElementById('autoExposure').checked = autoExposure;
+                break;
+            case 'b':
+                const bloomEnabled = !this.renderer.hdrSettings.bloomEnabled;
+                this.renderer.setHDRSettings({ bloomEnabled });
+                document.getElementById('bloomEnabled').checked = bloomEnabled;
+                break;
+            case 's':
+                const skyEnabled = !this.renderer.skySettings.enabled;
+                this.renderer.setSkySettings({ enabled: skyEnabled });
+                document.getElementById('skyEnabled').checked = skyEnabled;
+                break;
+            case 'r':
+                this.resetSettings();
+                break;
+        }
+    }
+
+    /**
+     * Adjust exposure
+     */
+    adjustExposure(delta) {
+        const currentExposure = this.renderer.hdrSettings.exposure;
+        const newExposure = Math.max(0.1, Math.min(10.0, currentExposure + delta));
+        this.renderer.setHDRSettings({ exposure: newExposure });
+        document.getElementById('exposure').value = newExposure.toString();
+        document.getElementById('exposure-value').textContent = newExposure.toFixed(1);
+    }
+
+    /**
+     * Reset settings
+     */
+    resetSettings() {
+        const defaultSettings = {
+            exposure: 1.0,
+            toneMapping: 'ACES',
+            gamma: 2.2,
+            autoExposure: true,
+            adaptationSpeed: 1.0,
+            bloomEnabled: false,
+            bloomThreshold: 1.0
+        };
+
+        this.renderer.setHDRSettings(defaultSettings);
+        
+        // Update UI
+        document.getElementById('exposure').value = defaultSettings.exposure;
+        document.getElementById('exposure-value').textContent = defaultSettings.exposure.toFixed(1);
+        document.getElementById('toneMapping').value = defaultSettings.toneMapping;
+        document.getElementById('gamma').value = defaultSettings.gamma;
+        document.getElementById('gamma-value').textContent = defaultSettings.gamma.toFixed(1);
+        document.getElementById('autoExposure').checked = defaultSettings.autoExposure;
+        document.getElementById('adaptationSpeed').value = defaultSettings.adaptationSpeed;
+        document.getElementById('adaptationSpeed-value').textContent = defaultSettings.adaptationSpeed.toFixed(1);
+        document.getElementById('bloomEnabled').checked = defaultSettings.bloomEnabled;
+        document.getElementById('bloomThreshold').value = defaultSettings.bloomThreshold;
+        document.getElementById('bloomThreshold-value').textContent = defaultSettings.bloomThreshold.toFixed(1);
+        
+        // Reset sky
+        this.renderer.setSkySettings({ enabled: true });
+        document.getElementById('skyEnabled').checked = true;
+    }
+
+    /**
+     * Save screenshot
+     */
+    saveScreenshot() {
+        const canvas = this.canvas;
+        const link = document.createElement('a');
+        link.download = 'hdr-rendering.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+
+    /**
+     * Update UI with current values
+     */
+    updateUI() {
+        // Update current exposure display
+        document.getElementById('current-exposure').textContent = 
+            this.renderer.currentExposure.toFixed(3);
+
+        // Update performance display
+        const performance = this.renderer.getPerformance();
+        document.getElementById('performance').textContent = 
+            `${performance.fps.toFixed(1)} FPS`;
+    }
+
+    /**
+     * Start render loop
+     */
+    startRenderLoop() {
+        let frameCount = 0;
+        
+        const animate = () => {
+            requestAnimationFrame(animate);
+            
+            // Animate camera orbit
+            const time = performance.now() * 0.001;
+            const radius = 5;
+            this.camera.position.x = Math.cos(time * 0.5) * radius;
+            this.camera.position.z = Math.sin(time * 0.5) * radius;
+            this.camera.lookAt(0, 0, 0);
+            
+            // Animate objects
+            this.scene.root.children.forEach((child, index) => {
+                if (child.position) {
+                    child.rotation.y = time * 0.5 + index * 0.5;
+                }
+            });
+            
+            // Render HDR scene
+            this.renderer.renderHDR(this.scene, this.camera);
+            
+            // Update UI every 10 frames
+            frameCount++;
+            if (frameCount % 10 === 0) {
+                this.updateUI();
+            }
+        };
+        
+        animate();
+    }
+
+    /**
+     * Resize handler
+     */
+    onResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        this.renderer.setSize(width, height);
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+    }
+}
+
+// Initialize demo when page loads
+window.addEventListener('load', () => {
+    // Create canvas if it doesn't exist
+    let canvas = document.getElementById('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'canvas';
+        canvas.style.cssText = `
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: block;
+        `;
+        document.body.appendChild(canvas);
+    }
+    
+    // Initialize demo
+    window.hdrDemo = new HDRDemo();
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+        window.hdrDemo.onResize();
+    });
+});

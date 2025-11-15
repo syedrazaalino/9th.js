@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial.0">
+    <title>Restoration Project - Historical Building Restoration</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #restoration-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 360px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #restoration-panel h3 {
+            margin: 0 0 12px 0;
+            color: #d4af37;
+            font-size: 18px;
+        }
+        
+        #restoration-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 10px 0;
+            color: #b8860b;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .restoration-tool {
+            display: inline-block;
+            margin: 3px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 70px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .restoration-tool.damage { background-color: #f44336; }
+        .restoration-tool.repair { background-color: #4caf50; }
+        .restoration-tool.clean { background-color: #2196f3; }
+        .restoration-tool.paint { background-color: #ff9800; }
+        .restoration-tool.replace { background-color: #9c27b0; }
+        .restoration-tool.reinforce { background-color: #607d8b; }
+        .restoration-tool.replicate { background-color: #d4af37; }
+        .restoration-tool.inspect { background-color: #795548; }
+        
+        .restoration-tool:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.2);
+        }
+        
+        .restoration-tool.active {
+            border: 3px solid #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .damage-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 3px;
+        }
+        
+        .damage-minor { background-color: #ffeb3b; }
+        .damage-moderate { background-color: #ff9800; }
+        .damage-severe { background-color: #f44336; }
+        .damage-critical { background-color: #b71c1c; }
+        
+        .slider-group {
+            margin: 8px 0;
+        }
+        
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            outline: none;
+        }
+        
+        .button {
+            background-color: #d4af37;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #b8860b;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background-color: #607d8b;
+        }
+        
+        .button.secondary:hover {
+            background-color: #455a64;
+        }
+        
+        .button.danger {
+            background-color: #f44336;
+        }
+        
+        .button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        .preservation-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .stat-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #d4af37;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 2px;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #analysis-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 10;
+            min-width: 220px;
+        }
+        
+        #analysis-panel h4 {
+            margin: 0 0 10px 0;
+            color: #d4af37;
+        }
+        
+        .analysis-item {
+            margin: 8px 0;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .material-condition {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .condition-bar {
+            flex: 1;
+            height: 8px;
+            background-color: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .condition-fill {
+            height: 100%;
+            background: linear-gradient(to right, #f44336, #ff9800, #ffeb3b, #4caf50);
+            transition: width 0.3s;
+        }
+        
+        #documentation-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 25px;
+            z-index: 10;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .documentation-item {
+            text-align: center;
+        }
+        
+        .documentation-title {
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .documentation-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #d4af37;
+        }
+    </style>
+</head>
+<body>
+    <div id="restoration-panel">
+        <h3>Restoration Project</h3>
+        <p>Historical building conservation</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Building Age: <span id="building-age">1852</span></p>
+        <p>Restoration Progress: <span id="progress">0%</span></p>
+        
+        <div class="control-section">
+            <h4>Assessment Tools</h4>
+            <div class="restoration-tool inspect active" data-tool="inspect">Inspect</div>
+            <div class="restoration-tool damage" data-tool="damage">Mark Damage</div>
+            <div class="restoration-tool repair" data-tool="repair">Repair</div>
+            <div class="restoration-tool clean" data-tool="clean">Clean</div>
+            <div class="restoration-tool paint" data-tool="paint">Paint</div>
+            <div class="restoration-tool replace" data-tool="replace">Replace</div>
+            <div class="restoration-tool reinforce" data-tool="reinforce">Reinforce</div>
+            <div class="restoration-tool replicate" data-tool="replicate">Replicate</div>
+            <div class="control-group">
+                <label>Damage Level:</label>
+                <select id="damage-level">
+                    <option value="minor">Minor Wear</option>
+                    <option value="moderate">Moderate Damage</option>
+                    <option value="severe">Severe Damage</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Materials</h4>
+            <div class="control-group">
+                <label>Material Type:</label>
+                <select id="material-type">
+                    <option value="stone">Stone Masonry</option>
+                    <option value="brick">Brick</option>
+                    <option value="wood">Wood</option>
+                    <option value="metal">Metal</option>
+                    <option value="plaster">Plaster</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Aging Effect:</label>
+                <div class="slider-group">
+                    <input type="range" id="aging-effect" min="0" max="100" value="30">
+                    <span id="aging-value">30%</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Weathering:</label>
+                <div class="slider-group">
+                    <input type="range" id="weathering" min="0" max="100" value="50">
+                    <span id="weathering-value">50%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="preservation-stats">
+            <div class="stat-box">
+                <div class="stat-number" id="structural-integrity">85</div>
+                <div class="stat-label">Structural</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="aesthetic-value">92</div>
+                <div class="stat-label">Aesthetic</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="historical-authenticity">98</div>
+                <div class="stat-label">Authenticity</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="restoration-cost">$45K</div>
+                <div class="stat-label">Est. Cost</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Documentation</h4>
+            <button class="button" onclick="scanDamage()">Damage Survey</button>
+            <button class="button" onclick="generateReport()">Full Report</button>
+            <button class="button secondary" onclick="createModel()">3D Model</button>
+            <button class="button secondary" onclick="beforeAfter()">Before/After</button>
+            <button class="button danger" onclick="resetBuilding()">Reset</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Click to inspect • Drag to mark areas • Right-click for options
+            </p>
+        </div>
+    </div>
+    
+    <div id="analysis-panel">
+        <h4>Condition Analysis</h4>
+        
+        <div class="analysis-item">
+            <div class="material-condition">
+                <span>Stone Walls</span>
+                <div class="condition-bar">
+                    <div class="condition-fill" style="width: 85%"></div>
+                </div>
+                <span>85%</span>
+            </div>
+        </div>
+        
+        <div class="analysis-item">
+            <div class="material-condition">
+                <span>Wood Frame</span>
+                <div class="condition-bar">
+                    <div class="condition-fill" style="width: 72%"></div>
+                </div>
+                <span>72%</span>
+            </div>
+        </div>
+        
+        <div class="analysis-item">
+            <div class="material-condition">
+                <span>Roof Structure</span>
+                <div class="condition-bar">
+                    <div class="condition-fill" style="width: 68%"></div>
+                </div>
+                <span>68%</span>
+            </div>
+        </div>
+        
+        <div class="analysis-item">
+            <div class="material-condition">
+                <span>Foundations</span>
+                <div class="condition-bar">
+                    <div class="condition-fill" style="width: 90%"></div>
+                </div>
+                <span>90%</span>
+            </div>
+        </div>
+        
+        <div style="margin-top: 10px; font-size: 11px; color: #666;">
+            <div>Damage Summary:</div>
+            <div class="damage-indicator damage-minor"></div>Minor: <span id="minor-count">12</span><br>
+            <div class="damage-indicator damage-moderate"></div>Moderate: <span id="moderate-count">8</span><br>
+            <div class="damage-indicator damage-severe"></div>Severe: <span id="severe-count">3</span><br>
+            <div class="damage-indicator damage-critical"></div>Critical: <span id="critical-count">1</span>
+        </div>
+    </div>
+    
+    <div id="documentation-panel">
+        <div class="documentation-item">
+            <div class="documentation-title">Built Year</div>
+            <div class="documentation-value">1852</div>
+        </div>
+        <div class="documentation-item">
+            <div class="documentation-title">Style</div>
+            <div class="documentation-value">Gothic Revival</div>
+        </div>
+        <div class="documentation-item">
+            <div class="documentation-title">Status</div>
+            <div class="documentation-value" id="current-status">Under Restoration</div>
+        </div>
+        <div class="documentation-item">
+            <div class="documentation-title">Last Survey</div>
+            <div class="documentation-value">Nov 2024</div>
+        </div>
+    </div>
+
+    <canvas id="restoration-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class RestorationProject {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#2c3e50');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(0, 8, 15);
+                this.camera.lookAt(0, 4, 0);
+                
+                this.selectedTool = 'inspect';
+                this.materialType = 'stone';
+                this.buildingAge = 1852;
+                this.agingEffect = 0.3;
+                this.weathering = 0.5;
+                this.damageLevel = 'minor';
+                this.restorationProgress = 0;
+                
+                this.damagePoints = [];
+                this.repairs = [];
+                this.originalMaterials = new Map();
+                this.currentMaterial = null;
+                
+                this.structuralIntegrity = 85;
+                this.aestheticValue = 92;
+                this.historicalAuthenticity = 98;
+                this.restorationCost = 45000;
+                
+                this.initializeLights();
+                this.createHistoricalBuilding();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting
+                this.ambientLight = new AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Natural daylight
+                this.daylight = new DirectionalLight(1.0, '#ffffff');
+                this.daylight.setDirection(-1, -1, -0.5);
+                this.daylight.setPosition(20, 20, 10);
+                this.scene.add(this.daylight);
+
+                // Restoration work lights
+                this.workLight1 = new PointLight(0.6, '#ffecb3');
+                this.workLight1.setPosition(-5, 5, 5);
+                this.scene.add(this.workLight1);
+
+                this.workLight2 = new PointLight(0.6, '#ffecb3');
+                this.workLight2.setPosition(5, 5, -5);
+                this.scene.add(this.workLight2);
+
+                // Heritage building accent lighting
+                this.accentLight = new PointLight(0.4, '#ffd700');
+                this.accentLight.setPosition(0, 8, 0);
+                this.scene.add(this.accentLight);
+            }
+
+            createHistoricalBuilding() {
+                this.buildingParts = [];
+                
+                // Foundation
+                this.createFoundation();
+                
+                // Main structure
+                this.createWalls();
+                this.createRoof();
+                this.createWindows();
+                this.createDoors();
+                this.createDecorativeElements();
+                
+                // Apply initial aging and weathering
+                this.applyAging();
+            }
+
+            createFoundation() {
+                const foundationGeometry = new BoxGeometry(12, 2, 8);
+                const foundationMaterial = new StandardMaterial({ 
+                    color: '#696969',
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                
+                for (let side = 0; side < 4; side++) {
+                    const foundation = new Mesh(foundationGeometry);
+                    foundation.material = foundationMaterial.clone();
+                    
+                    switch (side) {
+                        case 0: // North
+                            foundation.setPosition(0, 1, -4);
+                            break;
+                        case 1: // South
+                            foundation.setPosition(0, 1, 4);
+                            break;
+                        case 2: // East
+                            foundation.setPosition(6, 1, 0);
+                            foundation.setRotation(0, Math.PI / 2, 0);
+                            break;
+                        case 3: // West
+                            foundation.setPosition(-6, 1, 0);
+                            foundation.setRotation(0, Math.PI / 2, 0);
+                            break;
+                    }
+                    
+                    foundation.userData = {
+                        partType: 'foundation',
+                        condition: 90,
+                        originalColor: '#696969'
+                    };
+                    
+                    this.buildingParts.push(foundation);
+                    this.scene.add(foundation);
+                }
+            }
+
+            createWalls() {
+                const wallGeometry = new BoxGeometry(12, 8, 0.5);
+                const wallMaterial = new StandardMaterial({ 
+                    color: '#8b7355', // Aged stone
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                
+                // Main walls
+                const walls = [
+                    { pos: [0, 5, -4], rot: [0, 0, 0], name: 'front' },
+                    { pos: [0, 5, 4], rot: [0, Math.PI, 0], name: 'back' },
+                    { pos: [-6, 5, 0], rot: [0, Math.PI / 2, 0], name: 'left' },
+                    { pos: [6, 5, 0], rot: [0, -Math.PI / 2, 0], name: 'right' }
+                ];
+                
+                walls.forEach(wall => {
+                    const wallMesh = new Mesh(wallGeometry);
+                    wallMesh.material = wallMaterial.clone();
+                    wallMesh.setPosition(...wall.pos);
+                    wallMesh.setRotation(...wall.rot);
+                    
+                    wallMesh.userData = {
+                        partType: 'wall',
+                        partName: wall.name,
+                        condition: Math.floor(70 + Math.random() * 20),
+                        originalColor: '#8b7355'
+                    };
+                    
+                    this.buildingParts.push(wallMesh);
+                    this.scene.add(wallMesh);
+                });
+                
+                // Add stone texture effect
+                this.addStoneTexture();
+            }
+
+            createRoof() {
+                // Main roof structure
+                const roofGeometry = new BoxGeometry(12.5, 1, 8.5);
+                const roofMaterial = new StandardMaterial({ 
+                    color: '#4a2511', // Aged tile
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+                
+                const roof = new Mesh(roofGeometry);
+                roof.setPosition(0, 9, 0);
+                roof.setRotation(0, 0, 0);
+                
+                roof.userData = {
+                    partType: 'roof',
+                    condition: 68,
+                    originalColor: '#4a2511'
+                };
+                
+                this.buildingParts.push(roof);
+                this.scene.add(roof);
+                
+                // Roof details (chimney, spires)
+                this.createRoofDetails();
+            }
+
+            createRoofDetails() {
+                // Chimney
+                const chimneyGeometry = new BoxGeometry(0.8, 3, 0.8);
+                const chimneyMaterial = new StandardMaterial({ 
+                    color: '#8b4513',
+                    roughness: 0.9
+                });
+                const chimney = new Mesh(chimneyGeometry);
+                chimney.setPosition(-3, 10, -2);
+                
+                chimney.userData = {
+                    partType: 'chimney',
+                    condition: 75,
+                    originalColor: '#8b4513'
+                };
+                
+                this.buildingParts.push(chimney);
+                this.scene.add(chimney);
+                
+                // Decorative spires
+                for (let i = 0; i < 4; i++) {
+                    const spireGeometry = new CylinderGeometry(0.3, 0.5, 2);
+                    const spireMaterial = new StandardMaterial({ color: '#8b7355' });
+                    const spire = new Mesh(spireGeometry);
+                    spire.material = spireMaterial.clone();
+                    
+                    const angle = (i * Math.PI) / 2;
+                    spire.setPosition(
+                        Math.cos(angle) * 5.5, 
+                        9.5, 
+                        Math.sin(angle) * 3.5
+                    );
+                    
+                    spire.userData = {
+                        partType: 'spire',
+                        condition: Math.floor(60 + Math.random() * 20),
+                        originalColor: '#8b7355'
+                    };
+                    
+                    this.buildingParts.push(spire);
+                    this.scene.add(spire);
+                }
+            }
+
+            createWindows() {
+                const windowConfigs = [
+                    { pos: [-4, 6, -4.25], rot: [0, 0, 0] },
+                    { pos: [0, 6, -4.25], rot: [0, 0, 0] },
+                    { pos: [4, 6, -4.25], rot: [0, 0, 0] },
+                    { pos: [-4, 6, 4.25], rot: [0, Math.PI, 0] },
+                    { pos: [0, 6, 4.25], rot: [0, Math.PI, 0] },
+                    { pos: [4, 6, 4.25], rot: [0, Math.PI, 0] }
+                ];
+                
+                windowConfigs.forEach((config, index) => {
+                    // Window frame
+                    const frameGeometry = new BoxGeometry(1.5, 2, 0.2);
+                    const frameMaterial = new StandardMaterial({ 
+                        color: '#8b4513',
+                        roughness: 0.8
+                    });
+                    const frame = new Mesh(frameGeometry);
+                    frame.material = frameMaterial.clone();
+                    frame.setPosition(...config.pos);
+                    frame.setRotation(...config.rot);
+                    
+                    frame.userData = {
+                        partType: 'window-frame',
+                        condition: Math.floor(65 + Math.random() * 15),
+                        originalColor: '#8b4513'
+                    };
+                    
+                    this.buildingParts.push(frame);
+                    this.scene.add(frame);
+                    
+                    // Glass panes (some broken)
+                    if (Math.random() > 0.3) { // 70% have some damage
+                        this.createDamagedGlass(config.pos, config.rot);
+                    }
+                });
+            }
+
+            createDamagedGlass(pos, rot) {
+                const glassGeometry = new BoxGeometry(1.3, 1.8, 0.05);
+                const glassMaterial = new StandardMaterial({ 
+                    color: '#87ceeb',
+                    transparency: 0.7,
+                    opacity: 0.8,
+                    roughness: 0.1
+                });
+                
+                const glass = new Mesh(glassGeometry);
+                glass.material = glassMaterial.clone();
+                
+                // Add damage pattern
+                const damageIntensity = Math.random();
+                if (damageIntensity > 0.6) {
+                    glass.material.opacity = Math.max(0.2, glass.material.opacity - damageIntensity * 0.4);
+                }
+                
+                glass.setPosition(pos[0], pos[1], pos[2] + (pos[2] > 0 ? -0.1 : 0.1));
+                glass.setRotation(...rot);
+                
+                glass.userData = {
+                    partType: 'glass',
+                    condition: Math.floor(40 + Math.random() * 40),
+                    damaged: true
+                };
+                
+                this.buildingParts.push(glass);
+                this.scene.add(glass);
+            }
+
+            createDoors() {
+                // Main entrance door
+                const doorGeometry = new BoxGeometry(2, 3.5, 0.3);
+                const doorMaterial = new StandardMaterial({ 
+                    color: '#654321',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const door = new Mesh(doorGeometry);
+                door.setPosition(0, 2.25, 4.15);
+                
+                door.userData = {
+                    partType: 'door',
+                    condition: 72,
+                    originalColor: '#654321'
+                };
+                
+                this.buildingParts.push(door);
+                this.scene.add(door);
+                
+                // Door hardware (weathered)
+                this.createDoorHardware();
+            }
+
+            createDoorHardware() {
+                // Handle
+                const handleGeometry = new CylinderGeometry(0.05, 0.05, 0.3);
+                const handleMaterial = new StandardMaterial({ 
+                    color: '#b8860b', // Aged brass
+                    roughness: 0.6,
+                    metalness: 0.8
+                });
+                const handle = new Mesh(handleGeometry);
+                handle.setPosition(0.8, 2, 4.3);
+                handle.setRotation(0, 0, Math.PI / 2);
+                
+                handle.userData = {
+                    partType: 'hardware',
+                    condition: 45,
+                    originalColor: '#b8860b'
+                };
+                
+                this.buildingParts.push(handle);
+                this.scene.add(handle);
+            }
+
+            createDecorativeElements() {
+                // Cornice details
+                for (let i = 0; i < 4; i++) {
+                    const corniceGeometry = new BoxGeometry(3, 0.3, 0.8);
+                    const corniceMaterial = new StandardMaterial({ 
+                        color: '#8b7355',
+                        roughness: 0.7
+                    });
+                    const cornice = new Mesh(corniceGeometry);
+                    cornice.material = corniceMaterial.clone();
+                    
+                    const angle = (i * Math.PI) / 2;
+                    const radius = 6;
+                    cornice.setPosition(
+                        Math.cos(angle) * radius, 
+                        8.5, 
+                        Math.sin(angle) * radius
+                    );
+                    cornice.setRotation(0, angle, 0);
+                    
+                    cornice.userData = {
+                        partType: 'decoration',
+                        condition: Math.floor(50 + Math.random() * 25),
+                        originalColor: '#8b7355'
+                    };
+                    
+                    this.buildingParts.push(cornice);
+                    this.scene.add(cornice);
+                }
+            }
+
+            addStoneTexture() {
+                // Add texture variation to stone walls
+                this.buildingParts.forEach(part => {
+                    if (part.userData.partType === 'wall' && part.material) {
+                        // Create color variation
+                        const colorVariation = (Math.random() - 0.5) * 0.1;
+                        const baseColor = part.userData.originalColor;
+                        
+                        // Convert hex to RGB, apply variation, convert back
+                        const color = this.adjustColor(baseColor, colorVariation);
+                        part.material.color = color;
+                    }
+                });
+            }
+
+            adjustColor(hexColor, variation) {
+                // Simple color adjustment for aging effect
+                const factor = 1 - this.agingEffect * variation;
+                const adjustedColor = Math.max(0, Math.min(1, factor));
+                return hexColor;
+            }
+
+            applyAging() {
+                this.buildingParts.forEach(part => {
+                    if (part.material) {
+                        // Apply weathering and aging
+                        const agingFactor = this.agingEffect * this.weathering;
+                        const weatheredColor = this.applyWeathering(part.userData.originalColor, agingFactor);
+                        part.material.color = weatheredColor;
+                        
+                        // Reduce material properties based on condition
+                        const conditionFactor = part.userData.condition / 100;
+                        part.material.roughness = Math.min(1, part.material.roughness + agingFactor * 0.3);
+                        part.material.metalness = Math.max(0, part.material.metalness - agingFactor * 0.1);
+                    }
+                });
+            }
+
+            applyWeathering(color, intensity) {
+                // Simulate weathering by shifting color towards gray
+                const weatheredColor = color.replace(/#[0-9a-f]{6}/i, (match) => {
+                    const r = parseInt(match.substr(1, 2), 16);
+                    const g = parseInt(match.substr(3, 2), 16);
+                    const b = parseInt(match.substr(5, 2), 16);
+                    
+                    const weatheredR = Math.floor(r * (1 - intensity) + 128 * intensity);
+                    const weatheredG = Math.floor(g * (1 - intensity) + 128 * intensity);
+                    const weatheredB = Math.floor(b * (1 - intensity) + 128 * intensity);
+                    
+                    return `#${weatheredR.toString(16).padStart(2, '0')}${weatheredG.toString(16).padStart(2, '0')}${weatheredB.toString(16).padStart(2, '0')}`;
+                });
+                
+                return weatheredColor;
+            }
+
+            applyDamage(point, level) {
+                const damage = {
+                    position: point,
+                    level: level,
+                    timestamp: Date.now(),
+                    repaired: false
+                };
+                
+                this.damagePoints.push(damage);
+                
+                // Apply visual damage effect
+                this.damagePoints.forEach(dmg => {
+                    if (!dmg.repaired) {
+                        this.createDamageEffect(dmg);
+                    }
+                });
+                
+                this.updateDamageStats();
+            }
+
+            createDamageEffect(damage) {
+                const severity = { minor: 0.3, moderate: 0.6, severe: 0.8, critical: 1.0 };
+                const color = { 
+                    minor: '#ffeb3b', 
+                    moderate: '#ff9800', 
+                    severe: '#f44336', 
+                    critical: '#b71c1c' 
+                };
+                
+                const damageGeometry = new CylinderGeometry(0.5, 0.5, 0.1);
+                const damageMaterial = new StandardMaterial({ 
+                    color: color[damage.level],
+                    emissive: color[damage.level],
+                    emissiveIntensity: severity[damage.level] * 0.2
+                });
+                
+                const damageMarker = new Mesh(damageGeometry);
+                damageMarker.setPosition(damage.position.x, damage.position.y + 0.1, damage.position.z);
+                
+                this.scene.add(damageMarker);
+            }
+
+            repairDamage(point, level) {
+                // Find and mark damage as repaired
+                this.damagePoints.forEach(damage => {
+                    const distance = Math.sqrt(
+                        Math.pow(damage.position.x - point.x, 2) +
+                        Math.pow(damage.position.y - point.y, 2) +
+                        Math.pow(damage.position.z - point.z, 2)
+                    );
+                    
+                    if (distance < 2 && damage.level === level) {
+                        damage.repaired = true;
+                        this.repairs.push({
+                            position: damage.position,
+                            type: 'repair',
+                            timestamp: Date.now()
+                        });
+                    }
+                });
+                
+                // Update restoration progress
+                const totalDamages = this.damagePoints.length;
+                const repairedDamages = this.damagePoints.filter(d => d.repaired).length;
+                this.restorationProgress = Math.round((repairedDamages / totalDamages) * 100);
+                
+                this.updateRestorationStats();
+            }
+
+            updateDamageStats() {
+                const minor = this.damagePoints.filter(d => d.level === 'minor' && !d.repaired).length;
+                const moderate = this.damagePoints.filter(d => d.level === 'moderate' && !d.repaired).length;
+                const severe = this.damagePoints.filter(d => d.level === 'severe' && !d.repaired).length;
+                const critical = this.damagePoints.filter(d => d.level === 'critical' && !d.repaired).length;
+                
+                document.getElementById('minor-count').textContent = minor;
+                document.getElementById('moderate-count').textContent = moderate;
+                document.getElementById('severe-count').textContent = severe;
+                document.getElementById('critical-count').textContent = critical;
+            }
+
+            updateRestorationStats() {
+                // Update condition bars
+                const conditions = [
+                    { element: 'stone-walls', value: this.calculateCondition('wall') },
+                    { element: 'wood-frame', value: this.calculateCondition('wood') },
+                    { element: 'roof-structure', value: this.calculateCondition('roof') },
+                    { element: 'foundations', value: this.calculateCondition('foundation') }
+                ];
+                
+                conditions.forEach(cond => {
+                    const bar = document.querySelector(`[style*="${cond.element}"] .condition-fill`);
+                    if (bar) {
+                        bar.style.width = cond.value + '%';
+                        bar.nextElementSibling.textContent = cond.value + '%';
+                    }
+                });
+                
+                document.getElementById('progress').textContent = this.restorationProgress + '%';
+                document.getElementById('current-status').textContent = 
+                    this.restorationProgress > 80 ? 'Completed' : 
+                    this.restorationProgress > 50 ? 'Advanced' : 
+                    this.restorationProgress > 20 ? 'In Progress' : 'Initial Survey';
+            }
+
+            calculateCondition(partType) {
+                const parts = this.buildingParts.filter(p => 
+                    p.userData.partType.includes(partType));
+                
+                if (parts.length === 0) return 100;
+                
+                const avgCondition = parts.reduce((sum, part) => 
+                    sum + part.userData.condition, 0) / parts.length;
+                
+                // Apply restoration progress
+                const restoredCondition = avgCondition + (this.restorationProgress * 0.15);
+                
+                return Math.min(100, Math.round(restoredCondition));
+            }
+
+            setupEventListeners() {
+                // Mouse controls for restoration
+                this.canvas.addEventListener('mousedown', (event) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mouseX = event.clientX - rect.left;
+                    const mouseY = event.clientY - rect.top;
+                    
+                    // Convert screen to world coordinates
+                    const worldX = (mouseX / this.canvas.width - 0.5) * 30;
+                    const worldY = -((mouseY / this.canvas.height - 0.5) * 20);
+                    const worldZ = 0;
+                    
+                    const worldPoint = new Vec3(worldX, worldY, worldZ);
+                    
+                    switch (this.selectedTool) {
+                        case 'damage':
+                            this.applyDamage(worldPoint, this.damageLevel);
+                            break;
+                        case 'repair':
+                            this.repairDamage(worldPoint, this.damageLevel);
+                            break;
+                        case 'inspect':
+                            this.inspectArea(worldPoint);
+                            break;
+                    }
+                });
+
+                // Tool selection
+                document.querySelectorAll('.restoration-tool').forEach(tool => {
+                    tool.addEventListener('click', () => {
+                        document.querySelectorAll('.restoration-tool').forEach(el => el.classList.remove('active'));
+                        tool.classList.add('active');
+                        this.selectedTool = tool.dataset.tool;
+                    });
+                });
+
+                // Control inputs
+                document.getElementById('damage-level').addEventListener('change', (e) => {
+                    this.damageLevel = e.target.value;
+                });
+
+                document.getElementById('material-type').addEventListener('change', (e) => {
+                    this.materialType = e.target.value;
+                });
+
+                document.getElementById('aging-effect').addEventListener('input', (e) => {
+                    this.agingEffect = parseInt(e.target.value) / 100;
+                    document.getElementById('aging-value').textContent = e.target.value + '%';
+                    this.applyAging();
+                });
+
+                document.getElementById('weathering').addEventListener('input', (e) => {
+                    this.weathering = parseInt(e.target.value) / 100;
+                    document.getElementById('weathering-value').textContent = e.target.value + '%';
+                    this.applyAging();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            inspectArea(point) {
+                // Find nearest building part for inspection
+                let nearestPart = null;
+                let minDistance = Infinity;
+                
+                this.buildingParts.forEach(part => {
+                    const distance = Math.sqrt(
+                        Math.pow(part.position.x - point.x, 2) +
+                        Math.pow(part.position.y - point.y, 2) +
+                        Math.pow(part.position.z - point.z, 2)
+                    );
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestPart = part;
+                    }
+                });
+                
+                if (nearestPart && minDistance < 3) {
+                    this.showInspectionResult(nearestPart);
+                }
+            }
+
+            showInspectionResult(part) {
+                console.log(`Inspecting ${part.userData.partType}: Condition ${part.userData.condition}%`);
+                // This could show detailed information in a tooltip or panel
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+                document.getElementById('building-age').textContent = this.buildingAge;
+                
+                // Update stats
+                document.getElementById('structural-integrity').textContent = 
+                    this.calculateCondition('foundation');
+                document.getElementById('aesthetic-value').textContent = 
+                    Math.round(this.aestheticValue * (this.restorationProgress / 100 + 0.5));
+                document.getElementById('historical-authenticity').textContent = 
+                    Math.round(this.historicalAuthenticity * (1 - this.restorationProgress / 200));
+                document.getElementById('restoration-cost').textContent = 
+                    '$' + Math.round(this.restorationCost * (1 - this.restorationProgress / 100)) + 'K';
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let restorationDemo;
+
+        function scanDamage() {
+            if (restorationDemo) {
+                // Simulate damage scanning
+                for (let i = 0; i < 15; i++) {
+                    const x = (Math.random() - 0.5) * 20;
+                    const y = Math.random() * 10 + 2;
+                    const z = (Math.random() - 0.5) * 12;
+                    const levels = ['minor', 'moderate', 'severe', 'critical'];
+                    const level = levels[Math.floor(Math.random() * levels.length)];
+                    restorationDemo.applyDamage(new Vec3(x, y, z), level);
+                }
+            }
+        }
+
+        function generateReport() {
+            if (restorationDemo) {
+                const report = {
+                    building: {
+                        name: "Gothic Revival Mansion",
+                        year: restorationDemo.buildingAge,
+                        style: "Gothic Revival",
+                        location: "Historic District"
+                    },
+                    assessment: {
+                        structuralIntegrity: restorationDemo.calculateCondition('foundation'),
+                        aestheticValue: restorationDemo.aestheticValue,
+                        historicalAuthenticity: restorationDemo.historicalAuthenticity,
+                        restorationProgress: restorationDemo.restorationProgress
+                    },
+                    damage: {
+                        total: restorationDemo.damagePoints.length,
+                        repaired: restorationDemo.damagePoints.filter(d => d.repaired).length,
+                        byLevel: {
+                            minor: restorationDemo.damagePoints.filter(d => d.level === 'minor' && !d.repaired).length,
+                            moderate: restorationDemo.damagePoints.filter(d => d.level === 'moderate' && !d.repaired).length,
+                            severe: restorationDemo.damagePoints.filter(d => d.level === 'severe' && !d.repaired).length,
+                            critical: restorationDemo.damagePoints.filter(d => d.level === 'critical' && !d.repaired).length
+                        }
+                    },
+                    estimate: {
+                        cost: restorationDemo.restorationCost,
+                        timeline: Math.round(restorationDemo.damagePoints.length / 10) + " weeks",
+                        priority: "High"
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'restoration-report.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function createModel() {
+            if (restorationDemo) {
+                console.log('Generating 3D model...');
+                // This would export a 3D model of the current state
+            }
+        }
+
+        function beforeAfter() {
+            if (restorationDemo) {
+                console.log('Generating before/after comparison...');
+                // This would create before/after screenshots
+            }
+        }
+
+        function resetBuilding() {
+            if (restorationDemo) {
+                // Reset to original state
+                restorationDemo.damagePoints = [];
+                restorationDemo.repairs = [];
+                restorationDemo.restorationProgress = 0;
+                restorationDemo.applyAging();
+                restorationDemo.updateUI();
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('restoration-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                restorationDemo = new RestorationProject(canvas);
+                console.log('Restoration project demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading restoration project:', error);
+                document.getElementById('restoration-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

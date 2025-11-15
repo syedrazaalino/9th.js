@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Site - 4D Construction Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #construction-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 370px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #construction-panel h3 {
+            margin: 0 0 12px 0;
+            color: #ff6f00;
+            font-size: 18px;
+        }
+        
+        #construction-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 10px 0;
+            color: #ffa726;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .phase-selector {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .phase-button {
+            padding: 8px 12px;
+            background-color: #ff6f00;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 80px;
+        }
+        
+        .phase-button:hover {
+            background-color: #f57c00;
+            transform: translateY(-1px);
+        }
+        
+        .phase-button.active {
+            background-color: #4caf50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .phase-button.completed {
+            background-color: #2196f3;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff6f00, #ffa726);
+            transition: width 0.5s;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .equipment-item {
+            display: inline-block;
+            margin: 3px;
+            padding: 6px 8px;
+            background-color: #5d4037;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 70px;
+            font-size: 10px;
+            transition: all 0.3s;
+        }
+        
+        .equipment-item:hover {
+            background-color: #795548;
+            transform: scale(1.05);
+        }
+        
+        .equipment-item.active {
+            background-color: #ff6f00;
+        }
+        
+        .timeline-view {
+            height: 80px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            padding: 8px;
+            white-space: nowrap;
+            font-family: monospace;
+            font-size: 10px;
+        }
+        
+        .timeline-phase {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 0 2px;
+            border-radius: 3px;
+            background-color: #444;
+            color: white;
+            text-align: center;
+            min-width: 60px;
+        }
+        
+        .timeline-phase.active {
+            background-color: #4caf50;
+        }
+        
+        .timeline-phase.completed {
+            background-color: #2196f3;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .stat-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff6f00;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: #ccc;
+            margin-top: 2px;
+        }
+        
+        .weather-widget {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+        
+        .weather-condition {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .weather-icon {
+            font-size: 20px;
+        }
+        
+        .button {
+            background-color: #ff6f00;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #f57c00;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background-color: #607d8b;
+        }
+        
+        .button.secondary:hover {
+            background-color: #455a64;
+        }
+        
+        .button.danger {
+            background-color: #f44336;
+        }
+        
+        .button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #timeline-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 10;
+            min-width: 250px;
+        }
+        
+        #timeline-panel h4 {
+            margin: 0 0 10px 0;
+            color: #ff6f00;
+        }
+        
+        .phase-detail {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            border-left: 4px solid #ff6f00;
+        }
+        
+        .phase-detail.active {
+            border-left-color: #4caf50;
+        }
+        
+        .phase-detail.completed {
+            border-left-color: #2196f3;
+        }
+        
+        .phase-name {
+            font-weight: bold;
+            font-size: 12px;
+            color: #333;
+        }
+        
+        .phase-duration {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .phase-progress {
+            width: 100%;
+            height: 4px;
+            background-color: #ddd;
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        
+        .phase-progress-fill {
+            height: 100%;
+            background-color: #4caf50;
+            transition: width 0.3s;
+        }
+        
+        #monitoring-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 25px;
+            z-index: 10;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .monitor-metric {
+            text-align: center;
+        }
+        
+        .monitor-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ff6f00;
+        }
+        
+        .monitor-label {
+            font-size: 11px;
+            color: #ccc;
+        }
+        
+        .alert-system {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            background-color: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 15;
+            display: none;
+            max-width: 200px;
+        }
+        
+        .alert-system.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from { right: -200px; }
+            to { right: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="construction-panel">
+        <h3>4D Construction Site</h3>
+        <p>Real-time construction visualization</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Current Phase: <span id="current-phase">Foundation</span></p>
+        <p>Project Progress: <span id="project-progress">0%</span></p>
+        
+        <div class="control-section">
+            <h4>Construction Phases</h4>
+            <div class="phase-selector">
+                <button class="phase-button active" data-phase="foundation">Foundation</button>
+                <button class="phase-button" data-phase="framing">Framing</button>
+                <button class="phase-button" data-phase="mep">MEP</button>
+                <button class="phase-button" data-phase="interior">Interior</button>
+                <button class="phase-button" data-phase="exterior">Exterior</button>
+                <button class="phase-button" data-phase="finishing">Finishing</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Project Timeline</h4>
+            <div class="timeline-view" id="timeline-view">
+                <!-- Timeline phases will be generated here -->
+            </div>
+            <div class="control-group">
+                <label>Timeline Speed:</label>
+                <input type="range" id="timeline-speed" min="1" max="10" value="3">
+                <span id="speed-value">3x</span>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Equipment & Materials</h4>
+            <div class="equipment-item active" data-equipment="crane">🚜 Crane</div>
+            <div class="equipment-item" data-equipment="excavator">🚛 Excavator</div>
+            <div class="equipment-item" data-equipment="concrete">🚚 Concrete</div>
+            <div class="equipment-item" data-equipment="steel">🔩 Steel</div>
+            <div class="equipment-item" data-equipment="workers">👷 Workers</div>
+            <div class="equipment-item" data-equipment="delivery">📦 Delivery</div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value" id="progress-days">0</div>
+                <div class="stat-label">Days Elapsed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="budget-remaining">$2.4M</div>
+                <div class="stat-label">Budget Left</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="worker-count">45</div>
+                <div class="stat-label">Workers</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="completion-date">Mar 2025</div>
+                <div class="stat-label">Est. Complete</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Weather & Conditions</h4>
+            <div class="weather-widget">
+                <div class="weather-condition">
+                    <div>
+                        <div style="font-weight: bold;">Current Weather</div>
+                        <div style="font-size: 12px; color: #666;">Construction Site</div>
+                    </div>
+                    <div class="weather-icon">☀️</div>
+                    <div>24°C</div>
+                </div>
+                <div style="margin-top: 5px; font-size: 11px; color: #666;">
+                    Conditions: Good for construction
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Simulation Controls</h4>
+            <div class="progress-bar">
+                <div class="progress-fill" id="overall-progress" style="width: 0%">
+                    <div class="progress-text" id="progress-text">0% Complete</div>
+                </div>
+            </div>
+            <button class="button" onclick="playPause()">▶ Play</button>
+            <button class="button" onclick="resetSimulation()">↻ Reset</button>
+            <button class="button secondary" onclick="addDelay()">⏰ Add Delay</button>
+            <button class="button secondary" onclick="exportReport()">📊 Report</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Click phases to jump • Drag timeline • Real-time progress tracking
+            </p>
+        </div>
+    </div>
+    
+    <div id="timeline-panel">
+        <h4>Phase Details</h4>
+        
+        <div class="phase-detail active" data-phase-detail="foundation">
+            <div class="phase-name">Foundation</div>
+            <div class="phase-duration">Week 1-2 • 10 days</div>
+            <div class="phase-progress">
+                <div class="phase-progress-fill" style="width: 85%"></div>
+            </div>
+        </div>
+        
+        <div class="phase-detail" data-phase-detail="framing">
+            <div class="phase-name">Structural Framing</div>
+            <div class="phase-duration">Week 3-6 • 20 days</div>
+            <div class="phase-progress">
+                <div class="phase-progress-fill" style="width: 60%"></div>
+            </div>
+        </div>
+        
+        <div class="phase-detail" data-phase-detail="mep">
+            <div class="phase-name">MEP Systems</div>
+            <div class="phase-duration">Week 7-10 • 18 days</div>
+            <div class="phase-progress">
+                <div class="phase-progress-fill" style="width: 25%"></div>
+            </div>
+        </div>
+        
+        <div class="phase-detail" data-phase-detail="interior">
+            <div class="phase-name">Interior Work</div>
+            <div class="phase-duration">Week 11-14 • 16 days</div>
+            <div class="phase-progress">
+                <div class="phase-progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="phase-detail" data-phase-detail="exterior">
+            <div class="phase-name">Exterior & Landscaping</div>
+            <div class="phase-duration">Week 15-16 • 10 days</div>
+            <div class="phase-progress">
+                <div class="phase-progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="phase-detail" data-phase-detail="finishing">
+            <div class="phase-name">Finishing & Punch List</div>
+            <div class="phase-duration">Week 17-18 • 8 days</div>
+            <div class="phase-progress">
+                <div class="phase-progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="monitoring-panel">
+        <div class="monitor-metric">
+            <div class="monitor-value" id="safety-score">98%</div>
+            <div class="monitor-label">Safety Score</div>
+        </div>
+        <div class="monitor-metric">
+            <div class="monitor-value" id="quality-rating">A+</div>
+            <div class="monitor-label">Quality</div>
+        </div>
+        <div class="monitor-metric">
+            <div class="monitor-value" id="efficiency-rate">92%</div>
+            <div class="monitor-label">Efficiency</div>
+        </div>
+        <div class="monitor-metric">
+            <div class="monitor-value" id="delay-count">1</div>
+            <div class="monitor-label">Delays</div>
+        </div>
+    </div>
+    
+    <div class="alert-system" id="alert-system">
+        <div style="font-weight: bold; margin-bottom: 5px;">⚠️ Construction Alert</div>
+        <div id="alert-message">Weather delay expected</div>
+    </div>
+
+    <canvas id="construction-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class ConstructionSite {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#87ceeb');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(20, 15, 25);
+                this.camera.lookAt(0, 5, 0);
+                
+                // Construction phases
+                this.phases = [
+                    { name: 'foundation', duration: 10, progress: 85, completed: false },
+                    { name: 'framing', duration: 20, progress: 60, completed: false },
+                    { name: 'mep', duration: 18, progress: 25, completed: false },
+                    { name: 'interior', duration: 16, progress: 0, completed: false },
+                    { name: 'exterior', duration: 10, progress: 0, completed: false },
+                    { name: 'finishing', duration: 8, progress: 0, completed: false }
+                ];
+                
+                this.currentPhaseIndex = 0;
+                this.isPlaying = false;
+                this.timelineSpeed = 3;
+                this.projectDays = 0;
+                this.totalDays = this.phases.reduce((sum, phase) => sum + phase.duration, 0);
+                
+                // Equipment and materials
+                this.activeEquipment = new Set(['crane']);
+                this.constructionObjects = [];
+                this.equipment = [];
+                this.materials = [];
+                this.workers = [];
+                
+                // Project metrics
+                this.budgetRemaining = 2400000;
+                this.workerCount = 45;
+                this.safetyScore = 98;
+                this.qualityRating = 'A+';
+                this.efficiencyRate = 92;
+                this.delayCount = 1;
+                
+                this.initializeLights();
+                this.createConstructionSite();
+                this.createTimeline();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting for construction site
+                this.ambientLight = new AmbientLight(0.4, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Sun light
+                this.sunLight = new DirectionalLight(1.0, '#fff59d');
+                this.sunLight.setDirection(-1, -2, -1);
+                this.scene.add(this.sunLight);
+
+                // Work lights for evening/night shifts
+                this.workLight1 = new PointLight(0.6, '#ffecb3');
+                this.workLight1.setPosition(-10, 8, -10);
+                this.scene.add(this.workLight1);
+
+                this.workLight2 = new PointLight(0.6, '#ffecb3');
+                this.workLight2.setPosition(10, 8, 10);
+                this.scene.add(this.workLight2);
+            }
+
+            createConstructionSite() {
+                this.constructionElements = [];
+                
+                // Site ground
+                this.createSiteGround();
+                
+                // Foundation (Phase 1)
+                this.createFoundation();
+                
+                // Construction equipment
+                this.createEquipment();
+                
+                // Materials and supplies
+                this.createMaterials();
+                
+                // Safety equipment
+                this.createSafetyEquipment();
+            }
+
+            createSiteGround() {
+                // Construction site ground
+                const groundGeometry = new PlaneGeometry(40, 30);
+                const groundMaterial = new StandardMaterial({ 
+                    color: '#8d6e63',
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                
+                const ground = new Mesh(groundGeometry);
+                ground.material = groundMaterial.clone();
+                ground.setPosition(0, 0, 0);
+                ground.setRotation(-Math.PI / 2, 0, 0);
+                
+                ground.userData = {
+                    type: 'site-ground',
+                    constructionArea: true
+                };
+                
+                this.constructionElements.push(ground);
+                this.scene.add(ground);
+                
+                // Add site boundaries
+                this.createSiteBoundaries();
+            }
+
+            createSiteBoundaries() {
+                // Construction site fence
+                const fenceColor = '#ff9800';
+                const fencePositions = [
+                    { pos: [0, 1, -15], rot: [0, 0, 0], size: [40, 2, 0.2] },
+                    { pos: [0, 1, 15], rot: [0, 0, 0], size: [40, 2, 0.2] },
+                    { pos: [-20, 1, 0], rot: [0, Math.PI / 2, 0], size: [30, 2, 0.2] },
+                    { pos: [20, 1, 0], rot: [0, Math.PI / 2, 0], size: [30, 2, 0.2] }
+                ];
+                
+                fencePositions.forEach(fence => {
+                    const fenceGeometry = new BoxGeometry(...fence.size);
+                    const fenceMaterial = new StandardMaterial({ color: fenceColor });
+                    
+                    const fenceMesh = new Mesh(fenceGeometry);
+                    fenceMesh.material = fenceMaterial.clone();
+                    fenceMesh.setPosition(...fence.pos);
+                    fenceMesh.setRotation(...fence.rot);
+                    
+                    fenceMesh.userData = {
+                        type: 'safety-fence',
+                        phase: 'all'
+                    };
+                    
+                    this.constructionElements.push(fenceMesh);
+                    this.scene.add(fenceMesh);
+                });
+            }
+
+            createFoundation() {
+                const foundationProgress = this.phases[0].progress;
+                
+                if (foundationProgress > 0) {
+                    // Foundation excavation
+                    if (foundationProgress > 30) {
+                        this.createExcavation();
+                    }
+                    
+                    // Foundation concrete
+                    if (foundationProgress > 60) {
+                        this.createFoundationConcrete();
+                    }
+                    
+                    // Foundation reinforcement
+                    if (foundationProgress > 80) {
+                        this.createFoundationReinforcement();
+                    }
+                }
+            }
+
+            createExcavation() {
+                // Foundation excavation pit
+                const excavationGeometry = new BoxGeometry(16, 3, 12);
+                const excavationMaterial = new StandardMaterial({ 
+                    color: '#5d4037',
+                    roughness: 1.0,
+                    metalness: 0.0
+                });
+                
+                const excavation = new Mesh(excavationGeometry);
+                excavation.material = excavationMaterial.clone();
+                excavation.setPosition(0, -1.5, 0);
+                
+                excavation.userData = {
+                    type: 'excavation',
+                    phase: 'foundation',
+                    progress: 100
+                };
+                
+                this.constructionElements.push(excavation);
+                this.scene.add(excavation);
+            }
+
+            createFoundationConcrete() {
+                // Foundation concrete pour
+                const concreteGeometry = new BoxGeometry(15, 1, 11);
+                const concreteMaterial = new StandardMaterial({ 
+                    color: '#9e9e9e',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                
+                const concrete = new Mesh(concreteGeometry);
+                concrete.material = concreteMaterial.clone();
+                concrete.setPosition(0, -0.5, 0);
+                
+                concrete.userData = {
+                    type: 'foundation-concrete',
+                    phase: 'foundation',
+                    progress: this.phases[0].progress
+                };
+                
+                this.constructionElements.push(concrete);
+                this.scene.add(concrete);
+            }
+
+            createFoundationReinforcement() {
+                // Rebar reinforcement
+                for (let x = -6; x <= 6; x += 2) {
+                    for (let z = -4; z <= 4; z += 2) {
+                        const rebarGeometry = new CylinderGeometry(0.1, 0.1, 1.2);
+                        const rebarMaterial = new StandardMaterial({ color: '#424242' });
+                        
+                        const rebar = new Mesh(rebarGeometry);
+                        rebar.material = rebarMaterial.clone();
+                        rebar.setPosition(x, 0, z);
+                        
+                        rebar.userData = {
+                            type: 'rebar',
+                            phase: 'foundation',
+                            progress: 100
+                        };
+                        
+                        this.constructionElements.push(rebar);
+                        this.scene.add(rebar);
+                    }
+                }
+            }
+
+            createEquipment() {
+                // Construction crane
+                if (this.phases[0].progress > 50) {
+                    this.createCrane();
+                }
+                
+                // Excavator
+                if (this.phases[0].progress > 20) {
+                    this.createExcavator();
+                }
+                
+                // Concrete mixer
+                if (this.phases[0].progress > 40) {
+                    this.createConcreteMixer();
+                }
+            }
+
+            createCrane() {
+                const craneGroup = new Mesh();
+                
+                // Crane mast
+                const mastGeometry = new BoxGeometry(0.8, 15, 0.8);
+                const mastMaterial = new StandardMaterial({ color: '#ffa726' });
+                const mast = new Mesh(mastGeometry);
+                mast.material = mastMaterial.clone();
+                mast.setPosition(0, 7.5, -12);
+                craneGroup.add(mast);
+                
+                // Crane arm
+                const armGeometry = new BoxGeometry(12, 0.6, 0.4);
+                const armMaterial = new StandardMaterial({ color: '#ff9800' });
+                const arm = new Mesh(armGeometry);
+                arm.material = armMaterial.clone();
+                arm.setPosition(0, 12, -6);
+                craneGroup.add(arm);
+                
+                // Crane hook
+                const hookGeometry = new CylinderGeometry(0.2, 0.2, 0.5);
+                const hookMaterial = new StandardMaterial({ color: '#ff5722' });
+                const hook = new Mesh(hookGeometry);
+                hook.material = hookMaterial.clone();
+                hook.setPosition(6, 11.5, -6);
+                craneGroup.add(hook);
+                
+                craneGroup.userData = {
+                    type: 'crane',
+                    active: this.activeEquipment.has('crane'),
+                    phase: 'foundation'
+                };
+                
+                this.equipment.push(craneGroup);
+                this.scene.add(craneGroup);
+            }
+
+            createExcavator() {
+                const excavatorGroup = new Mesh();
+                
+                // Excavator base
+                const baseGeometry = new BoxGeometry(3, 1, 4);
+                const baseMaterial = new StandardMaterial({ color: '#ffa726' });
+                const base = new Mesh(baseGeometry);
+                base.material = baseMaterial.clone();
+                base.setPosition(-8, 0.5, -8);
+                excavatorGroup.add(base);
+                
+                // Excavator arm
+                const armGeometry = new BoxGeometry(0.4, 3, 0.4);
+                const armMaterial = new StandardMaterial({ color: '#ff9800' });
+                const arm = new Mesh(armGeometry);
+                arm.material = armMaterial.clone();
+                arm.setPosition(-7, 2.5, -8);
+                arm.setRotation(0.3, 0, 0);
+                excavatorGroup.add(arm);
+                
+                // Excavator bucket
+                const bucketGeometry = new BoxGeometry(0.8, 0.6, 1);
+                const bucketMaterial = new StandardMaterial({ color: '#ff5722' });
+                const bucket = new Mesh(bucketGeometry);
+                bucket.material = bucketMaterial.clone();
+                bucket.setPosition(-7, 1, -8);
+                bucket.setRotation(-0.2, 0, 0);
+                excavatorGroup.add(bucket);
+                
+                excavatorGroup.userData = {
+                    type: 'excavator',
+                    active: this.activeEquipment.has('excavator'),
+                    phase: 'foundation'
+                };
+                
+                this.equipment.push(excavatorGroup);
+                this.scene.add(excavatorGroup);
+            }
+
+            createConcreteMixer() {
+                const mixerGeometry = new CylinderGeometry(1.5, 1.5, 4);
+                const mixerMaterial = new StandardMaterial({ color: '#607d8b' });
+                
+                const mixer = new Mesh(mixerGeometry);
+                mixer.material = mixerMaterial.clone();
+                mixer.setPosition(10, 2, -10);
+                
+                mixer.userData = {
+                    type: 'concrete-mixer',
+                    active: this.activeEquipment.has('concrete'),
+                    phase: 'foundation'
+                };
+                
+                this.equipment.push(mixer);
+                this.scene.add(mixer);
+            }
+
+            createMaterials() {
+                // Material stacks
+                const materialTypes = ['steel', 'concrete', 'lumber'];
+                
+                materialTypes.forEach((material, index) => {
+                    this.createMaterialStack(material, index);
+                });
+            }
+
+            createMaterialStack(type, index) {
+                const positions = [
+                    { x: 12, z: 8 },
+                    { x: 15, z: 8 },
+                    { x: 18, z: 8 }
+                ];
+                
+                const colors = {
+                    steel: '#424242',
+                    concrete: '#9e9e9e',
+                    lumber: '#8d6e63'
+                };
+                
+                const position = positions[index];
+                const stackGeometry = new BoxGeometry(2, 1.5, 1);
+                const stackMaterial = new StandardMaterial({ color: colors[type] });
+                
+                const stack = new Mesh(stackGeometry);
+                stack.material = stackMaterial.clone();
+                stack.setPosition(position.x, 0.75, position.z);
+                
+                stack.userData = {
+                    type: 'material-stack',
+                    materialType: type,
+                    quantity: Math.floor(Math.random() * 50) + 10,
+                    phase: 'foundation'
+                };
+                
+                this.materials.push(stack);
+                this.scene.add(stack);
+            }
+
+            createSafetyEquipment() {
+                // Safety cones
+                for (let i = 0; i < 6; i++) {
+                    const coneGeometry = new CylinderGeometry(0.3, 0.5, 0.8);
+                    const coneMaterial = new StandardMaterial({ color: '#ff5722' });
+                    
+                    const cone = new Mesh(coneGeometry);
+                    cone.material = coneMaterial.clone();
+                    const angle = (i * Math.PI) / 3;
+                    cone.setPosition(
+                        Math.cos(angle) * 12, 
+                        0.4, 
+                        Math.sin(angle) * 8
+                    );
+                    
+                    cone.userData = {
+                        type: 'safety-cone',
+                        phase: 'all'
+                    };
+                    
+                    this.constructionElements.push(cone);
+                    this.scene.add(cone);
+                }
+                
+                // Warning signs
+                const signGeometry = new BoxGeometry(1, 1.5, 0.1);
+                const signMaterial = new StandardMaterial({ color: '#ff5722' });
+                
+                const sign = new Mesh(signGeometry);
+                sign.material = signMaterial.clone();
+                sign.setPosition(-18, 1, 0);
+                sign.setRotation(0, Math.PI / 2, 0);
+                
+                sign.userData = {
+                    type: 'warning-sign',
+                    phase: 'all'
+                };
+                
+                this.constructionElements.push(sign);
+                this.scene.add(sign);
+            }
+
+            createTimeline() {
+                const timelineView = document.getElementById('timeline-view');
+                timelineView.innerHTML = '';
+                
+                let currentDay = 0;
+                this.phases.forEach((phase, index) => {
+                    const phaseElement = document.createElement('div');
+                    phaseElement.className = `timeline-phase ${index === this.currentPhaseIndex ? 'active' : ''} ${phase.completed ? 'completed' : ''}`;
+                    phaseElement.textContent = phase.name.charAt(0).toUpperCase() + phase.name.slice(1);
+                    phaseElement.title = `${phase.duration} days`;
+                    phaseElement.style.width = (phase.duration * 3) + 'px';
+                    
+                    timelineView.appendChild(phaseElement);
+                    currentDay += phase.duration;
+                });
+            }
+
+            updateConstructionProgress() {
+                if (!this.isPlaying) return;
+                
+                const currentPhase = this.phases[this.currentPhaseIndex];
+                
+                // Increment progress
+                currentPhase.progress += 0.5 * this.timelineSpeed;
+                
+                if (currentPhase.progress >= 100) {
+                    currentPhase.progress = 100;
+                    currentPhase.completed = true;
+                    
+                    // Move to next phase
+                    if (this.currentPhaseIndex < this.phases.length - 1) {
+                        this.currentPhaseIndex++;
+                        this.showPhaseChangeAlert();
+                    }
+                }
+                
+                // Update overall project progress
+                const totalProgress = this.phases.reduce((sum, phase) => sum + phase.progress, 0) / this.phases.length;
+                
+                // Update UI
+                document.getElementById('current-phase').textContent = 
+                    this.phases[this.currentPhaseIndex].name.charAt(0).toUpperCase() + 
+                    this.phases[this.currentPhaseIndex].name.slice(1);
+                document.getElementById('project-progress').textContent = Math.round(totalProgress) + '%';
+                document.getElementById('overall-progress').style.width = totalProgress + '%';
+                document.getElementById('progress-text').textContent = Math.round(totalProgress) + '% Complete';
+                
+                // Update timeline
+                this.createTimeline();
+                
+                // Update phase details
+                this.updatePhaseDetails();
+                
+                // Increment project days
+                if (this.projectDays < this.totalDays) {
+                    this.projectDays += 0.1 * this.timelineSpeed;
+                    document.getElementById('progress-days').textContent = Math.floor(this.projectDays);
+                }
+                
+                // Update construction visuals based on phase progress
+                this.updateConstructionVisuals();
+            }
+
+            updatePhaseDetails() {
+                document.querySelectorAll('[data-phase-detail]').forEach((detail, index) => {
+                    const phase = this.phases[index];
+                    detail.className = `phase-detail ${index === this.currentPhaseIndex ? 'active' : ''} ${phase.completed ? 'completed' : ''}`;
+                    
+                    const progressFill = detail.querySelector('.phase-progress-fill');
+                    progressFill.style.width = phase.progress + '%';
+                });
+            }
+
+            updateConstructionVisuals() {
+                const currentPhase = this.phases[this.currentPhaseIndex];
+                
+                // Update equipment visibility based on phase
+                this.equipment.forEach(equipment => {
+                    equipment.visible = this.activeEquipment.has(equipment.userData.type);
+                });
+                
+                // Add construction elements based on phase progress
+                if (currentPhase.name === 'framing' && currentPhase.progress > 20) {
+                    this.createFramingElements();
+                }
+                
+                if (currentPhase.name === 'mep' && currentPhase.progress > 30) {
+                    this.createMEPElements();
+                }
+            }
+
+            createFramingElements() {
+                if (this.constructionElements.find(el => el.userData.type === 'framing')) return;
+                
+                // Steel frame columns
+                const columnPositions = [
+                    [-6, 0, -4], [-6, 0, 0], [-6, 0, 4],
+                    [0, 0, -4], [0, 0, 0], [0, 0, 4],
+                    [6, 0, -4], [6, 0, 0], [6, 0, 4]
+                ];
+                
+                columnPositions.forEach(pos => {
+                    const columnGeometry = new BoxGeometry(0.5, 8, 0.5);
+                    const columnMaterial = new StandardMaterial({ color: '#424242' });
+                    
+                    const column = new Mesh(columnGeometry);
+                    column.material = columnMaterial.clone();
+                    column.setPosition(pos[0], 4, pos[2]);
+                    
+                    column.userData = {
+                        type: 'framing',
+                        phase: 'framing',
+                        progress: this.phases[1].progress
+                    };
+                    
+                    this.constructionElements.push(column);
+                    this.scene.add(column);
+                });
+            }
+
+            createMEPElements() {
+                if (this.constructionElements.find(el => el.userData.type === 'mep')) return;
+                
+                // HVAC ducts
+                for (let i = 0; i < 4; i++) {
+                    const ductGeometry = new CylinderGeometry(0.3, 0.3, 8);
+                    const ductMaterial = new StandardMaterial({ color: '#607d8b' });
+                    
+                    const duct = new Mesh(ductGeometry);
+                    duct.material = ductMaterial.clone();
+                    duct.setPosition(-8 + i * 5, 6, 0);
+                    duct.setRotation(Math.PI / 2, 0, 0);
+                    
+                    duct.userData = {
+                        type: 'mep',
+                        phase: 'mep',
+                        progress: this.phases[2].progress
+                    };
+                    
+                    this.constructionElements.push(duct);
+                    this.scene.add(duct);
+                }
+            }
+
+            showPhaseChangeAlert() {
+                const alert = document.getElementById('alert-system');
+                const message = document.getElementById('alert-message');
+                
+                const nextPhase = this.phases[this.currentPhaseIndex];
+                message.textContent = `Starting phase: ${nextPhase.name.charAt(0).toUpperCase() + nextPhase.name.slice(1)}`;
+                alert.classList.add('show');
+                
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                }, 3000);
+            }
+
+            setupEventListeners() {
+                // Phase selection
+                document.querySelectorAll('.phase-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const phaseName = button.dataset.phase;
+                        const phaseIndex = this.phases.findIndex(p => p.name === phaseName);
+                        
+                        if (phaseIndex !== -1) {
+                            this.currentPhaseIndex = phaseIndex;
+                            this.phases.forEach((phase, index) => {
+                                phase.progress = index < phaseIndex ? 100 : index === phaseIndex ? phase.progress : 0;
+                                phase.completed = index < phaseIndex;
+                            });
+                            
+                            document.querySelectorAll('.phase-button').forEach(btn => btn.classList.remove('active'));
+                            button.classList.add('active');
+                            
+                            this.createTimeline();
+                            this.updatePhaseDetails();
+                        }
+                    });
+                });
+
+                // Equipment selection
+                document.querySelectorAll('.equipment-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const equipment = item.dataset.equipment;
+                        
+                        if (this.activeEquipment.has(equipment)) {
+                            this.activeEquipment.delete(equipment);
+                            item.classList.remove('active');
+                        } else {
+                            this.activeEquipment.add(equipment);
+                            item.classList.add('active');
+                        }
+                        
+                        this.updateEquipmentVisibility();
+                    });
+                });
+
+                // Timeline speed control
+                document.getElementById('timeline-speed').addEventListener('input', (e) => {
+                    this.timelineSpeed = parseInt(e.target.value);
+                    document.getElementById('speed-value').textContent = this.timelineSpeed + 'x';
+                });
+
+                // Auto-progress simulation
+                setInterval(() => {
+                    this.updateConstructionProgress();
+                    this.updateProjectMetrics();
+                }, 1000);
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            updateEquipmentVisibility() {
+                this.equipment.forEach(equipment => {
+                    equipment.visible = this.activeEquipment.has(equipment.userData.type);
+                });
+            }
+
+            updateProjectMetrics() {
+                // Update safety score with slight variations
+                this.safetyScore = Math.max(95, Math.min(100, this.safetyScore + (Math.random() - 0.5) * 0.5));
+                document.getElementById('safety-score').textContent = Math.round(this.safetyScore) + '%';
+                
+                // Update budget based on progress
+                const progress = this.phases.reduce((sum, phase) => sum + phase.progress, 0) / this.phases.length;
+                this.budgetRemaining = Math.max(0, 2400000 * (1 - progress / 100));
+                document.getElementById('budget-remaining').textContent = '$' + (this.budgetRemaining / 1000000).toFixed(1) + 'M';
+                
+                // Update worker count based on phase
+                const workerCounts = [45, 65, 80, 75, 60, 40]; // Different phases have different worker requirements
+                this.workerCount = workerCounts[this.currentPhaseIndex];
+                document.getElementById('worker-count').textContent = this.workerCount;
+                
+                // Update efficiency rate
+                this.efficiencyRate = Math.max(85, Math.min(98, this.efficiencyRate + (Math.random() - 0.5) * 0.3));
+                document.getElementById('efficiency-rate').textContent = Math.round(this.efficiencyRate) + '%';
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+                
+                // Animate equipment
+                const time = performance.now() * 0.001;
+                this.equipment.forEach((equipment, index) => {
+                    if (equipment.visible) {
+                        if (equipment.userData.type === 'crane') {
+                            // Crane arm rotation
+                            equipment.setRotation(0, Math.sin(time * 0.5) * 0.1, 0);
+                        } else if (equipment.userData.type === 'excavator') {
+                            // Excavator arm movement
+                            equipment.children.forEach(child => {
+                                if (child.userData.type === 'bucket') {
+                                    child.setRotation(-0.2 + Math.sin(time * 2) * 0.1, 0, 0);
+                                }
+                            });
+                        }
+                    }
+                });
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let constructionDemo;
+
+        function playPause() {
+            if (constructionDemo) {
+                constructionDemo.isPlaying = !constructionDemo.isPlaying;
+                const button = event.target;
+                button.textContent = constructionDemo.isPlaying ? '⏸ Pause' : '▶ Play';
+            }
+        }
+
+        function resetSimulation() {
+            if (constructionDemo) {
+                constructionDemo.phases.forEach(phase => {
+                    phase.progress = 0;
+                    phase.completed = false;
+                });
+                constructionDemo.currentPhaseIndex = 0;
+                constructionDemo.projectDays = 0;
+                constructionDemo.isPlaying = false;
+                
+                // Update UI
+                document.querySelectorAll('.phase-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('.phase-button[data-phase="foundation"]').classList.add('active');
+                document.querySelector('button[onclick="playPause()"]').textContent = '▶ Play';
+                
+                constructionDemo.createTimeline();
+                constructionDemo.updatePhaseDetails();
+            }
+        }
+
+        function addDelay() {
+            if (constructionDemo) {
+                constructionDemo.delayCount++;
+                document.getElementById('delay-count').textContent = constructionDemo.delayCount;
+                
+                const alert = document.getElementById('alert-system');
+                const message = document.getElementById('alert-message');
+                message.textContent = 'Weather delay added - 2 days';
+                alert.classList.add('show');
+                
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        function exportReport() {
+            if (constructionDemo) {
+                const report = {
+                    project: {
+                        name: 'Commercial Building Construction',
+                        startDate: '2024-01-01',
+                        estimatedCompletion: '2025-03-15',
+                        currentPhase: constructionDemo.phases[constructionDemo.currentPhaseIndex].name,
+                        progress: constructionDemo.phases.reduce((sum, phase) => sum + phase.progress, 0) / constructionDemo.phases.length
+                    },
+                    phases: constructionDemo.phases,
+                    metrics: {
+                        daysElapsed: constructionDemo.projectDays,
+                        budgetRemaining: constructionDemo.budgetRemaining,
+                        workerCount: constructionDemo.workerCount,
+                        safetyScore: constructionDemo.safetyScore,
+                        qualityRating: constructionDemo.qualityRating,
+                        efficiencyRate: constructionDemo.efficiencyRate,
+                        delayCount: constructionDemo.delayCount
+                    },
+                    equipment: Array.from(constructionDemo.activeEquipment),
+                    materials: constructionDemo.materials.map(m => ({
+                        type: m.userData.materialType,
+                        quantity: m.userData.quantity
+                    }))
+                };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'construction-report.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('construction-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                constructionDemo = new ConstructionSite(canvas);
+                console.log('Construction site demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading construction site:', error);
+                document.getElementById('construction-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

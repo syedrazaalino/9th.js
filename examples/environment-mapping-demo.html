@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Mapping System Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            min-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        #ui h3 {
+            margin: 0 0 15px 0;
+            color: #64ffda;
+            font-size: 16px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #cccccc;
+            font-weight: bold;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+            accent-color: #64ffda;
+        }
+        
+        select {
+            width: 100%;
+            padding: 5px;
+            background: #222;
+            color: #ffffff;
+            border: 1px solid #444;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+        
+        select:focus {
+            border-color: #64ffda;
+            outline: none;
+        }
+        
+        .stats {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #64ffda;
+        }
+        
+        .stat-value {
+            color: #ffffff;
+            font-weight: bold;
+        }
+        
+        .controls {
+            background: rgba(100, 255, 218, 0.1);
+            border: 1px solid #64ffda;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .controls h4 {
+            margin: 0 0 10px 0;
+            color: #64ffda;
+            font-size: 14px;
+        }
+        
+        .control-item {
+            margin-bottom: 5px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .key {
+            background: #333;
+            color: #64ffda;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #64ffda;
+            font-size: 18px;
+            z-index: 2000;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(100, 255, 218, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #64ffda;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .performance-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #64ffda;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 11px;
+            border: 1px solid #333;
+        }
+        
+        .fps-high { color: #00ff00; }
+        .fps-medium { color: #ffff00; }
+        .fps-low { color: #ff6600; }
+        .fps-critical { color: #ff0000; }
+        
+        #console {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 10px;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            display: none;
+        }
+        
+        .console-visible #console {
+            display: block;
+        }
+        
+        .console-toggle {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(100, 255, 218, 0.2);
+            color: #64ffda;
+            border: 1px solid #64ffda;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        
+        .console-toggle:hover {
+            background: rgba(100, 255, 218, 0.3);
+        }
+        
+        .info-panel {
+            background: rgba(100, 255, 218, 0.1);
+            border: 1px solid #64ffda;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-panel h4 {
+            margin: 0 0 10px 0;
+            color: #64ffda;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .feature-list li {
+            margin-bottom: 3px;
+            padding-left: 15px;
+            position: relative;
+        }
+        
+        .feature-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #64ffda;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div>Initializing Environment Mapping System...</div>
+    </div>
+    
+    <div id="ui" style="display: none;">
+        <h3>🌍 Environment Mapping Demo</h3>
+        
+        <div class="control-group">
+            <label>🎛️ Rendering Options</label>
+            <div class="checkbox-group">
+                <input type="checkbox" id="show-probes" checked>
+                <label for="show-probes">Show Reflection Probes</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="show-ssr" checked>
+                <label for="show-ssr">Enable Screen Space Reflections</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="auto-place" checked>
+                <label for="auto-place">Auto-Place Probes</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="animate-probes">
+                <label for="animate-probes">Animate Probes</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="performance-mode">
+                <label for="performance-mode">Performance Mode</label>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>⚙️ Quality Settings</label>
+            <label for="ssr-quality">SSR Quality:</label>
+            <select id="ssr-quality">
+                <option value="low">Low (Fast)</option>
+                <option value="medium" selected>Medium (Balanced)</option>
+                <option value="high">High (Quality)</option>
+            </select>
+            
+            <label for="probe-count">Max Probes:</label>
+            <select id="probe-count">
+                <option value="2">2 Probes</option>
+                <option value="4">4 Probes</option>
+                <option value="6" selected>6 Probes</option>
+                <option value="8">8 Probes</option>
+                <option value="12">12 Probes</option>
+            </select>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-row">
+                <span class="stat-label">Active Probes:</span>
+                <span class="stat-value" id="active-probes">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">SSR Quality:</span>
+                <span class="stat-value" id="current-ssr-quality">Medium</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Frame Rate:</span>
+                <span class="stat-value" id="fps">60.0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Memory Usage:</span>
+                <span class="stat-value" id="memory-usage">0.0</span> MB
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Render Time:</span>
+                <span class="stat-value" id="render-time">0.0</span> ms
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <h4>🚀 System Features</h4>
+            <ul class="feature-list">
+                <li>Real-time Reflection Probes</li>
+                <li>Screen Space Reflections (SSR)</li>
+                <li>Automatic Probe Placement</li>
+                <li>Level of Detail (LOD) System</li>
+                <li>Frustum & Distance Culling</li>
+                <li>Parallax Correction</li>
+                <li>Temporal Smoothing</li>
+                <li>Performance Optimization</li>
+            </ul>
+        </div>
+        
+        <div class="controls">
+            <h4>⌨️ Keyboard Controls</h4>
+            <div class="control-item">
+                <span class="key">P</span> <span>Toggle Probes</span>
+            </div>
+            <div class="control-item">
+                <span class="key">S</span> <span>Toggle SSR</span>
+            </div>
+            <div class="control-item">
+                <span class="key">Q</span> <span>Cycle Quality</span>
+            </div>
+            <div class="control-item">
+                <span class="key">A</span> <span>Auto Place</span>
+            </div>
+            <div class="control-item">
+                <span class="key">R</span> <span>Animate Probes</span>
+            </div>
+            <div class="control-item">
+                <span class="key">M</span> <span>Performance Mode</span>
+            </div>
+            <div class="control-item">
+                <span class="key">SPACE</span> <span>Reset Camera</span>
+            </div>
+            <div class="control-item">
+                <span class="key">H</span> <span>Toggle Console</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <h4>🖱️ Mouse Controls</h4>
+            <div class="control-item">
+                <span>Drag</span> <span>Rotate Camera</span>
+            </div>
+            <div class="control-item">
+                <span>Wheel</span> <span>Zoom In/Out</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="performance-indicator" id="perf-indicator">
+        <span id="perf-text">FPS: 60 | Probes: 0</span>
+    </div>
+    
+    <button class="console-toggle" onclick="toggleConsole()">Console</button>
+    
+    <div id="console"></div>
+
+    <script type="module">
+        import { EnvironmentMappingDemo } from './environment-mapping-demo.js';
+        
+        let demo;
+        let canvas;
+        let gl;
+        let frameCount = 0;
+        let lastFpsTime = performance.now();
+        let currentFps = 60;
+        
+        // Initialize the demo
+        async function init() {
+            try {
+                canvas = document.getElementById('canvas');
+                
+                // Get WebGL context
+                gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (!gl) {
+                    throw new Error('WebGL not supported');
+                }
+                
+                // Resize canvas
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                // Initialize demo
+                demo = new EnvironmentMappingDemo(canvas, gl);
+                
+                // Setup UI event handlers
+                setupUIHandlers();
+                
+                // Hide loading, show UI
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('ui').style.display = 'block';
+                
+                // Start animation loop
+                startAnimation();
+                
+                console.log('Environment Mapping Demo initialized successfully');
+                
+            } catch (error) {
+                console.error('Failed to initialize demo:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #ff4444;">
+                        <h3>Initialization Failed</h3>
+                        <p>${error.message}</p>
+                        <p>Please ensure your browser supports WebGL</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = Math.floor(canvas.clientWidth * dpr);
+            const displayHeight = Math.floor(canvas.clientHeight * dpr);
+            
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+            }
+            
+            if (gl) {
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function setupUIHandlers() {
+            // Control checkboxes
+            document.getElementById('show-probes').addEventListener('change', (e) => {
+                demo.settings.showProbes = e.target.checked;
+            });
+            
+            document.getElementById('show-ssr').addEventListener('change', (e) => {
+                demo.settings.showSSR = e.target.checked;
+                if (demo.envMapping.ssr) {
+                    demo.envMapping.ssr.enabled = demo.settings.showSSR;
+                }
+            });
+            
+            document.getElementById('auto-place').addEventListener('change', (e) => {
+                demo.settings.autoPlaceProbes = e.target.checked;
+                demo.resetProbes();
+            });
+            
+            document.getElementById('animate-probes').addEventListener('change', (e) => {
+                demo.settings.animateProbes = e.target.checked;
+            });
+            
+            document.getElementById('performance-mode').addEventListener('change', (e) => {
+                demo.settings.performanceMode = e.target.checked;
+                demo.updatePerformanceMode();
+            });
+            
+            // Quality dropdown
+            document.getElementById('ssr-quality').addEventListener('change', (e) => {
+                demo.settings.ssrQuality = e.target.value;
+                demo.updateSSRQuality(demo.settings.ssrQuality);
+                updateUI();
+            });
+            
+            // Probe count dropdown
+            document.getElementById('probe-count').addEventListener('change', (e) => {
+                demo.envMapping.maxProbes = parseInt(e.target.value);
+                demo.updateActiveProbes();
+            });
+        }
+        
+        function startAnimation() {
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                if (demo) {
+                    // Update FPS calculation
+                    updateFPS();
+                    
+                    // Update UI periodically
+                    if (frameCount % 30 === 0) {
+                        updateUI();
+                    }
+                    
+                    // Update performance indicator
+                    updatePerformanceIndicator();
+                }
+                
+                frameCount++;
+            }
+            
+            animate();
+        }
+        
+        function updateFPS() {
+            const now = performance.now();
+            const deltaTime = now - lastFpsTime;
+            
+            if (deltaTime >= 1000) {
+                currentFps = Math.round((frameCount * 1000) / deltaTime);
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+        }
+        
+        function updateUI() {
+            if (!demo) return;
+            
+            const metrics = demo.envMapping.getMetrics();
+            
+            document.getElementById('active-probes').textContent = metrics.activeProbes;
+            document.getElementById('current-ssr-quality').textContent = 
+                demo.settings.ssrQuality.charAt(0).toUpperCase() + demo.settings.ssrQuality.slice(1);
+            document.getElementById('fps').textContent = currentFps.toFixed(1);
+            document.getElementById('memory-usage').textContent = 
+                (metrics.memoryUsage / (1024 * 1024)).toFixed(1);
+            document.getElementById('render-time').textContent = 
+                metrics.renderTime.toFixed(2);
+            
+            // Update FPS color coding
+            const fpsElement = document.getElementById('fps');
+            fpsElement.className = 'stat-value';
+            
+            if (currentFps >= 55) {
+                fpsElement.classList.add('fps-high');
+            } else if (currentFps >= 30) {
+                fpsElement.classList.add('fps-medium');
+            } else if (currentFps >= 15) {
+                fpsElement.classList.add('fps-low');
+            } else {
+                fpsElement.classList.add('fps-critical');
+            }
+        }
+        
+        function updatePerformanceIndicator() {
+            const metrics = demo ? demo.envMapping.getMetrics() : { activeProbes: 0 };
+            
+            document.getElementById('perf-text').textContent = 
+                `FPS: ${currentFps} | Probes: ${metrics.activeProbes}`;
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'h' || e.key === 'H') {
+                toggleConsole();
+            }
+        });
+        
+        // Console functions
+        window.toggleConsole = function() {
+            document.body.classList.toggle('console-visible');
+        }
+        
+        // Console logging
+        const originalConsole = {
+            log: console.log.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console),
+            info: console.info.bind(console)
+        };
+        
+        function addToConsole(message, type = 'log') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `console-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            console.appendChild(logEntry);
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // Override console methods
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            addToConsole(args.join(' '), 'log');
+        };
+        
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            addToConsole(args.join(' '), 'warn');
+        };
+        
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            addToConsole(args.join(' '), 'error');
+        };
+        
+        // Initialize when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (demo) {
+                demo.dispose();
+            }
+        });
+    </script>
+</body>
+</html>

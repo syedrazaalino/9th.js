@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9th.js API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        /* Navigation */
+        .nav {
+            background: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            color: #764ba2;
+        }
+        
+        /* Search */
+        .search-container {
+            background: white;
+            padding: 2rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-box {
+            position: relative;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px 50px 12px 16px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        .search-input:focus {
+            border-color: #667eea;
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .search-result {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .search-result:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .search-result:last-child {
+            border-bottom: none;
+        }
+        
+        .search-result h4 {
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        
+        .search-result p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* Main Content */
+        .main {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            padding: 2rem 0;
+            min-height: calc(100vh - 400px);
+        }
+        
+        .sidebar {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 120px;
+        }
+        
+        .sidebar h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+        }
+        
+        .sidebar-nav li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-nav a {
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            display: block;
+            padding: 6px 0;
+            transition: color 0.3s ease;
+        }
+        
+        .sidebar-nav a:hover {
+            color: #667eea;
+        }
+        
+        .sidebar-nav a.active {
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* API Index */
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .api-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .api-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .api-card h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+        
+        .api-card p {
+            color: #666;
+            margin-bottom: 1rem;
+            font-size: 14px;
+        }
+        
+        .api-card a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .api-card a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Quick Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        /* Footer */
+        .footer {
+            background: #333;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 4rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .sidebar {
+                position: static;
+                order: 2;
+            }
+            
+            .nav-links {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Code blocks */
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        
+        /* Highlight */
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1>9th.js API Documentation</h1>
+            <p>Complete API reference for the modern 3D JavaScript library</p>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="container">
+            <ul class="nav-links">
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#api">API Reference</a></li>
+                <li><a href="#guides">Guides</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#tutorials">Tutorials</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Search -->
+    <div class="search-container">
+        <div class="container">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search classes, methods, properties..." id="searchInput">
+                <span class="search-icon">🔍</span>
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="main">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <h3>Documentation</h3>
+                <ul class="sidebar-nav">
+                    <li><a href="#getting-started" class="active">Getting Started</a></li>
+                    <li><a href="#core-api">Core API</a></li>
+                    <li><a href="#cameras">Cameras</a></li>
+                    <li><a href="#geometry">Geometry</a></li>
+                    <li><a href="#materials">Materials</a></li>
+                    <li><a href="#lighting">Lighting</a></li>
+                    <li><a href="#animation">Animation</a></li>
+                    <li><a href="#loaders">Loaders</a></li>
+                    <li><a href="#math">Math & Utils</a></li>
+                    <li><a href="#rendering">Rendering</a></li>
+                    <li><a href="#controls">Controls</a></li>
+                    <li><a href="#events">Events</a></li>
+                </ul>
+            </aside>
+
+            <!-- Content -->
+            <main class="content">
+                <section id="overview">
+                    <h2>Overview</h2>
+                    <p>9th.js is a modern 3D JavaScript library for creating interactive graphics and visualizations in web browsers using WebGL. It provides a comprehensive set of classes for 3D rendering, animation, geometry, materials, lighting, and more.</p>
+                    
+                    <div class="stats">
+                        <div class="stat-card">
+                            <span class="stat-number" id="classCount">50+</span>
+                            <span class="stat-label">Classes</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="methodCount">500+</span>
+                            <span class="stat-label">Methods</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="propertyCount">1000+</span>
+                            <span class="stat-label">Properties</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="exampleCount">25+</span>
+                            <span class="stat-label">Examples</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="api">
+                    <h2>API Reference</h2>
+                    <p>Browse the complete 9th.js API documentation organized by category.</p>
+                    
+                    <div class="api-grid">
+                        <div class="api-card">
+                            <h3>Core API</h3>
+                            <p>Essential classes for 3D scene management, rendering, and object handling.</p>
+                            <ul>
+                                <li><a href="Engine.html">Engine</a> - Main application controller</li>
+                                <li><a href="Scene.html">Scene</a> - 3D scene container</li>
+                                <li><a href="WebGLRenderer.html">WebGLRenderer</a> - Rendering system</li>
+                                <li><a href="Object3D.html">Object3D</a> - Base 3D object class</li>
+                                <li><a href="BufferGeometry.html">BufferGeometry</a> - Geometry storage</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Cameras</h3>
+                            <p>Camera systems for different projection types and viewing perspectives.</p>
+                            <ul>
+                                <li><a href="Camera.html">Camera</a> - Base camera class</li>
+                                <li><a href="PerspectiveCamera.html">PerspectiveCamera</a> - Perspective projection</li>
+                                <li><a href="OrthographicCamera.html">OrthographicCamera</a> - Orthographic projection</li>
+                                <li><a href="CubemapCamera.html">CubemapCamera</a> - 360° environment capture</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Geometry</h3>
+                            <p>3D geometric shapes and geometry utilities.</p>
+                            <ul>
+                                <li><a href="BoxGeometry.html">BoxGeometry</a> - Box-shaped geometry</li>
+                                <li><a href="SphereGeometry.html">SphereGeometry</a> - Sphere-shaped geometry</li>
+                                <li><a href="PlaneGeometry.html">PlaneGeometry</a> - Flat plane geometry</li>
+                                <li><a href="CylinderGeometry.html">CylinderGeometry</a> - Cylinder geometry</li>
+                                <li><a href="ConeGeometry.html">ConeGeometry</a> - Cone geometry</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Materials</h3>
+                            <p>Material systems for controlling object appearance and rendering.</p>
+                            <ul>
+                                <li><a href="Material.html">Material</a> - Base material class</li>
+                                <li><a href="BasicMaterial.html">BasicMaterial</a> - Unlit material</li>
+                                <li><a href="PhongMaterial.html">PhongMaterial</a> - Phong shading</li>
+                                <li><a href="StandardMaterial.html">StandardMaterial</a> - PBR standard material</li>
+                                <li><a href="PhysicalMaterial.html">PhysicalMaterial</a> - Advanced PBR</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Lighting</h3>
+                            <p>Lighting systems for illuminating 3D scenes.</p>
+                            <ul>
+                                <li><a href="Light.html">Light</a> - Base light class</li>
+                                <li><a href="AmbientLight.html">AmbientLight</a> - Ambient lighting</li>
+                                <li><a href="DirectionalLight.html">DirectionalLight</a> - Sun-like light</li>
+                                <li><a href="PointLight.html">PointLight</a> - Point light source</li>
+                                <li><a href="SpotLight.html">SpotLight</a> - Spotlight with angle</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Animation</h3>
+                            <p>Animation system for creating dynamic, interactive 3D content.</p>
+                            <ul>
+                                <li><a href="AnimationClip.html">AnimationClip</a> - Animation data</li>
+                                <li><a href="AnimationMixer.html">AnimationMixer</a> - Animation controller</li>
+                                <li><a href="KeyframeTrack.html">KeyframeTrack</a> - Keyframe animation</li>
+                                <li><a href="AnimationAction.html">AnimationAction</a> - Animation instance</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Loaders</h3>
+                            <p>Asset loading utilities for textures, 3D models, and data files.</p>
+                            <ul>
+                                <li><a href="Loader.html">Loader</a> - Base loader class</li>
+                                <li><a href="TextureLoader.html">TextureLoader</a> - Texture loading</li>
+                                <li><a href="GLTFLoader.html">GLTFLoader</a> - glTF format support</li>
+                                <li><a href="OBJLoader.html">OBJLoader</a> - OBJ format support</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Math & Utils</h3>
+                            <p>Mathematical utilities and helper classes for 3D operations.</p>
+                            <ul>
+                                <li><a href="Vector3.html">Vector3</a> - 3D vector operations</li>
+                                <li><a href="Matrix4.html">Matrix4</a> - 4x4 matrix operations</li>
+                                <li><a href="Quaternion.html">Quaternion</a> - Quaternion operations</li>
+                                <li><a href="Color.html">Color</a> - Color utilities</li>
+                                <li><a href="MathUtils.html">MathUtils</a> - Math helper functions</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Controls</h3>
+                            <p>User interaction controls for cameras and objects.</p>
+                            <ul>
+                                <li><a href="OrbitControls.html">OrbitControls</a> - Orbital camera control</li>
+                                <li><a href="FirstPersonControls.html">FirstPersonControls</a> - FPS camera control</li>
+                                <li><a href="DragControls.html">DragControls</a> - Object dragging</li>
+                                <li><a href="TransformControls.html">TransformControls</a> - Transform gizmos</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Rendering</h3>
+                            <p>Advanced rendering techniques and post-processing effects.</p>
+                            <ul>
+                                <li><a href="ShaderMaterial.html">ShaderMaterial</a> - Custom shaders</li>
+                                <li><a href="EffectComposer.html">EffectComposer</a> - Post-processing</li>
+                                <li><a href="RenderPass.html">RenderPass</a> - Rendering passes</li>
+                                <li><a href="ShaderPass.html">ShaderPass</a> - Shader passes</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Particles</h3>
+                            <p>Particle systems for creating effects like fire, smoke, and sparkles.</p>
+                            <ul>
+                                <li><a href="ParticleSystem.html">ParticleSystem</a> - Particle emitter</li>
+                                <li><a href="Particle.html">Particle</a> - Individual particle</li>
+                                <li><a href="ParticleMaterial.html">ParticleMaterial</a> - Particle material</li>
+                                <li><a href="ParticleEmitter.html">ParticleEmitter</a> - Particle controller</li>
+                            </ul>
+                        </div>
+
+                        <div class="api-card">
+                            <h3>Physics</h3>
+                            <p>Physics simulation for realistic object interactions.</p>
+                            <ul>
+                                <li><a href="PhysicsSystem.html">PhysicsSystem</a> - Physics engine</li>
+                                <li><a href="RigidBody.html">RigidBody</a> - Physics object</li>
+                                <li><a href="CollisionShape.html">CollisionShape</a> - Collision detection</li>
+                                <li><a href="Joint.html">Joint</a> - Object constraints</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="guides">
+                    <h2>Guides & Tutorials</h2>
+                    <p>Learn how to use 9th.js effectively with these comprehensive guides.</p>
+                    
+                    <div class="api-grid">
+                        <div class="api-card">
+                            <h3><a href="../guides/getting-started.html">Getting Started</a></h3>
+                            <p>Introduction to 9th.js and basic 3D scene creation.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../guides/core-concepts.html">Core Concepts</a></h3>
+                            <p>Understanding 9th.js architecture and fundamental concepts.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../guides/rendering.html">Rendering Guide</a></h3>
+                            <p>Advanced rendering techniques and optimization.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../guides/animation.html">Animation Guide</a></h3>
+                            <p>Creating animations and interactive content.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../guides/materials.html">Materials Guide</a></h3>
+                            <p>Working with materials and shaders.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../guides/lighting.html">Lighting Guide</a></h3>
+                            <p>Advanced lighting techniques and shadows.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="examples">
+                    <h2>Examples</h2>
+                    <p>Interactive examples demonstrating 9th.js capabilities.</p>
+                    
+                    <div class="api-grid">
+                        <div class="api-card">
+                            <h3><a href="../examples/basic.html">Basic Example</a></h3>
+                            <p>Simple rotating cube - perfect starting point.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../examples/advanced.html">Advanced Demo</a></h3>
+                            <p>Complex scene with multiple features and effects.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../examples/webgl-renderer-demo.html">WebGL Renderer</a></h3>
+                            <p>Showcase of WebGL rendering capabilities.</p>
+                        </div>
+                        
+                        <div class="api-card">
+                            <h3><a href="../examples/animation-system-demo.html">Animation System</a></h3>
+                            <p>Animation features and techniques demonstration.</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 9th.js Team. Built with ❤️ for the 3D web community.</p>
+            <p><a href="#" style="color: #ccc;">GitHub</a> | <a href="#" style="color: #ccc;">NPM</a> | <a href="#" style="color: #ccc;">Discord</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple search functionality
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        
+        // Mock API data for search
+        const apiData = [
+            { name: 'Engine', description: 'Main engine class for initializing 3D environment', url: 'Engine.html', category: 'Core' },
+            { name: 'Scene', description: 'Container for all 3D objects', url: 'Scene.html', category: 'Core' },
+            { name: 'Mesh', description: '3D object with geometry and material', url: 'Mesh.html', category: 'Core' },
+            { name: 'PerspectiveCamera', description: 'Camera with perspective projection', url: 'PerspectiveCamera.html', category: 'Camera' },
+            { name: 'OrthographicCamera', description: 'Camera with orthographic projection', url: 'OrthographicCamera.html', category: 'Camera' },
+            { name: 'BoxGeometry', description: 'Box-shaped geometry', url: 'BoxGeometry.html', category: 'Geometry' },
+            { name: 'SphereGeometry', description: 'Sphere-shaped geometry', url: 'SphereGeometry.html', category: 'Geometry' },
+            { name: 'StandardMaterial', description: 'PBR standard material', url: 'StandardMaterial.html', category: 'Material' },
+            { name: 'DirectionalLight', description: 'Sun-like directional light', url: 'DirectionalLight.html', category: 'Lighting' },
+            { name: 'PointLight', description: 'Point light source', url: 'PointLight.html', category: 'Lighting' },
+            { name: 'AnimationMixer', description: 'Animation playback controller', url: 'AnimationMixer.html', category: 'Animation' },
+            { name: 'GLTFLoader', description: 'glTF format loader', url: 'GLTFLoader.html', category: 'Loader' },
+            { name: 'Vector3', description: '3D vector operations', url: 'Vector3.html', category: 'Math' },
+            { name: 'OrbitControls', description: 'Orbital camera controls', url: 'OrbitControls.html', category: 'Control' }
+        ];
+        
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            const results = apiData.filter(item => 
+                item.name.toLowerCase().includes(query) ||
+                item.description.toLowerCase().includes(query) ||
+                item.category.toLowerCase().includes(query)
+            ).slice(0, 8);
+            
+            displaySearchResults(results);
+        });
+        
+        function displaySearchResults(results) {
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-result"><p>No results found</p></div>';
+            } else {
+                searchResults.innerHTML = results.map(result => `
+                    <div class="search-result" onclick="goToResult('${result.url}')">
+                        <h4>${result.name}</h4>
+                        <p>${result.description}</p>
+                        <small>Category: ${result.category}</small>
+                    </div>
+                `).join('');
+            }
+            
+            searchResults.style.display = 'block';
+        }
+        
+        function goToResult(url) {
+            window.location.href = url;
+        }
+        
+        // Close search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-box')) {
+                searchResults.style.display = 'none';
+            }
+        });
+        
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // Update active navigation
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.sidebar-nav a');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Load statistics (mock data)
+        document.getElementById('classCount').textContent = '50+';
+        document.getElementById('methodCount').textContent = '500+';
+        document.getElementById('propertyCount').textContent = '1000+';
+        document.getElementById('exampleCount').textContent = '25+';
+    </script>
+</body>
+</html>

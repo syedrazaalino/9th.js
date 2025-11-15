@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interior Design - Architecture Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #design-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 340px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #design-panel h3 {
+            margin: 0 0 12px 0;
+            color: #e91e63;
+            font-size: 18px;
+        }
+        
+        #design-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 8px 0;
+            color: #ff9800;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 8px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 4px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .color-input {
+            width: 60px !important;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .button {
+            background-color: #e91e63;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #c2185b;
+            transform: translateY(-1px);
+        }
+        
+        .button.active {
+            background-color: #ff9800;
+        }
+        
+        .furniture-item {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px;
+            background-color: #444;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .furniture-item:hover {
+            background-color: #555;
+        }
+        
+        .furniture-item.selected {
+            background-color: #e91e63;
+        }
+        
+        #measurement-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #color-palette {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .color-swatch:hover {
+            border-color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="design-panel">
+        <h3>Interior Design Studio</h3>
+        <p>Room layout and decoration tools</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Selected Item: <span id="selected-item">None</span></p>
+        <p>Room Area: <span id="room-area">0.0</span> m²</p>
+        
+        <div class="control-section">
+            <h4>Room Configuration</h4>
+            <div class="control-group">
+                <label>Room Type:</label>
+                <select id="room-type">
+                    <option value="living">Living Room</option>
+                    <option value="bedroom">Bedroom</option>
+                    <option value="kitchen">Kitchen</option>
+                    <option value="office">Office</option>
+                    <option value="dining">Dining Room</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Room Size (m):</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="room-width" placeholder="Width" value="6" min="2" max="20" step="0.5">
+                    <input type="number" id="room-height" placeholder="Height" value="3" min="2" max="5" step="0.1">
+                    <input type="number" id="room-depth" placeholder="Depth" value="8" min="2" max="20" step="0.5">
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Materials & Colors</h4>
+            <div class="control-group">
+                <label>Wall Color:</label>
+                <input type="color" id="wall-color" class="color-input" value="#f5f5f5">
+            </div>
+            <div class="control-group">
+                <label>Floor Color:</label>
+                <input type="color" id="floor-color" class="color-input" value="#8d6e63">
+            </div>
+            <div class="control-group">
+                <label>Ceiling Color:</label>
+                <input type="color" id="ceiling-color" class="color-input" value="#ffffff">
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Furniture</h4>
+            <div class="furniture-item" data-type="sofa">Sofa</div>
+            <div class="furniture-item" data-type="chair">Chair</div>
+            <div class="furniture-item" data-type="table">Table</div>
+            <div class="furniture-item" data-type="bed">Bed</div>
+            <div class="furniture-item" data-type="cabinet">Cabinet</div>
+            <div class="furniture-item" data-type="plant">Plant</div>
+            <div class="furniture-item" data-type="lamp">Lamp</div>
+            <div class="furniture-item" data-type="tv">TV Stand</div>
+            <div class="control-group">
+                <button class="button" onclick="removeSelected()">Remove Selected</button>
+                <button class="button" onclick="duplicateSelected()">Duplicate</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Lighting</h4>
+            <div class="control-group">
+                <label>Ambient Light:</label>
+                <input type="range" id="ambient-light" min="0" max="100" value="30">
+            </div>
+            <div class="control-group">
+                <label>Point Lights:</label>
+                <input type="range" id="point-light" min="0" max="100" value="70">
+            </div>
+            <div class="control-group">
+                <label>Natural Light:</label>
+                <input type="range" id="natural-light" min="0" max="100" value="80">
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>View Options</h4>
+            <button class="button" onclick="toggleWireframe()">Wireframe</button>
+            <button class="button" onclick="resetRoom()">Reset Room</button>
+            <button class="button" onclick="takeScreenshot()">Screenshot</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Click to select • Drag to move • Scroll to rotate • Delete to remove
+            </p>
+        </div>
+    </div>
+    
+    <div id="color-palette">
+        <h4 style="margin: 0 0 10px 0; color: #333;">Quick Colors</h4>
+        <div style="display: flex; flex-wrap: wrap;">
+            <div class="color-swatch" style="background-color: #ffeb3b;" title="Yellow"></div>
+            <div class="color-swatch" style="background-color: #ff5722;" title="Orange"></div>
+            <div class="color-swatch" style="background-color: #f44336;" title="Red"></div>
+            <div class="color-swatch" style="background-color: #e91e63;" title="Pink"></div>
+            <div class="color-swatch" style="background-color: #9c27b0;" title="Purple"></div>
+            <div class="color-swatch" style="background-color: #3f51b5;" title="Blue"></div>
+            <div class="color-swatch" style="background-color: #2196f3;" title="Light Blue"></div>
+            <div class="color-swatch" style="background-color: #00bcd4;" title="Cyan"></div>
+            <div class="color-swatch" style="background-color: #4caf50;" title="Green"></div>
+            <div class="color-swatch" style="background-color: #8bc34a;" title="Light Green"></div>
+            <div class="color-swatch" style="background-color: #cddc39;" title="Lime"></div>
+            <div class="color-swatch" style="background-color: #795548;" title="Brown"></div>
+        </div>
+    </div>
+
+    <canvas id="interior-canvas"></canvas>
+    <canvas id="measurement-overlay"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class InteriorDesign {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.measurementCanvas = document.getElementById('measurement-overlay');
+                this.ctx = this.measurementCanvas.getContext('2d');
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#2c3e50');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(0, 2, 10);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.selectedFurniture = null;
+                this.furniture = [];
+                this.isDragging = false;
+                this.dragOffset = new Vec3();
+                
+                this.roomConfig = {
+                    width: 6,
+                    height: 3,
+                    depth: 8,
+                    wallColor: '#f5f5f5',
+                    floorColor: '#8d6e63',
+                    ceilingColor: '#ffffff'
+                };
+                
+                this.initializeLights();
+                this.createRoom();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting
+                this.ambientLight = new AmbientLight(0.3, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Natural light from window
+                this.naturalLight = new DirectionalLight(1.0, '#ffffff');
+                this.naturalLight.setDirection(-1, -2, -1);
+                this.scene.add(this.naturalLight);
+
+                // Point lights for ambiance
+                this.pointLight1 = new PointLight(0.5, '#ffffff');
+                this.pointLight1.setPosition(-2, 2.5, 0);
+                this.scene.add(this.pointLight1);
+
+                this.pointLight2 = new PointLight(0.5, '#ffffff');
+                this.pointLight2.setPosition(2, 2.5, 0);
+                this.scene.add(this.pointLight2);
+
+                // Ceiling lights
+                this.ceilingLight1 = new PointLight(0.8, '#fff8e1');
+                this.ceilingLight1.setPosition(-1, 2.8, -1);
+                this.scene.add(this.ceilingLight1);
+
+                this.ceilingLight2 = new PointLight(0.8, '#fff8e1');
+                this.ceilingLight2.setPosition(1, 2.8, 1);
+                this.scene.add(this.ceilingLight2);
+            }
+
+            createRoom() {
+                // Clear existing room
+                this.scene.objects = this.scene.objects.filter(obj => !obj.userData.isRoom);
+                
+                const { width, height, depth, wallColor, floorColor, ceilingColor } = this.roomConfig;
+                
+                // Floor
+                const floorGeometry = new PlaneGeometry(width, depth);
+                const floorMaterial = new StandardMaterial({ 
+                    color: floorColor,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const floor = new Mesh(floorGeometry);
+                floor.setPosition(0, 0, 0);
+                floor.setRotation(-Math.PI / 2, 0, 0);
+                floor.userData.isRoom = true;
+                this.scene.add(floor);
+
+                // Ceiling
+                const ceilingGeometry = new PlaneGeometry(width, depth);
+                const ceilingMaterial = new StandardMaterial({ 
+                    color: ceilingColor,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                const ceiling = new Mesh(ceilingGeometry);
+                ceiling.setPosition(0, height, 0);
+                ceiling.setRotation(Math.PI / 2, 0, 0);
+                ceiling.userData.isRoom = true;
+                this.scene.add(ceiling);
+
+                // Walls
+                this.createWall(width/2, height/2, 0, 0.1, height, depth, wallColor); // East
+                this.createWall(-width/2, height/2, 0, 0.1, height, depth, wallColor); // West
+                this.createWall(0, height/2, depth/2, width, height, 0.1, wallColor); // South
+                this.createWall(0, height/2, -depth/2, width, height, 0.1, wallColor); // North (with window)
+                
+                // Window on north wall
+                this.createWindow(0, 1.5, -depth/2 + 0.05, 2, 1.5, 0.05);
+                
+                // Add some default furniture based on room type
+                this.addDefaultFurniture();
+                
+                this.updateRoomArea();
+            }
+
+            createWall(x, y, z, width, height, depth, color) {
+                const wallGeometry = new BoxGeometry(width, height, depth);
+                const wallMaterial = new StandardMaterial({ 
+                    color: color,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                const wall = new Mesh(wallGeometry);
+                wall.setPosition(x, y, z);
+                wall.userData.isRoom = true;
+                this.scene.add(wall);
+            }
+
+            createWindow(x, y, z, width, height, depth) {
+                const windowGeometry = new BoxGeometry(width, height, depth);
+                const windowMaterial = new StandardMaterial({ 
+                    color: '#87ceeb',
+                    transparency: 0.4,
+                    opacity: 0.6,
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                const window = new Mesh(windowGeometry);
+                window.setPosition(x, y, z);
+                window.userData.isRoom = true;
+                this.scene.add(window);
+            }
+
+            addDefaultFurniture() {
+                const roomType = document.getElementById('room-type').value;
+                
+                // Clear existing furniture
+                this.furniture.forEach(item => this.scene.remove(item));
+                this.furniture = [];
+                
+                switch (roomType) {
+                    case 'living':
+                        this.addSofa(-1, 0.5, 0);
+                        this.addCoffeeTable(0, 0.3, 1);
+                        this.addTVStand(0, 1, -2.5);
+                        this.addPlant(2, 0.5, 1);
+                        break;
+                    case 'bedroom':
+                        this.addBed(0, 0.6, 2);
+                        this.addNightstand(-1, 0.4, 2.5);
+                        this.addNightstand(1, 0.4, 2.5);
+                        this.addDresser(2, 1, -2);
+                        break;
+                    case 'kitchen':
+                        this.addCabinet(-2, 0.8, 0, true);
+                        this.addCabinet(2, 0.8, 0, true);
+                        this.addIsland(0, 0.8, 0);
+                        this.addStool(0, 0.4, -1);
+                        this.addStool(0, 0.4, 1);
+                        break;
+                    case 'office':
+                        this.addDesk(0, 0.8, 0);
+                        this.addOfficeChair(0, 0.5, 0.5);
+                        this.addCabinet(2, 1, -2);
+                        this.addLamp(0, 2.8, 0);
+                        break;
+                    case 'dining':
+                        this.addDiningTable(0, 0.8, 0);
+                        this.addChair(-1, 0.5, 0.8);
+                        this.addChair(1, 0.5, 0.8);
+                        this.addChair(-1, 0.5, -0.8);
+                        this.addChair(1, 0.5, -0.8);
+                        break;
+                }
+            }
+
+            addFurniture(type, position = [0, 0, 0]) {
+                let furniture;
+                
+                switch (type) {
+                    case 'sofa':
+                        furniture = this.createSofa();
+                        break;
+                    case 'chair':
+                        furniture = this.createChair();
+                        break;
+                    case 'table':
+                        furniture = this.createTable();
+                        break;
+                    case 'bed':
+                        furniture = this.createBed();
+                        break;
+                    case 'cabinet':
+                        furniture = this.createCabinet();
+                        break;
+                    case 'plant':
+                        furniture = this.createPlant();
+                        break;
+                    case 'lamp':
+                        furniture = this.createLamp();
+                        break;
+                    case 'tv':
+                        furniture = this.createTVStand();
+                        break;
+                    default:
+                        return;
+                }
+                
+                furniture.setPosition(...position);
+                furniture.userData.furniture = true;
+                furniture.userData.type = type;
+                this.furniture.push(furniture);
+                this.scene.add(furniture);
+            }
+
+            createSofa() {
+                const geometry = new BoxGeometry(3, 0.8, 1.2);
+                const material = new StandardMaterial({ color: '#37474f' });
+                return new Mesh(geometry);
+            }
+
+            createChair() {
+                const geometry = new BoxGeometry(0.6, 0.8, 0.6);
+                const material = new StandardMaterial({ color: '#5d4037' });
+                return new Mesh(geometry);
+            }
+
+            createTable() {
+                const geometry = new BoxGeometry(1.2, 0.1, 0.8);
+                const material = new StandardMaterial({ color: '#8d6e63' });
+                return new Mesh(geometry);
+            }
+
+            createBed() {
+                const geometry = new BoxGeometry(2, 0.6, 1.8);
+                const material = new StandardMaterial({ color: '#fafafa' });
+                return new Mesh(geometry);
+            }
+
+            createCabinet(kitchen = false) {
+                const geometry = new BoxGeometry(1.5, 1.6, 0.6);
+                const color = kitchen ? '#eceff1' : '#5d4037';
+                const material = new StandardMaterial({ color });
+                return new Mesh(geometry);
+            }
+
+            createPlant() {
+                const geometry = new CylinderGeometry(0.3, 0.3, 0.6);
+                const material = new StandardMaterial({ color: '#4caf50' });
+                const plant = new Mesh(geometry);
+                
+                // Add plant leaves
+                const leafGeometry = new BoxGeometry(0.8, 0.1, 0.8);
+                const leafMaterial = new StandardMaterial({ color: '#2e7d32' });
+                const leaves = new Mesh(leafGeometry);
+                leaves.setPosition(0, 0.5, 0);
+                plant.add(leaves);
+                
+                return plant;
+            }
+
+            createLamp() {
+                const baseGeometry = new CylinderGeometry(0.2, 0.2, 0.1);
+                const baseMaterial = new StandardMaterial({ color: '#424242' });
+                const base = new Mesh(baseGeometry);
+                
+                const stemGeometry = new CylinderGeometry(0.05, 0.05, 1.5);
+                const stemMaterial = new StandardMaterial({ color: '#757575' });
+                const stem = new Mesh(stemGeometry);
+                stem.setPosition(0, 0.8, 0);
+                base.add(stem);
+                
+                const shadeGeometry = new CylinderGeometry(0.3, 0.4, 0.4);
+                const shadeMaterial = new StandardMaterial({ color: '#fff8e1', emissive: '#ffecb3' });
+                const shade = new Mesh(shadeGeometry);
+                shade.setPosition(0, 1.6, 0);
+                base.add(shade);
+                
+                return base;
+            }
+
+            createTVStand() {
+                const geometry = new BoxGeometry(2, 1, 0.4);
+                const material = new StandardMaterial({ color: '#424242' });
+                return new Mesh(geometry);
+            }
+
+            createDiningTable() {
+                const geometry = new CylinderGeometry(1.2, 1.2, 0.1);
+                const material = new StandardMaterial({ color: '#8d6e63' });
+                return new Mesh(geometry);
+            }
+
+            createDesk() {
+                const geometry = new BoxGeometry(1.8, 0.1, 0.8);
+                const material = new StandardMaterial({ color: '#5d4037' });
+                return new Mesh(geometry);
+            }
+
+            createOfficeChair() {
+                const seatGeometry = new BoxGeometry(0.5, 0.1, 0.5);
+                const seatMaterial = new StandardMaterial({ color: '#263238' });
+                const seat = new Mesh(seatGeometry);
+                
+                const backGeometry = new BoxGeometry(0.5, 0.8, 0.1);
+                const backMaterial = new StandardMaterial({ color: '#37474f' });
+                const back = new Mesh(backGeometry);
+                back.setPosition(0, 0.45, -0.2);
+                seat.add(back);
+                
+                return seat;
+            }
+
+            createDresser() {
+                const geometry = new BoxGeometry(1.2, 1.5, 0.6);
+                const material = new StandardMaterial({ color: '#6d4c41' });
+                return new Mesh(geometry);
+            }
+
+            createIsland() {
+                const geometry = new BoxGeometry(2, 0.8, 1);
+                const material = new StandardMaterial({ color: '#90a4ae' });
+                return new Mesh(geometry);
+            }
+
+            createStool() {
+                const geometry = new CylinderGeometry(0.25, 0.25, 0.4);
+                const material = new StandardMaterial({ color: '#8d6e63' });
+                return new Mesh(geometry);
+            }
+
+            setupEventListeners() {
+                // Mouse controls
+                this.canvas.addEventListener('mousedown', (event) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mouseX = event.clientX - rect.left;
+                    const mouseY = event.clientY - rect.top;
+                    
+                    // Check for furniture selection
+                    this.selectedFurniture = this.getFurnitureAt(mouseX, mouseY);
+                    if (this.selectedFurniture) {
+                        this.isDragging = true;
+                        document.getElementById('selected-item').textContent = this.selectedFurniture.userData.type;
+                    } else {
+                        document.getElementById('selected-item').textContent = 'None';
+                    }
+                });
+
+                this.canvas.addEventListener('mousemove', (event) => {
+                    if (this.isDragging && this.selectedFurniture) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mouseX = event.clientX - rect.left;
+                        const mouseY = event.clientY - rect.top;
+                        
+                        // Convert screen to world coordinates (simplified)
+                        const worldX = (mouseX / this.canvas.width) * 10 - 5;
+                        const worldZ = (mouseY / this.canvas.height) * 10 - 5;
+                        
+                        this.selectedFurniture.setPosition(worldX, this.selectedFurniture.position.y, worldZ);
+                    }
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+
+                // Keyboard controls
+                window.addEventListener('keydown', (event) => {
+                    if (event.key === 'Delete' && this.selectedFurniture) {
+                        this.removeSelectedFurniture();
+                    }
+                    
+                    // Rotation with arrow keys
+                    if (this.selectedFurniture) {
+                        switch (event.key) {
+                            case 'ArrowLeft':
+                                this.selectedFurniture.rotateY(0.1);
+                                break;
+                            case 'ArrowRight':
+                                this.selectedFurniture.rotateY(-0.1);
+                                break;
+                        }
+                    }
+                });
+
+                // UI event listeners
+                document.getElementById('room-type').addEventListener('change', () => {
+                    this.addDefaultFurniture();
+                });
+
+                document.getElementById('wall-color').addEventListener('change', (e) => {
+                    this.roomConfig.wallColor = e.target.value;
+                    this.createRoom();
+                });
+
+                document.getElementById('floor-color').addEventListener('change', (e) => {
+                    this.roomConfig.floorColor = e.target.value;
+                    this.createRoom();
+                });
+
+                document.getElementById('ceiling-color').addEventListener('change', (e) => {
+                    this.roomConfig.ceilingColor = e.target.value;
+                    this.createRoom();
+                });
+
+                // Furniture selection
+                document.querySelectorAll('.furniture-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        document.querySelectorAll('.furniture-item').forEach(el => el.classList.remove('selected'));
+                        item.classList.add('selected');
+                        
+                        const type = item.dataset.type;
+                        const position = [Math.random() * 4 - 2, 0.5, Math.random() * 4 - 2];
+                        this.addFurniture(type, position);
+                    });
+                });
+
+                // Lighting controls
+                document.getElementById('ambient-light').addEventListener('input', (e) => {
+                    const intensity = e.target.value / 100;
+                    this.ambientLight.intensity = intensity;
+                });
+
+                document.getElementById('point-light').addEventListener('input', (e) => {
+                    const intensity = e.target.value / 100;
+                    this.pointLight1.intensity = intensity;
+                    this.pointLight2.intensity = intensity;
+                });
+
+                document.getElementById('natural-light').addEventListener('input', (e) => {
+                    const intensity = e.target.value / 100;
+                    this.naturalLight.intensity = intensity;
+                });
+
+                // Color palette
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', (e) => {
+                        const color = e.target.style.backgroundColor;
+                        // Apply to selected furniture or wall
+                        if (this.selectedFurniture && this.selectedFurniture.material) {
+                            this.selectedFurniture.material.color = color;
+                        } else {
+                            document.getElementById('wall-color').value = this.rgbToHex(color);
+                            document.getElementById('wall-color').dispatchEvent(new Event('change'));
+                        }
+                    });
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            rgbToHex(rgb) {
+                const result = rgb.match(/\d+/g);
+                if (result) {
+                    return "#" + ((1 << 24) + (parseInt(result[0]) << 16) + (parseInt(result[1]) << 8) + parseInt(result[2])).toString(16).slice(1);
+                }
+                return "#ffffff";
+            }
+
+            getFurnitureAt(x, y) {
+                // Simplified furniture picking - in real implementation would use raycasting
+                for (let i = this.furniture.length - 1; i >= 0; i--) {
+                    const furniture = this.furniture[i];
+                    if (furniture.position.x > x - 1 && furniture.position.x < x + 1 &&
+                        furniture.position.z > y - 1 && furniture.position.z < y + 1) {
+                        return furniture;
+                    }
+                }
+                return null;
+            }
+
+            removeSelectedFurniture() {
+                if (this.selectedFurniture) {
+                    const index = this.furniture.indexOf(this.selectedFurniture);
+                    if (index > -1) {
+                        this.furniture.splice(index, 1);
+                    }
+                    this.scene.remove(this.selectedFurniture);
+                    this.selectedFurniture = null;
+                    document.getElementById('selected-item').textContent = 'None';
+                }
+            }
+
+            updateRoomArea() {
+                const area = this.roomConfig.width * this.roomConfig.depth;
+                document.getElementById('room-area').textContent = area.toFixed(1);
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.measurementCanvas.width = window.innerWidth;
+                this.measurementCanvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let interiorDemo;
+
+        function removeSelected() {
+            if (interiorDemo) {
+                interiorDemo.removeSelectedFurniture();
+            }
+        }
+
+        function duplicateSelected() {
+            if (interiorDemo && interiorDemo.selectedFurniture) {
+                const type = interiorDemo.selectedFurniture.userData.type;
+                const position = [
+                    interiorDemo.selectedFurniture.position.x + 1,
+                    interiorDemo.selectedFurniture.position.y,
+                    interiorDemo.selectedFurniture.position.z
+                ];
+                interiorDemo.addFurniture(type, position);
+            }
+        }
+
+        function toggleWireframe() {
+            if (interiorDemo) {
+                const allObjects = [...interiorDemo.scene.getObjects(), ...interiorDemo.furniture];
+                allObjects.forEach(obj => {
+                    if (obj.material) {
+                        obj.material.wireframe = !obj.material.wireframe;
+                    }
+                });
+            }
+        }
+
+        function resetRoom() {
+            if (interiorDemo) {
+                interiorDemo.addDefaultFurniture();
+            }
+        }
+
+        function takeScreenshot() {
+            if (interiorDemo) {
+                const link = document.createElement('a');
+                link.download = 'interior-design.png';
+                link.href = interiorDemo.canvas.toDataURL();
+                link.click();
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('interior-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                interiorDemo = new InteriorDesign(canvas);
+                console.log('Interior design demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading interior design:', error);
+                document.getElementById('design-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

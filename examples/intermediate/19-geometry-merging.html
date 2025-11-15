@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometry Merging Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+        #stats {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Geometry Merging Demo</strong><br>
+        Performance optimization techniques<br>
+        - Dynamic geometry merging<br>
+        - Draw call reduction<br>
+        - LOD (Level of Detail)<br>
+        - Batch processing
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setMode('individual')" class="active">Individual</button>
+            <button onclick="setMode('merged')">Merged</button>
+            <button onclick="setMode('instanced')">Instanced</button>
+            <button onclick="setMode('lod')">LOD</button>
+        </div>
+        <div class="control-group">
+            <label>Object Count: <span id="count-val">1000</span></label>
+            <input type="range" id="object-count" min="100" max="5000" step="100" value="1000">
+        </div>
+        <div class="control-group">
+            <label>Update Rate: <span id="update-val">60</span></label>
+            <input type="range" id="update-rate" min="1" max="60" step="1" value="60">
+        </div>
+        <div class="control-group">
+            <button onclick="toggleWireframe()">Wireframe</button>
+            <button onclick="toggleAnimations()">Animate</button>
+        </div>
+        <div class="control-group">
+            <button onclick="benchmark()">Benchmark</button>
+        </div>
+    </div>
+
+    <div id="stats">
+        <div>Draw Calls: <span id="draw-calls">0</span></div>
+        <div>Vertices: <span id="vertices">0</span></div>
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Triangles: <span id="triangles">0</span></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(100, 100, 100);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Geometry Merging System
+        class GeometryMergingSystem {
+            constructor() {
+                this.mode = 'individual';
+                this.objectCount = 1000;
+                this.updateRate = 60;
+                this.wireframe = false;
+                this.animated = true;
+                this.objects = [];
+                this.mergedGeometry = null;
+                this.mergedMesh = null;
+                this.lodObjects = [];
+                this.performanceMetrics = {
+                    drawCalls: 0,
+                    vertices: 0,
+                    triangles: 0,
+                    fps: 0
+                };
+
+                this.createObjects();
+                this.setupStats();
+            }
+
+            createObjects() {
+                this.clearObjects();
+                
+                const baseGeometry = new THREE.BoxGeometry(1, 1, 1);
+                const materials = [
+                    new THREE.MeshLambertMaterial({ color: 0xe74c3c }),
+                    new THREE.MeshLambertMaterial({ color: 0x3498db }),
+                    new THREE.MeshLambertMaterial({ color: 0x2ecc71 }),
+                    new THREE.MeshLambertMaterial({ color: 0xf39c12 }),
+                    new THREE.MeshLambertMaterial({ color: 0x9b59b6 })
+                ];
+
+                // Create grid of objects
+                const gridSize = Math.ceil(Math.sqrt(this.objectCount));
+                const spacing = 3;
+                let count = 0;
+
+                for (let x = 0; x < gridSize && count < this.objectCount; x++) {
+                    for (let z = 0; z < gridSize && count < this.objectCount; z++) {
+                        const geometry = baseGeometry.clone();
+                        const material = materials[count % materials.length].clone();
+                        
+                        const mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(
+                            (x - gridSize / 2) * spacing,
+                            Math.sin(count * 0.1) * 2,
+                            (z - gridSize / 2) * spacing
+                        );
+                        
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
+                        mesh.userData = {
+                            velocity: new THREE.Vector3(
+                                (Math.random() - 0.5) * 0.1,
+                                (Math.random() - 0.5) * 0.05,
+                                (Math.random() - 0.5) * 0.1
+                            ),
+                            rotationSpeed: new THREE.Vector3(
+                                (Math.random() - 0.5) * 0.02,
+                                (Math.random() - 0.5) * 0.02,
+                                (Math.random() - 0.5) * 0.02
+                            )
+                        };
+                        
+                        this.objects.push(mesh);
+                        scene.add(mesh);
+                        count++;
+                    }
+                }
+
+                this.updateStats();
+            }
+
+            clearObjects() {
+                // Remove existing objects
+                this.objects.forEach(obj => scene.remove(obj));
+                this.objects = [];
+
+                if (this.mergedMesh) {
+                    scene.remove(this.mergedMesh);
+                    this.mergedMesh = null;
+                }
+
+                if (this.lodObjects.length > 0) {
+                    this.lodObjects.forEach(lod => scene.remove(lod));
+                    this.lodObjects = [];
+                }
+            }
+
+            mergeGeometry() {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const normals = [];
+                const uvs = [];
+                const colors = [];
+
+                let offset = 0;
+
+                this.objects.forEach(obj => {
+                    const objGeometry = obj.geometry;
+                    const objPositions = objGeometry.attributes.position.array;
+                    const objNormals = objGeometry.attributes.normal?.array || [];
+                    const objUvs = objGeometry.attributes.uv?.array || [];
+                    const objColors = objGeometry.attributes.color?.array || [];
+
+                    // Transform positions
+                    obj.updateMatrixWorld();
+                    const matrix = obj.matrixWorld;
+
+                    for (let i = 0; i < objPositions.length; i += 3) {
+                        const vertex = new THREE.Vector3(
+                            objPositions[i],
+                            objPositions[i + 1],
+                            objPositions[i + 2]
+                        );
+                        vertex.applyMatrix4(matrix);
+                        
+                        positions.push(vertex.x, vertex.y, vertex.z);
+                    }
+
+                    // Copy normals, uvs, colors
+                    if (objNormals.length > 0) {
+                        normals.push(...objNormals);
+                    }
+
+                    if (objUvs.length > 0) {
+                        uvs.push(...objUvs);
+                    }
+
+                    if (objColors.length > 0) {
+                        colors.push(...objColors);
+                    }
+
+                    offset += objPositions.length / 3;
+                });
+
+                // Set attributes
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+                
+                if (normals.length > 0) {
+                    geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+                }
+                
+                if (uvs.length > 0) {
+                    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 3));
+                }
+                
+                if (colors.length > 0) {
+                    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+                }
+
+                // Create merged material
+                const material = new THREE.MeshLambertMaterial({
+                    vertexColors: colors.length > 0,
+                    wireframe: this.wireframe
+                });
+
+                this.mergedMesh = new THREE.Mesh(geometry, material);
+                this.mergedMesh.castShadow = true;
+                this.mergedMesh.receiveShadow = true;
+
+                scene.add(this.mergedMesh);
+                this.updateStats();
+            }
+
+            createLODSystem() {
+                const lodGroup = new THREE.Group();
+                
+                this.objects.forEach((obj, index) => {
+                    const lod = new THREE.LOD();
+                    
+                    // High detail
+                    const highGeometry = new THREE.BoxGeometry(1, 1, 1);
+                    const highMaterial = new THREE.MeshLambertMaterial({ color: obj.material.color });
+                    const highMesh = new THREE.Mesh(highGeometry, highMaterial);
+                    highMesh.castShadow = true;
+                    highMesh.receiveShadow = true;
+                    lod.addLevel(highMesh, 0);
+
+                    // Medium detail
+                    const mediumGeometry = new THREE.BoxGeometry(1, 1, 1);
+                    const mediumMaterial = new THREE.MeshLambertMaterial({ color: obj.material.color });
+                    const mediumMesh = new THREE.Mesh(mediumGeometry, mediumMaterial);
+                    mediumMesh.castShadow = true;
+                    mediumMesh.receiveShadow = true;
+                    lod.addLevel(mediumMesh, 50);
+
+                    // Low detail
+                    const lowGeometry = new THREE.BoxGeometry(1, 1, 1);
+                    const lowMaterial = new THREE.MeshLambertMaterial({ color: obj.material.color });
+                    const lowMesh = new THREE.Mesh(lowGeometry, lowMaterial);
+                    lowMesh.castShadow = true;
+                    lowMesh.receiveShadow = true;
+                    lod.addLevel(lowMesh, 100);
+
+                    lod.position.copy(obj.position);
+                    lodGroup.add(lod);
+                });
+
+                this.lodObjects.push(lodGroup);
+                scene.add(lodGroup);
+                this.updateStats();
+            }
+
+            setMode(mode) {
+                this.mode = mode;
+                this.clearObjects();
+                this.createObjects();
+
+                switch(mode) {
+                    case 'merged':
+                        this.mergeGeometry();
+                        break;
+                    case 'instanced':
+                        this.createInstancedObjects();
+                        break;
+                    case 'lod':
+                        this.createLODSystem();
+                        break;
+                }
+
+                this.updateStats();
+            }
+
+            createInstancedObjects() {
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: 0x3498db,
+                    vertexColors: true 
+                });
+
+                const instancedMesh = new THREE.InstancedMesh(geometry, material, this.objects.length);
+                
+                const matrix = new THREE.Matrix4();
+                const color = new THREE.Color();
+
+                this.objects.forEach((obj, index) => {
+                    matrix.copy(obj.matrixWorld);
+                    instancedMesh.setMatrixAt(index, matrix);
+                    
+                    // Set instance colors
+                    color.copy(obj.material.color);
+                    instancedMesh.setColorAt(index, color);
+                });
+
+                instancedMesh.castShadow = true;
+                instancedMesh.receiveShadow = true;
+                
+                scene.add(instancedMesh);
+                this.updateStats();
+            }
+
+            setObjectCount(count) {
+                this.objectCount = count;
+                this.setMode(this.mode);
+            }
+
+            setUpdateRate(rate) {
+                this.updateRate = rate;
+            }
+
+            toggleWireframe() {
+                this.wireframe = !this.wireframe;
+                
+                if (this.mode === 'individual') {
+                    this.objects.forEach(obj => {
+                        obj.material.wireframe = this.wireframe;
+                    });
+                } else if (this.mergedMesh) {
+                    this.mergedMesh.material.wireframe = this.wireframe;
+                }
+            }
+
+            toggleAnimations() {
+                this.animated = !this.animated;
+            }
+
+            update(deltaTime) {
+                if (!this.animated) return;
+
+                const updateInterval = 1 / this.updateRate;
+                if (deltaTime < updateInterval) return;
+
+                switch(this.mode) {
+                    case 'individual':
+                        this.objects.forEach(obj => {
+                            obj.position.add(obj.userData.velocity);
+                            obj.rotation.x += obj.userData.rotationSpeed.x;
+                            obj.rotation.y += obj.userData.rotationSpeed.y;
+                            obj.rotation.z += obj.userData.rotationSpeed.z;
+                        });
+                        break;
+                    
+                    case 'merged':
+                        // Only update animation for individual objects when in merged mode
+                        // The merged geometry itself doesn't animate
+                        break;
+                    
+                    case 'lod':
+                        // LOD is updated automatically by Three.js based on camera distance
+                        break;
+                }
+            }
+
+            setupStats() {
+                // Initialize stats elements
+                document.getElementById('draw-calls').textContent = '0';
+                document.getElementById('vertices').textContent = '0';
+                document.getElementById('triangles').textContent = '0';
+            }
+
+            updateStats() {
+                let drawCalls = 0;
+                let vertices = 0;
+                let triangles = 0;
+
+                switch(this.mode) {
+                    case 'individual':
+                        drawCalls = this.objects.length;
+                        this.objects.forEach(obj => {
+                            const geometry = obj.geometry;
+                            vertices += geometry.attributes.position.count;
+                            triangles += geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                        });
+                        break;
+                    
+                    case 'merged':
+                        if (this.mergedMesh) {
+                            drawCalls = 1;
+                            const geometry = this.mergedMesh.geometry;
+                            vertices = geometry.attributes.position.count;
+                            triangles = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                        }
+                        break;
+                    
+                    case 'instanced':
+                        drawCalls = 1;
+                        if (scene.children.find(child => child.isInstancedMesh)) {
+                            const instancedMesh = scene.children.find(child => child.isInstancedMesh);
+                            const geometry = instancedMesh.geometry;
+                            vertices = geometry.attributes.position.count;
+                            triangles = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                        }
+                        break;
+                    
+                    case 'lod':
+                        drawCalls = this.objects.length;
+                        this.objects.forEach(obj => {
+                            const geometry = obj.geometry;
+                            vertices += geometry.attributes.position.count;
+                            triangles += geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+                        });
+                        break;
+                }
+
+                this.performanceMetrics.drawCalls = drawCalls;
+                this.performanceMetrics.vertices = vertices;
+                this.performanceMetrics.triangles = triangles;
+
+                document.getElementById('draw-calls').textContent = drawCalls;
+                document.getElementById('vertices').textContent = vertices.toLocaleString();
+                document.getElementById('triangles').textContent = triangles.toLocaleString();
+            }
+
+            benchmark() {
+                const startTime = performance.now();
+                const iterations = 100;
+                
+                for (let i = 0; i < iterations; i++) {
+                    switch(this.mode) {
+                        case 'individual':
+                            this.objects.forEach(obj => {
+                                obj.rotation.y += 0.1;
+                            });
+                            break;
+                        case 'merged':
+                            if (this.mergedMesh) {
+                                // Merged geometry can't be easily transformed
+                            }
+                            break;
+                    }
+                }
+                
+                const endTime = performance.now();
+                const avgTime = (endTime - startTime) / iterations;
+                console.log(`Average update time: ${avgTime.toFixed(2)}ms`);
+                
+                alert(`Benchmark completed!\nAverage update time: ${avgTime.toFixed(2)}ms\nMode: ${this.mode}\nObjects: ${this.objectCount}`);
+            }
+        }
+
+        // Create geometry merging system
+        const geometrySystem = new GeometryMergingSystem();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 1;
+        directionalLight.shadow.camera.far = 300;
+        directionalLight.shadow.camera.left = -150;
+        directionalLight.shadow.camera.right = 150;
+        directionalLight.shadow.camera.top = 150;
+        directionalLight.shadow.camera.bottom = -150;
+        scene.add(directionalLight);
+
+        // Global functions
+        window.setMode = (mode) => {
+            geometrySystem.setMode(mode);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.toggleWireframe = () => {
+            geometrySystem.toggleWireframe();
+        };
+
+        window.toggleAnimations = () => {
+            geometrySystem.toggleAnimations();
+        };
+
+        window.benchmark = () => {
+            geometrySystem.benchmark();
+        };
+
+        // Control bindings
+        const countSlider = document.getElementById('object-count');
+        const countDisplay = document.getElementById('count-val');
+        countSlider.addEventListener('input', (e) => {
+            const count = parseInt(e.target.value);
+            geometrySystem.setObjectCount(count);
+            countDisplay.textContent = count;
+        });
+
+        const updateSlider = document.getElementById('update-rate');
+        const updateDisplay = document.getElementById('update-val');
+        updateSlider.addEventListener('input', (e) => {
+            const rate = parseInt(e.target.value);
+            geometrySystem.setUpdateRate(rate);
+            updateDisplay.textContent = rate;
+        });
+
+        // FPS counter
+        let fps = 0;
+        let lastTime = performance.now();
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+            
+            geometrySystem.update(deltaTime);
+
+            // Update FPS
+            const currentTime = performance.now();
+            fps = Math.round(1000 / (currentTime - lastTime));
+            lastTime = currentTime;
+            document.getElementById('fps').textContent = fps;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

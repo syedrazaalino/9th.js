@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxury Watch Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Playfair Display', 'Georgia', serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #000000 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #000000 100%);
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .watch-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 25px;
+            padding: 25px;
+            color: white;
+            min-width: 320px;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .watch-ui h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 26px;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .watch-collection {
+            margin-bottom: 25px;
+        }
+
+        .watch-collection h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .watch-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .watch-btn {
+            padding: 12px 10px;
+            border: 2px solid #ffd700;
+            border-radius: 12px;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .watch-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .watch-btn.active {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
+            transform: translateY(-3px);
+        }
+
+        .case-section {
+            margin-bottom: 20px;
+        }
+
+        .case-section h4 {
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .case-materials {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .case-btn {
+            padding: 8px 6px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: rgba(68, 68, 68, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .case-btn:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .case-btn.active {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 3px 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .dial-section {
+            margin-bottom: 20px;
+        }
+
+        .dial-section h4 {
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .dial-colors {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .dial-color {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 215, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dial-color:hover {
+            transform: scale(1.1);
+            border-color: #ffd700;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .dial-color.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .strap-section {
+            margin-bottom: 20px;
+        }
+
+        .strap-section h4 {
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .strap-types {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .strap-btn {
+            padding: 8px 6px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: rgba(68, 68, 68, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .strap-btn:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .strap-btn.active {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 3px 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .strap-colors {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+        }
+
+        .strap-color {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .strap-color:hover {
+            transform: scale(1.1);
+            border-color: #ffd700;
+        }
+
+        .strap-color.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .complications-section {
+            margin-bottom: 20px;
+        }
+
+        .complications-section h4 {
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .complication-toggles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .complication-toggle {
+            padding: 10px 8px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: rgba(68, 68, 68, 0.3);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .complication-toggle:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .complication-toggle.active {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 3px 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .lighting-showcase {
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 25px;
+            border: 2px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .lighting-showcase h3 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .lighting-control {
+            margin-bottom: 15px;
+        }
+
+        .lighting-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .lighting-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .lighting-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .lighting-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .lighting-value {
+            text-align: right;
+            color: #ffd700;
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .showcase-presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .preset-btn {
+            padding: 12px 8px;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .scene-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .watch-details {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+
+        .watch-details h4 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .watch-spec {
+            margin-bottom: 5px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .spec-label {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .time-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffd700;
+            padding: 15px 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .time-display .label {
+            font-size: 12px;
+            color: white;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .watch-ui {
+                width: 280px;
+                left: 10px;
+                top: 10px;
+                padding: 15px;
+            }
+            
+            .watch-buttons,
+            .case-materials,
+            .strap-types,
+            .complication-toggles,
+            .showcase-presets {
+                grid-template-columns: 1fr;
+            }
+            
+            .dial-colors {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .strap-colors {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="watch-ui">
+        <h1>⌚ Luxury Watch Showcase</h1>
+        
+        <div class="watch-collection">
+            <h3>Watch Collection</h3>
+            <div class="watch-buttons">
+                <button class="watch-btn active" data-watch="submariner">Submariner</button>
+                <button class="watch-btn" data-watch="daytona">Daytona</button>
+                <button class="watch-btn" data-watch="gmt">GMT-Master</button>
+                <button class="watch-btn" data-watch="datejust">Datejust</button>
+                <button class="watch-btn" data-watch="cellini">Cellini</button>
+                <button class="watch-btn" data-watch="sky">Sky-Dweller</button>
+            </div>
+        </div>
+
+        <div class="case-section">
+            <h4>Case Material</h4>
+            <div class="case-materials">
+                <div class="case-btn active" data-case="steel">Stainless Steel</div>
+                <div class="case-btn" data-case="gold">Yellow Gold</div>
+                <div class="case-btn" data-case="rose">Rose Gold</div>
+                <div class="case-btn" data-case="platinum">Platinum</div>
+                <div class="case-btn" data-case="titanium">Titanium</div>
+                <div class="case-btn" data-case="ceramic">Ceramic</div>
+            </div>
+        </div>
+
+        <div class="dial-section">
+            <h4>Dial Color</h4>
+            <div class="dial-colors" id="dialColors">
+                <div class="dial-color active" style="background: #000000" data-color="#000000"></div>
+                <div class="dial-color" style="background: #ffffff" data-color="#ffffff"></div>
+                <div class="dial-color" style="background: #1a1a1a" data-color="#1a1a1a"></div>
+                <div class="dial-color" style="background: #8b0000" data-color="#8b0000"></div>
+                <div class="dial-color" style="background: #000080" data-color="#000080"></div>
+                <div class="dial-color" style="background: #2f4f4f" data-color="#2f4f4f"></div>
+                <div class="dial-color" style="background: #8b4513" data-color="#8b4513"></div>
+                <div class="dial-color" style="background: #006400" data-color="#006400"></div>
+            </div>
+        </div>
+
+        <div class="strap-section">
+            <h4>Strap Type</h4>
+            <div class="strap-types">
+                <div class="strap-btn active" data-strap="bracelet">Bracelet</div>
+                <div class="strap-btn" data-strap="leather">Leather</div>
+                <div class="strap-btn" data-strap="rubber">Rubber</div>
+                <div class="strap-btn" data-strap="crocodile">Crocodile</div>
+            </div>
+            
+            <div class="strap-colors">
+                <div class="strap-color active" style="background: #000000" data-color="#000000"></div>
+                <div class="strap-color" style="background: #8b4513" data-color="#8b4513"></div>
+                <div class="strap-color" style="background: #654321" data-color="#654321"></div>
+                <div class="strap-color" style="background: #2f4f4f" data-color="#2f4f4f"></div>
+                <div class="strap-color" style="background: #000080" data-color="#000080"></div>
+                <div class="strap-color" style="background: #8b0000" data-color="#8b0000"></div>
+            </div>
+        </div>
+
+        <div class="complications-section">
+            <h4>Complications</h4>
+            <div class="complication-toggles">
+                <div class="complication-toggle active" data-complication="date">Date Window</div>
+                <div class="complication-toggle" data-complication="chronograph">Chronograph</div>
+                <div class="complication-toggle" data-complication="gmt">GMT</div>
+                <div class="complication-toggle" data-complication="moon">Moon Phase</div>
+                <div class="complication-toggle" data-complication="power">Power Reserve</div>
+                <div class="complication-toggle" data-complication="tourbillon">Tourbillon</div>
+            </div>
+        </div>
+
+        <div class="lighting-showcase">
+            <h3>💎 Showcase Lighting</h3>
+            
+            <div class="lighting-control">
+                <label>Main Light:</label>
+                <input type="range" class="lighting-slider" id="mainLight" min="0" max="200" value="100">
+                <div class="lighting-value" id="mainValue">100%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Accent Light:</label>
+                <input type="range" class="lighting-slider" id="accentLight" min="0" max="150" value="80">
+                <div class="lighting-value" id="accentValue">80%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Rim Light:</label>
+                <input type="range" class="lighting-slider" id="rimLight" min="0" max="120" value="60">
+                <div class="lighting-value" id="rimValue">60%</div>
+            </div>
+
+            <div class="lighting-control">
+                <label>Ambient Glow:</label>
+                <input type="range" class="lighting-slider" id="ambientLight" min="0" max="50" value="20">
+                <div class="lighting-value" id="ambientValue">20%</div>
+            </div>
+
+            <div class="showcase-presets">
+                <button class="preset-btn" onclick="setShowcasePreset('gallery')">Gallery</button>
+                <button class="preset-btn" onclick="setShowcasePreset('studio')">Studio</button>
+                <button class="preset-btn" onclick="setShowcasePreset('dramatic')">Dramatic</button>
+                <button class="preset-btn" onclick="setShowcasePreset('intimate')">Intimate</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="time-display">
+        <div class="label">Current Time</div>
+        <div id="liveTime">12:00:00</div>
+    </div>
+
+    <div class="scene-info">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Polygons: <span id="polygons">2,847</span></div>
+        <div>Materials: <span id="materials">6</span></div>
+        <div>Textures: <span id="textures">4</span></div>
+        <div>Lights: <span id="lights">5</span></div>
+    </div>
+
+    <div class="watch-details">
+        <h4>Watch Specifications</h4>
+        <div class="watch-spec">
+            <span class="spec-label">Model:</span>
+            <span id="watchModel">Submariner</span>
+        </div>
+        <div class="watch-spec">
+            <span class="spec-label">Case:</span>
+            <span id="watchCase">Stainless Steel</span>
+        </div>
+        <div class="watch-spec">
+            <span class="spec-label">Dial:</span>
+            <span id="watchDial">Black</span>
+        </div>
+        <div class="watch-spec">
+            <span class="spec-label">Strap:</span>
+            <span id="watchStrap">Steel Bracelet</span>
+        </div>
+        <div class="watch-spec">
+            <span class="spec-label">Features:</span>
+            <span id="watchFeatures">Date, Waterproof</span>
+        </div>
+        <div class="watch-spec">
+            <span class="spec-label">Movement:</span>
+            <span id="watchMovement">Automatic</span>
+        </div>
+    </div>
+
+    <script src="../../dist/umd/9th.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, watch, animationId;
+        let mainLight, accentLight, rimLight, ambientLight, pointLight;
+        let caseMaterial, dialMaterial, strapMaterial, metalMaterial;
+        let currentWatch = 'submariner', currentCase = 'steel', currentDialColor = '#000000';
+        let currentStrap = 'bracelet', currentStrapColor = '#000000';
+        let complications = { date: true, chronograph: false, gmt: false, moon: false, power: false, tourbillon: false };
+        let watchParts = {};
+        
+        const stats = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: performance.now()
+        };
+
+        // Watch definitions
+        const watchTypes = {
+            submariner: { name: 'Submariner', size: 1.2, features: ['diving', 'waterproof'] },
+            daytona: { name: 'Daytona', size: 1.1, features: ['chronograph', 'racing'] },
+            gmt: { name: 'GMT-Master', size: 1.15, features: ['gmt', 'travel'] },
+            datejust: { name: 'Datejust', size: 1.0, features: ['date', 'dress'] },
+            cellini: { name: 'Cellini', size: 0.95, features: ['dress', 'elegant'] },
+            sky: { name: 'Sky-Dweller', size: 1.25, features: ['gmt', 'travel', 'annual'] }
+        };
+
+        // Case materials
+        const caseMaterials = {
+            steel: { color: 0xC0C0C0, metalness: 0.9, roughness: 0.1 },
+            gold: { color: 0xFFD700, metalness: 1.0, roughness: 0.05 },
+            rose: { color: 0xE8B4A0, metalness: 1.0, roughness: 0.05 },
+            platinum: { color: 0xE5E4E2, metalness: 1.0, roughness: 0.02 },
+            titanium: { color: 0x708090, metalness: 0.8, roughness: 0.2 },
+            ceramic: { color: 0x2F2F2F, metalness: 0.1, roughness: 0.3 }
+        };
+
+        // Strap materials
+        const strapMaterials = {
+            bracelet: { color: 0xC0C0C0, metalness: 0.9, roughness: 0.1 },
+            leather: { color: 0x8B4513, metalness: 0.0, roughness: 0.7 },
+            rubber: { color: 0x000000, metalness: 0.0, roughness: 0.4 },
+            crocodile: { color: 0x654321, metalness: 0.0, roughness: 0.6 }
+        };
+
+        // Initialize the application
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create scene
+            scene = new Ninth.Scene();
+            scene.background = new Ninth.Color(0x0a0a0a);
+
+            // Create camera
+            camera = new Ninth.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(3, 2, 3);
+            camera.lookAt(0, 0.5, 0);
+
+            // Create renderer
+            renderer = new Ninth.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = Ninth.PCFSoftShadowMap;
+            renderer.toneMapping = Ninth.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputEncoding = Ninth.sRGBEncoding;
+
+            // Setup lighting
+            setupLighting();
+
+            // Create watch
+            createWatch();
+
+            // Setup environment
+            createEnvironment();
+
+            // Setup controls
+            setupControls();
+
+            // Start clock
+            startClock();
+
+            // Start animation loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Main light
+            mainLight = new Ninth.SpotLight(0xffffff, 1.0, 50, Math.PI / 8, 0.3, 1);
+            mainLight.position.set(0, 8, 5);
+            mainLight.target.position.set(0, 0.5, 0);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 1024;
+            mainLight.shadow.mapSize.height = 1024;
+            scene.add(mainLight);
+            scene.add(mainLight.target);
+
+            // Accent light
+            accentLight = new Ninth.SpotLight(0xffffff, 0.8, 30, Math.PI / 6, 0.4, 1);
+            accentLight.position.set(5, 4, 0);
+            accentLight.target.position.set(0, 0.5, 0);
+            scene.add(accentLight);
+            scene.add(accentLight.target);
+
+            // Rim light
+            rimLight = new Ninth.DirectionalLight(0xffffff, 0.6);
+            rimLight.position.set(0, 3, -5);
+            scene.add(rimLight);
+
+            // Ambient light
+            ambientLight = new Ninth.AmbientLight(0x404040, 0.2);
+            scene.add(ambientLight);
+
+            // Point light for reflections
+            pointLight = new Ninth.PointLight(0xffffff, 0.5, 15);
+            pointLight.position.set(0, 2, 3);
+            scene.add(pointLight);
+        }
+
+        function createEnvironment() {
+            // Display platform
+            const platformGeometry = new Ninth.CylinderGeometry(2, 2.5, 0.1, 32);
+            const platformMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.3,
+                metalness: 0.7
+            });
+            const platform = new Ninth.Mesh(platformGeometry, platformMaterial);
+            platform.position.y = -0.5;
+            platform.receiveShadow = true;
+            scene.add(platform);
+
+            // Inner glow ring
+            const glowGeometry = new Ninth.TorusGeometry(1.8, 0.05, 8, 32);
+            const glowMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x404040,
+                emissive: 0x111111,
+                roughness: 0.8
+            });
+            const glow = new Ninth.Mesh(glowGeometry, glowMaterial);
+            glow.position.y = -0.45;
+            scene.add(glow);
+        }
+
+        function createWatch() {
+            // Remove existing watch
+            if (watch) {
+                scene.remove(watch);
+            }
+
+            // Create materials
+            createMaterials();
+
+            // Create watch group
+            watch = new Ninth.Group();
+
+            // Get watch specifications
+            const watchSpec = watchTypes[currentWatch];
+            const scale = watchSpec.size;
+
+            // Create main watch components
+            createWatchCase(scale);
+            createWatchDial(scale);
+            createWatchStrap(scale);
+            createWatchBezel(scale);
+            createWatchHands(scale);
+
+            // Add complications
+            addComplications(scale);
+
+            // Position watch
+            watch.position.y = 0;
+            watch.castShadow = true;
+            scene.add(watch);
+
+            updateStats();
+            updateWatchDetails();
+        }
+
+        function createMaterials() {
+            // Case material
+            const caseProps = caseMaterials[currentCase];
+            caseMaterial = new Ninth.MeshStandardMaterial({
+                color: caseProps.color,
+                metalness: caseProps.metalness,
+                roughness: caseProps.roughness,
+                envMapIntensity: 1.5
+            });
+
+            // Dial material
+            dialMaterial = new Ninth.MeshPhysicalMaterial({
+                color: parseInt(currentDialColor.replace('#', '0x')),
+                metalness: 0.0,
+                roughness: 0.3,
+                clearcoat: 0.8,
+                clearcoatRoughness: 0.1
+            });
+
+            // Strap material
+            const strapProps = strapMaterials[currentStrap];
+            strapMaterial = new Ninth.MeshStandardMaterial({
+                color: parseInt(currentStrapColor.replace('#', '0x')),
+                metalness: strapProps.metalness,
+                roughness: strapProps.roughness
+            });
+
+            // General metal material
+            metalMaterial = new Ninth.MeshStandardMaterial({
+                color: 0xC0C0C0,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+        }
+
+        function createWatchCase(scale) {
+            // Main case
+            const caseGeometry = new Ninth.CylinderGeometry(0.6 * scale, 0.65 * scale, 0.15 * scale, 32);
+            const caseBody = new Ninth.Mesh(caseGeometry, caseMaterial);
+            caseBody.castShadow = true;
+            watch.add(caseBody);
+
+            // Case back
+            const backGeometry = new Ninth.CylinderGeometry(0.65 * scale, 0.65 * scale, 0.05 * scale, 32);
+            const caseBack = new Ninth.Mesh(backGeometry, caseMaterial);
+            caseBack.position.y = -0.1 * scale;
+            caseBack.castShadow = true;
+            watch.add(caseBack);
+
+            // Crown
+            const crownGeometry = new Ninth.CylinderGeometry(0.05 * scale, 0.05 * scale, 0.15 * scale, 8);
+            const crown = new Ninth.Mesh(crownGeometry, metalMaterial);
+            crown.position.set(0.7 * scale, 0, 0);
+            crown.rotation.z = Math.PI / 2;
+            crown.castShadow = true;
+            watch.add(crown);
+        }
+
+        function createWatchDial(scale) {
+            // Main dial
+            const dialGeometry = new Ninth.CylinderGeometry(0.55 * scale, 0.55 * scale, 0.02 * scale, 32);
+            const dial = new Ninth.Mesh(dialGeometry, dialMaterial);
+            dial.position.y = 0.065 * scale;
+            dial.castShadow = true;
+            watch.add(dial);
+
+            // Hour markers
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const markerGeometry = new Ninth.BoxGeometry(0.02 * scale, 0.05 * scale, 0.01 * scale);
+                const marker = new Ninth.Mesh(markerGeometry, metalMaterial);
+                marker.position.set(
+                    Math.cos(angle) * 0.45 * scale,
+                    0.085 * scale,
+                    Math.sin(angle) * 0.45 * scale
+                );
+                marker.rotation.y = -angle;
+                marker.castShadow = true;
+                watch.add(marker);
+            }
+
+            // Minute markers (simplified - every 5 minutes)
+            for (let i = 0; i < 12; i++) {
+                if (i % 3 !== 0) { // Skip hour markers
+                    const angle = (i / 12) * Math.PI * 2;
+                    const markerGeometry = new Ninth.BoxGeometry(0.01 * scale, 0.03 * scale, 0.01 * scale);
+                    const marker = new Ninth.Mesh(markerGeometry, metalMaterial);
+                    marker.position.set(
+                        Math.cos(angle) * 0.45 * scale,
+                        0.085 * scale,
+                        Math.sin(angle) * 0.45 * scale
+                    );
+                    marker.rotation.y = -angle;
+                    marker.castShadow = true;
+                    watch.add(marker);
+                }
+            }
+        }
+
+        function createWatchStrap(scale) {
+            if (currentStrap === 'bracelet') {
+                createBracelet(scale);
+            } else {
+                createStrap(scale);
+            }
+        }
+
+        function createBracelet(scale) {
+            // Bracelet segments
+            for (let i = 0; i < 6; i++) {
+                const segmentGeometry = new Ninth.BoxGeometry(0.1 * scale, 0.05 * scale, 0.6 * scale);
+                const segment = new Ninth.Mesh(segmentGeometry, strapMaterial);
+                segment.position.set(
+                    -0.8 * scale + i * 0.16 * scale,
+                    -0.2 * scale,
+                    0
+                );
+                segment.castShadow = true;
+                watch.add(segment);
+            }
+
+            // Clasp
+            const claspGeometry = new Ninth.BoxGeometry(0.08 * scale, 0.06 * scale, 0.2 * scale);
+            const clasp = new Ninth.Mesh(claspGeometry, metalMaterial);
+            clasp.position.set(0.9 * scale, -0.2 * scale, 0);
+            clasp.castShadow = true;
+            watch.add(clasp);
+        }
+
+        function createStrap(scale) {
+            // Left strap
+            const leftStrapGeometry = new Ninth.BoxGeometry(0.15 * scale, 0.05 * scale, 1.2 * scale);
+            const leftStrap = new Ninth.Mesh(leftStrapGeometry, strapMaterial);
+            leftStrap.position.set(-0.8 * scale, -0.2 * scale, -0.2 * scale);
+            leftStrap.castShadow = true;
+            watch.add(leftStrap);
+
+            // Right strap
+            const rightStrapGeometry = new Ninth.BoxGeometry(0.15 * scale, 0.05 * scale, 1.2 * scale);
+            const rightStrap = new Ninth.Mesh(rightStrapGeometry, strapMaterial);
+            rightStrap.position.set(0.8 * scale, -0.2 * scale, -0.2 * scale);
+            rightStrap.castShadow = true;
+            watch.add(rightStrap);
+
+            // Buckle
+            const buckleGeometry = new Ninth.BoxGeometry(0.18 * scale, 0.06 * scale, 0.08 * scale);
+            const buckle = new Ninth.Mesh(buckleGeometry, metalMaterial);
+            buckle.position.set(0.8 * scale, -0.2 * scale, 0.5 * scale);
+            buckle.castShadow = true;
+            watch.add(buckle);
+        }
+
+        function createWatchBezel(scale) {
+            // Rotatable bezel
+            const bezelGeometry = new Ninth.CylinderGeometry(0.58 * scale, 0.58 * scale, 0.08 * scale, 32);
+            const bezelMaterial = caseMaterial.clone();
+            bezelMaterial.color.setHex(0x333333);
+            const bezel = new Ninth.Mesh(bezelGeometry, bezelMaterial);
+            bezel.position.y = 0.115 * scale;
+            bezel.castShadow = true;
+            watch.add(bezel);
+
+            // Bezel markers
+            for (let i = 0; i < 60; i += 5) {
+                const angle = (i / 60) * Math.PI * 2;
+                const markerGeometry = new Ninth.BoxGeometry(0.02 * scale, 0.02 * scale, 0.01 * scale);
+                const marker = new Ninth.Mesh(markerGeometry, metalMaterial);
+                marker.position.set(
+                    Math.cos(angle) * 0.56 * scale,
+                    0.125 * scale,
+                    Math.sin(angle) * 0.56 * scale
+                );
+                marker.rotation.y = -angle;
+                marker.castShadow = true;
+                watch.add(marker);
+            }
+        }
+
+        function createWatchHands(scale) {
+            // Hour hand
+            const hourHandGeometry = new Ninth.BoxGeometry(0.03 * scale, 0.01 * scale, 0.3 * scale);
+            const hourHand = new Ninth.Mesh(hourHandGeometry, metalMaterial);
+            hourHand.position.y = 0.09 * scale;
+            hourHand.rotation.z = Math.PI / 6; // 2 o'clock position
+            hourHand.castShadow = true;
+            watch.add(hourHand);
+
+            // Minute hand
+            const minuteHandGeometry = new Ninth.BoxGeometry(0.02 * scale, 0.01 * scale, 0.4 * scale);
+            const minuteHand = new Ninth.Mesh(minuteHandGeometry, metalMaterial);
+            minuteHand.position.y = 0.095 * scale;
+            minuteHand.rotation.z = -Math.PI / 3; // 10 o'clock position
+            minuteHand.castShadow = true;
+            watch.add(minuteHand);
+
+            // Second hand
+            const secondHandGeometry = new Ninth.BoxGeometry(0.01 * scale, 0.005 * scale, 0.45 * scale);
+            const secondHand = new Ninth.Mesh(secondHandGeometry, metalMaterial);
+            secondHand.position.y = 0.1 * scale;
+            secondHand.rotation.z = -Math.PI / 2; // 9 o'clock position
+            secondHand.castShadow = true;
+            watch.add(secondHand);
+
+            // Central pin
+            const pinGeometry = new Ninth.CylinderGeometry(0.03 * scale, 0.03 * scale, 0.02 * scale, 16);
+            const pin = new Ninth.Mesh(pinGeometry, metalMaterial);
+            pin.position.y = 0.105 * scale;
+            pin.castShadow = true;
+            watch.add(pin);
+        }
+
+        function addComplications(scale) {
+            // Date window
+            if (complications.date) {
+                const dateWindowGeometry = new Ninth.BoxGeometry(0.08 * scale, 0.04 * scale, 0.01 * scale);
+                const dateWindow = new Ninth.Mesh(dateWindowGeometry, dialMaterial);
+                dateWindow.position.set(0.3 * scale, 0.075 * scale, 0.065 * scale);
+                watch.add(dateWindow);
+
+                // Date wheel
+                const dateWheelGeometry = new Ninth.CylinderGeometry(0.06 * scale, 0.06 * scale, 0.01 * scale);
+                const dateWheelMaterial = new Ninth.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+                const dateWheel = new Ninth.Mesh(dateWheelGeometry, dateWheelMaterial);
+                dateWheel.position.set(0.3 * scale, 0.075 * scale, 0.06 * scale);
+                watch.add(dateWheel);
+            }
+
+            // Chronograph subdials
+            if (complications.chronograph) {
+                const subdial1Geometry = new Ninth.CylinderGeometry(0.12 * scale, 0.12 * scale, 0.015 * scale, 16);
+                const subdial1 = new Ninth.Mesh(subdial1Geometry, dialMaterial);
+                subdial1.position.set(-0.25 * scale, 0.08 * scale, 0.065 * scale);
+                watch.add(subdial1);
+
+                const subdial2Geometry = new Ninth.CylinderGeometry(0.1 * scale, 0.1 * scale, 0.015 * scale, 16);
+                const subdial2 = new Ninth.Mesh(subdial2Geometry, dialMaterial);
+                subdial2.position.set(0.25 * scale, 0.08 * scale, 0.065 * scale);
+                watch.add(subdial2);
+            }
+
+            // GMT hand
+            if (complications.gmt) {
+                const gmtHandGeometry = new Ninth.BoxGeometry(0.015 * scale, 0.008 * scale, 0.35 * scale);
+                const gmtHand = new Ninth.Mesh(gmtHandGeometry, metalMaterial);
+                gmtHand.position.y = 0.085 * scale;
+                gmtHand.rotation.z = -Math.PI / 4; // Different from main hands
+                gmtHand.castShadow = true;
+                watch.add(gmtHand);
+            }
+
+            // Moon phase
+            if (complications.moon) {
+                const moonPhaseGeometry = new Ninth.CylinderGeometry(0.1 * scale, 0.1 * scale, 0.015 * scale, 16);
+                const moonPhase = new Ninth.Mesh(moonPhaseGeometry, dialMaterial);
+                moonPhase.position.set(-0.35 * scale, 0.075 * scale, 0.065 * scale);
+                watch.add(moonPhase);
+            }
+
+            // Power reserve indicator
+            if (complications.power) {
+                const powerIndicatorGeometry = new Ninth.BoxGeometry(0.15 * scale, 0.02 * scale, 0.01 * scale);
+                const powerIndicator = new Ninth.Mesh(powerIndicatorGeometry, dialMaterial);
+                powerIndicator.position.set(0.35 * scale, 0.08 * scale, 0.065 * scale);
+                watch.add(powerIndicator);
+            }
+
+            // Tourbillon
+            if (complications.tourbillon) {
+                const tourbillonCageGeometry = new Ninth.CylinderGeometry(0.08 * scale, 0.08 * scale, 0.05 * scale, 16);
+                const tourbillonCage = new Ninth.Mesh(tourbillonCageGeometry, metalMaterial);
+                tourbillonCage.position.set(0, 0.1 * scale, 0.065 * scale);
+                tourbillonCage.rotation.y = Date.now() * 0.001;
+                watch.add(tourbillonCage);
+            }
+        }
+
+        function setupControls() {
+            // Watch type buttons
+            document.querySelectorAll('.watch-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.watch-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentWatch = this.dataset.watch;
+                    createWatch();
+                });
+            });
+
+            // Case material buttons
+            document.querySelectorAll('.case-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.case-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentCase = this.dataset.case;
+                    createWatch();
+                });
+            });
+
+            // Dial color selection
+            document.querySelectorAll('.dial-color').forEach(color => {
+                color.addEventListener('click', function() {
+                    document.querySelectorAll('.dial-color').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    currentDialColor = this.dataset.color;
+                    createWatch();
+                });
+            });
+
+            // Strap type buttons
+            document.querySelectorAll('.strap-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.strap-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentStrap = this.dataset.strap;
+                    createWatch();
+                });
+            });
+
+            // Strap color selection
+            document.querySelectorAll('.strap-color').forEach(color => {
+                color.addEventListener('click', function() {
+                    document.querySelectorAll('.strap-color').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    currentStrapColor = this.dataset.color;
+                    createWatch();
+                });
+            });
+
+            // Complication toggles
+            document.querySelectorAll('.complication-toggle').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const complication = this.dataset.complication;
+                    complications[complication] = this.classList.contains('active');
+                    createWatch();
+                });
+            });
+
+            // Lighting controls
+            const lightControls = [
+                { id: 'mainLight', obj: mainLight, valueId: 'mainValue', suffix: '%' },
+                { id: 'accentLight', obj: accentLight, valueId: 'accentValue', suffix: '%' },
+                { id: 'rimLight', obj: rimLight, valueId: 'rimValue', suffix: '%' },
+                { id: 'ambientLight', obj: ambientLight, valueId: 'ambientValue', suffix: '%' }
+            ];
+
+            lightControls.forEach(control => {
+                const element = document.getElementById(control.id);
+                const valueElement = document.getElementById(control.valueId);
+                
+                element.addEventListener('input', function() {
+                    const value = parseFloat(this.value);
+                    control.obj.intensity = value / 100;
+                    valueElement.textContent = value + control.suffix;
+                });
+            });
+        }
+
+        function updateWatchDetails() {
+            const watchNames = {
+                submariner: 'Submariner',
+                daytona: 'Daytona',
+                gmt: 'GMT-Master',
+                datejust: 'Datejust',
+                cellini: 'Cellini',
+                sky: 'Sky-Dweller'
+            };
+
+            const caseNames = {
+                steel: 'Stainless Steel',
+                gold: 'Yellow Gold',
+                rose: 'Rose Gold',
+                platinum: 'Platinum',
+                titanium: 'Titanium',
+                ceramic: 'Ceramic'
+            };
+
+            const dialNames = {
+                '#000000': 'Black',
+                '#ffffff': 'White',
+                '#1a1a1a': 'Anthracite',
+                '#8b0000': 'Burgundy',
+                '#000080': 'Navy',
+                '#2f4f4f': 'Slate',
+                '#8b4513': 'Brown',
+                '#006400': 'Green'
+            };
+
+            const strapNames = {
+                bracelet: 'Steel Bracelet',
+                leather: 'Leather Strap',
+                rubber: 'Rubber Strap',
+                crocodile: 'Crocodile Strap'
+            };
+
+            const activeComplications = Object.keys(complications).filter(key => complications[key]);
+            const features = [
+                'Waterproof',
+                ...activeComplications.map(comp => {
+                    const names = {
+                        date: 'Date',
+                        chronograph: 'Chronograph',
+                        gmt: 'GMT',
+                        moon: 'Moon Phase',
+                        power: 'Power Reserve',
+                        tourbillon: 'Tourbillon'
+                    };
+                    return names[comp] || comp;
+                })
+            ];
+
+            document.getElementById('watchModel').textContent = watchNames[currentWatch];
+            document.getElementById('watchCase').textContent = caseNames[currentCase];
+            document.getElementById('watchDial').textContent = dialNames[currentDialColor] || 'Custom';
+            document.getElementById('watchStrap').textContent = strapNames[currentStrap];
+            document.getElementById('watchFeatures').textContent = features.join(', ');
+            document.getElementById('watchMovement').textContent = 'Swiss Automatic';
+        }
+
+        function startClock() {
+            function updateTime() {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const seconds = now.getSeconds().toString().padStart(2, '0');
+                document.getElementById('liveTime').textContent = `${hours}:${minutes}:${seconds}`;
+            }
+            
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+
+        function setShowcasePreset(preset) {
+            const presets = {
+                gallery: { main: 100, accent: 80, rim: 60, ambient: 20 },
+                studio: { main: 120, accent: 100, rim: 70, ambient: 30 },
+                dramatic: { main: 150, accent: 50, rim: 120, ambient: 10 },
+                intimate: { main: 60, accent: 120, rim: 40, ambient: 50 }
+            };
+
+            const p = presets[preset];
+            if (p) {
+                document.getElementById('mainLight').value = p.main;
+                document.getElementById('accentLight').value = p.accent;
+                document.getElementById('rimLight').value = p.rim;
+                document.getElementById('ambientLight').value = p.ambient;
+                
+                mainLight.intensity = p.main / 100;
+                accentLight.intensity = p.accent / 100;
+                rimLight.intensity = p.rim / 100;
+                ambientLight.intensity = p.ambient / 100;
+                
+                document.getElementById('mainValue').textContent = p.main + '%';
+                document.getElementById('accentValue').textContent = p.accent + '%';
+                document.getElementById('rimValue').textContent = p.rim + '%';
+                document.getElementById('ambientValue').textContent = p.ambient + '%';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('materials').textContent = '6';
+            document.getElementById('textures').textContent = '4';
+            document.getElementById('lights').textContent = '5';
+            document.getElementById('polygons').textContent = '2,847';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Update FPS counter
+            const now = performance.now();
+            stats.frameCount++;
+            
+            if (now - stats.lastTime >= 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (now - stats.lastTime));
+                document.getElementById('fps').textContent = stats.fps;
+                stats.frameCount = 0;
+                stats.lastTime = now;
+            }
+
+            // Gentle rotation for showcase
+            if (watch) {
+                watch.rotation.y += 0.003;
+                
+                // Animate tourbillon if present
+                if (complications.tourbillon) {
+                    const tourbillonParts = watch.children.filter(child => 
+                        child.geometry && child.geometry.type === 'CylinderGeometry' && 
+                        child.geometry.parameters.radiusTop === 0.08 * watchTypes[currentWatch].size
+                    );
+                    tourbillonParts.forEach(tourbillon => {
+                        tourbillon.rotation.y += 0.02;
+                    });
+                }
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

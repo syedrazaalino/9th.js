@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Animation Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls select, #controls input[type="checkbox"] {
+            margin-bottom: 8px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: calc(50% - 4px);
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        #controls button.secondary {
+            background: #2196F3;
+        }
+        
+        #controls button.secondary:hover {
+            background: #1976D2;
+        }
+        
+        #controls .control-group {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #animationStatus {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        #timeline {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        #timelineBar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        #timelineProgress {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🎬 Animation Demo</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Master keyframe animations</li>
+            <li>Learn about animation blending</li>
+            <li>Explore morph targets and skinned animations</li>
+            <li>Understand animation timing and easing</li>
+        </ul>
+        <p><strong>What you see:</strong> Multiple animated objects demonstrating various animation techniques including rotation, position, scale, morph targets, and complex keyframe sequences.</p>
+    </div>
+    
+    <div id="controls">
+        <div id="animationStatus">
+            ⏸️ Animation Stopped
+        </div>
+        
+        <div class="control-group">
+            <h4>🎮 Animation Controls</h4>
+            
+            <button id="playPause" class="secondary">▶️ Play</button>
+            <button id="reset">⏹️ Reset</button>
+            
+            <button id="randomAnimation" class="secondary">🎲 Random</button>
+            <button id="loop">🔄 Loop</button>
+            
+            <div id="timeline">
+                <label>Timeline:</label>
+                <div id="timelineBar">
+                    <div id="timelineProgress"></div>
+                </div>
+                <small>Time: <span id="currentTime">0.0</span>s / <span id="totalTime">5.0</span>s</small>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎯 Animation Types</h4>
+            
+            <label for="animationType">Primary Animation:</label>
+            <select id="animationType">
+                <option value="rotation">Rotation</option>
+                <option value="position">Position</option>
+                <option value="scale">Scale</option>
+                <option value="bounce">Bounce</option>
+                <option value="morph">Morph Target</option>
+                <option value="complex">Complex Sequence</option>
+            </select>
+            
+            <label for="easing">Easing Function:</label>
+            <select id="easing">
+                <option value="linear">Linear</option>
+                <option value="easeIn">Ease In</option>
+                <option value="easeOut">Ease Out</option>
+                <option value="easeInOut">Ease In Out</option>
+                <option value="bounce">Bounce</option>
+                <option value="elastic">Elastic</option>
+            </select>
+            
+            <label for="duration">Duration (seconds):</label>
+            <input type="range" id="duration" min="1" max="10" step="0.5" value="3">
+            <span id="duration-value">3.0</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>⚡ Animation Settings</h4>
+            
+            <label for="speed">Playback Speed:</label>
+            <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
+            <span id="speed-value">1.0</span>
+            
+            <label for="delay">Start Delay (seconds):</label>
+            <input type="range" id="delay" min="0" max="3" step="0.1" value="0">
+            <span id="delay-value">0.0</span>
+            
+            <label>
+                <input type="checkbox" id="stagger"> Stagger animations
+            </label>
+            
+            <label>
+                <input type="checkbox" id="yoyo"> Yoyo animation
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎨 Scene Objects</h4>
+            
+            <label for="objectCount">Number of Objects:</label>
+            <input type="range" id="objectCount" min="1" max="8" step="1" value="4">
+            <span id="object-count-value">4</span>
+            
+            <label for="complexity">Animation Complexity:</label>
+            <select id="complexity">
+                <option value="simple">Simple (1 property)</option>
+                <option value="moderate">Moderate (2-3 properties)</option>
+                <option value="complex">Complex (all properties)</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <button id="preset1">🎠 Rotation Dance</button>
+            <button id="preset2">⚽ Bounce Party</button>
+            <button id="preset3">🌊 Wave Motion</button>
+            <button id="preset4">💫 Morph Magic</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <small>FPS: <span id="fps">0</span></small>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html" class="current">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class AnimationDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.isPlaying = false;
+                this.isLooping = false;
+                this.currentTime = 0;
+                this.totalDuration = 3;
+                this.playbackSpeed = 1;
+                this.animationDelay = 0;
+                this.objects = [];
+                this.animations = [];
+                
+                this.init();
+                this.setupObjects();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#0a0a1a');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 0, 10);
+                
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                this.setupLighting();
+                
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+            }
+            
+            setupLighting() {
+                const ambient = new NinthJS.AmbientLight(0.4, '#ffffff');
+                this.scene.add(ambient);
+                
+                const directional = new NinthJS.DirectionalLight(0.8, '#ffffff');
+                directional.setDirection(-1, -1, -1);
+                this.scene.add(directional);
+            }
+            
+            setupObjects() {
+                this.createObjects(4);
+            }
+            
+            createObjects(count) {
+                // Clear existing objects
+                this.objects.forEach(obj => this.scene.remove(obj.mesh));
+                this.objects = [];
+                
+                const geometries = [
+                    new NinthJS.BoxGeometry(1, 1, 1),
+                    new NinthJS.SphereGeometry(0.8, 32, 16),
+                    new NinthJS.CylinderGeometry(0.8, 0.8, 1.5, 32),
+                    new NinthJS.ConeGeometry(0.8, 1.5, 32),
+                    new NinthJS.TorusGeometry(1, 0.4, 16, 100),
+                    new NinthJS.TorusKnotGeometry(0.8, 0.3, 128, 32),
+                    new NinthJS.OctahedronGeometry(1),
+                    new NinthJS.DodecahedronGeometry(1)
+                ];
+                
+                for (let i = 0; i < count; i++) {
+                    const geometry = geometries[i % geometries.length];
+                    const material = new NinthJS.PhongMaterial({
+                        color: `hsl(${i * (360 / count)}, 70%, 60%)`,
+                        shininess: 100
+                    });
+                    
+                    const mesh = new NinthJS.Mesh(geometry);
+                    mesh.material = material;
+                    
+                    // Position objects in a circle
+                    const angle = (i / count) * Math.PI * 2;
+                    const radius = 4;
+                    mesh.setPosition(
+                        Math.cos(angle) * radius,
+                        0,
+                        Math.sin(angle) * radius
+                    );
+                    
+                    this.scene.add(mesh);
+                    
+                    this.objects.push({
+                        mesh,
+                        initialPosition: mesh.getPosition(),
+                        initialRotation: mesh.getRotation(),
+                        initialScale: mesh.getScale(),
+                        animationDelay: 0
+                    });
+                }
+            }
+            
+            setupControls() {
+                // Animation controls
+                document.getElementById('playPause').addEventListener('click', () => {
+                    this.togglePlayPause();
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.resetAnimation();
+                });
+                
+                document.getElementById('loop').addEventListener('click', () => {
+                    this.isLooping = !this.isLooping;
+                    document.getElementById('loop').style.backgroundColor = this.isLooping ? '#ff9800' : '#4CAF50';
+                });
+                
+                document.getElementById('randomAnimation').addEventListener('click', () => {
+                    this.randomizeAnimation();
+                });
+                
+                // Animation settings
+                document.getElementById('animationType').addEventListener('change', () => {
+                    if (!this.isPlaying) this.updateAnimation();
+                });
+                
+                document.getElementById('easing').addEventListener('change', () => {
+                    if (!this.isPlaying) this.updateAnimation();
+                });
+                
+                const durationSlider = document.getElementById('duration');
+                const durationValue = document.getElementById('duration-value');
+                durationSlider.addEventListener('input', (e) => {
+                    this.totalDuration = parseFloat(e.target.value);
+                    durationValue.textContent = this.totalDuration.toFixed(1);
+                    document.getElementById('totalTime').textContent = this.totalDuration.toFixed(1);
+                });
+                
+                const speedSlider = document.getElementById('speed');
+                const speedValue = document.getElementById('speed-value');
+                speedSlider.addEventListener('input', (e) => {
+                    this.playbackSpeed = parseFloat(e.target.value);
+                    speedValue.textContent = this.playbackSpeed.toFixed(1);
+                });
+                
+                const delaySlider = document.getElementById('delay');
+                const delayValue = document.getElementById('delay-value');
+                delaySlider.addEventListener('input', (e) => {
+                    this.animationDelay = parseFloat(e.target.value);
+                    delayValue.textContent = this.animationDelay.toFixed(1);
+                });
+                
+                document.getElementById('stagger').addEventListener('change', (e) => {
+                    this.staggerAnimations(e.target.checked);
+                });
+                
+                document.getElementById('yoyo').addEventListener('change', () => {
+                    this.updateAnimation();
+                });
+                
+                const objectCountSlider = document.getElementById('objectCount');
+                const objectCountValue = document.getElementById('object-count-value');
+                objectCountSlider.addEventListener('input', (e) => {
+                    const count = parseInt(e.target.value);
+                    objectCountValue.textContent = count;
+                    this.createObjects(count);
+                });
+                
+                // Preset buttons
+                document.getElementById('preset1').addEventListener('click', () => {
+                    this.applyPreset('rotation');
+                });
+                
+                document.getElementById('preset2').addEventListener('click', () => {
+                    this.applyPreset('bounce');
+                });
+                
+                document.getElementById('preset3').addEventListener('click', () => {
+                    this.applyPreset('wave');
+                });
+                
+                document.getElementById('preset4').addEventListener('click', () => {
+                    this.applyPreset('morph');
+                });
+                
+                this.updateAnimation();
+            }
+            
+            togglePlayPause() {
+                this.isPlaying = !this.isPlaying;
+                const button = document.getElementById('playPause');
+                const status = document.getElementById('animationStatus');
+                
+                if (this.isPlaying) {
+                    button.textContent = '⏸️ Pause';
+                    button.style.backgroundColor = '#ff9800';
+                    status.textContent = '▶️ Animation Playing';
+                    status.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+                } else {
+                    button.textContent = '▶️ Play';
+                    button.style.backgroundColor = '#2196F3';
+                    status.textContent = '⏸️ Animation Paused';
+                    status.style.backgroundColor = 'rgba(255, 152, 0, 0.3)';
+                }
+            }
+            
+            resetAnimation() {
+                this.isPlaying = false;
+                this.currentTime = 0;
+                this.objects.forEach(obj => {
+                    obj.mesh.setPosition(obj.initialPosition.x, obj.initialPosition.y, obj.initialPosition.z);
+                    obj.mesh.setRotation(obj.initialRotation.x, obj.initialRotation.y, obj.initialRotation.z);
+                    obj.mesh.setScale(obj.initialScale.x, obj.initialScale.y, obj.initialScale.z);
+                });
+                
+                document.getElementById('playPause').textContent = '▶️ Play';
+                document.getElementById('playPause').style.backgroundColor = '#2196F3';
+                document.getElementById('animationStatus').textContent = '⏹️ Animation Reset';
+                document.getElementById('animationStatus').style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+                this.updateTimeline();
+            }
+            
+            staggerAnimations(enabled) {
+                this.objects.forEach((obj, index) => {
+                    obj.animationDelay = enabled ? index * 0.2 : 0;
+                });
+            }
+            
+            randomizeAnimation() {
+                const types = ['rotation', 'position', 'scale', 'bounce', 'complex'];
+                const easings = ['linear', 'easeIn', 'easeOut', 'easeInOut', 'bounce'];
+                
+                document.getElementById('animationType').value = types[Math.floor(Math.random() * types.length)];
+                document.getElementById('easing').value = easings[Math.floor(Math.random() * easings.length)];
+                
+                const duration = (Math.random() * 9 + 1).toFixed(1);
+                document.getElementById('duration').value = duration;
+                document.getElementById('duration-value').textContent = duration;
+                document.getElementById('totalTime').textContent = duration;
+                this.totalDuration = parseFloat(duration);
+                
+                this.updateAnimation();
+            }
+            
+            applyPreset(preset) {
+                const configs = {
+                    rotation: {
+                        type: 'rotation',
+                        easing: 'easeInOut',
+                        duration: 2,
+                        objects: 6,
+                        complexity: 'moderate'
+                    },
+                    bounce: {
+                        type: 'bounce',
+                        easing: 'bounce',
+                        duration: 1.5,
+                        objects: 4,
+                        complexity: 'simple'
+                    },
+                    wave: {
+                        type: 'position',
+                        easing: 'easeInOut',
+                        duration: 4,
+                        objects: 8,
+                        complexity: 'moderate'
+                    },
+                    morph: {
+                        type: 'complex',
+                        easing: 'elastic',
+                        duration: 3,
+                        objects: 5,
+                        complexity: 'complex'
+                    }
+                };
+                
+                const config = configs[preset];
+                if (!config) return;
+                
+                document.getElementById('animationType').value = config.type;
+                document.getElementById('easing').value = config.easing;
+                document.getElementById('duration').value = config.duration;
+                document.getElementById('duration-value').textContent = config.duration;
+                document.getElementById('totalTime').textContent = config.duration;
+                document.getElementById('objectCount').value = config.objects;
+                document.getElementById('object-count-value').textContent = config.objects;
+                document.getElementById('complexity').value = config.complexity;
+                
+                this.totalDuration = config.duration;
+                this.createObjects(config.objects);
+                this.updateAnimation();
+            }
+            
+            updateAnimation() {
+                const type = document.getElementById('animationType').value;
+                const easing = document.getElementById('easing').value;
+                const complexity = document.getElementById('complexity').value;
+                
+                this.animations = this.objects.map((obj, index) => {
+                    return this.createAnimation(type, easing, obj, index, complexity);
+                });
+            }
+            
+            createAnimation(type, easing, obj, index, complexity) {
+                const animation = {
+                    type,
+                    easing,
+                    startTime: this.animationDelay + obj.animationDelay,
+                    duration: this.totalDuration,
+                    initial: {
+                        position: obj.initialPosition,
+                        rotation: obj.initialRotation,
+                        scale: obj.initialScale
+                    }
+                };
+                
+                switch (type) {
+                    case 'rotation':
+                        animation.target = {
+                            rotation: {
+                                x: obj.initialRotation.x + Math.PI * 2 * (complexity === 'complex' ? 2 : 1),
+                                y: obj.initialRotation.y + Math.PI * 2 * (complexity === 'complex' ? 3 : 1),
+                                z: obj.initialRotation.z + Math.PI * 2 * (complexity === 'moderate' ? 2 : 1)
+                            }
+                        };
+                        break;
+                        
+                    case 'position':
+                        animation.target = {
+                            position: {
+                                x: obj.initialPosition.x + (complexity === 'complex' ? Math.sin(index) * 6 : Math.sin(index * 2) * 3),
+                                y: obj.initialPosition.y + (complexity === 'complex' ? Math.cos(index * 1.5) * 4 : Math.sin(index) * 2),
+                                z: obj.initialPosition.z + Math.sin(index * 3) * 2
+                            }
+                        };
+                        break;
+                        
+                    case 'scale':
+                        animation.target = {
+                            scale: {
+                                x: obj.initialScale.x * (complexity === 'complex' ? 3 : 2),
+                                y: obj.initialScale.y * (complexity === 'complex' ? 0.5 : 0.8),
+                                z: obj.initialScale.z * (complexity === 'complex' ? 2 : 1.5)
+                            }
+                        };
+                        break;
+                        
+                    case 'bounce':
+                        animation.target = {
+                            position: {
+                                x: obj.initialPosition.x,
+                                y: obj.initialPosition.y + (complexity === 'complex' ? 4 : 2),
+                                z: obj.initialPosition.z
+                            }
+                        };
+                        break;
+                        
+                    case 'morph':
+                    case 'complex':
+                        animation.target = {
+                            rotation: {
+                                x: obj.initialRotation.x + Math.PI * 2,
+                                y: obj.initialRotation.y + Math.PI,
+                                z: obj.initialRotation.z + Math.PI / 2
+                            },
+                            position: {
+                                x: obj.initialPosition.x + Math.sin(index) * 2,
+                                y: obj.initialPosition.y + Math.cos(index * 2) * 3,
+                                z: obj.initialPosition.z + Math.sin(index * 3) * 2
+                            },
+                            scale: {
+                                x: obj.initialScale.x * (1 + Math.sin(index) * 0.5),
+                                y: obj.initialScale.y * (1 + Math.cos(index * 2) * 0.3),
+                                z: obj.initialScale.z * (1 + Math.sin(index * 1.5) * 0.4)
+                            }
+                        };
+                        break;
+                }
+                
+                return animation;
+            }
+            
+            applyEasing(progress, easing) {
+                switch (easing) {
+                    case 'linear':
+                        return progress;
+                        
+                    case 'easeIn':
+                        return progress * progress;
+                        
+                    case 'easeOut':
+                        return progress * (2 - progress);
+                        
+                    case 'easeInOut':
+                        return progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+                        
+                    case 'bounce':
+                        if (progress < 1 / 2.75) {
+                            return 7.5625 * progress * progress;
+                        } else if (progress < 2 / 2.75) {
+                            return 7.5625 * (progress -= 1.5 / 2.75) * progress + 0.75;
+                        } else if (progress < 2.5 / 2.75) {
+                            return 7.5625 * (progress -= 2.25 / 2.75) * progress + 0.9375;
+                        } else {
+                            return 7.5625 * (progress -= 2.625 / 2.75) * progress + 0.984375;
+                        }
+                        
+                    case 'elastic':
+                        if (progress === 0 || progress === 1) return progress;
+                        return Math.pow(2, -10 * progress) * Math.sin((progress - 0.075) * (2 * Math.PI) / 0.3) + 1;
+                        
+                    default:
+                        return progress;
+                }
+            }
+            
+            interpolateValues(initial, target, progress) {
+                return {
+                    x: initial.x + (target.x - initial.x) * progress,
+                    y: initial.y + (target.y - initial.y) * progress,
+                    z: initial.z + (target.z - initial.z) * progress
+                };
+            }
+            
+            updateAnimationFrame() {
+                if (!this.isPlaying) return;
+                
+                this.currentTime += (performance.now() - this.lastTime) * 0.001 * this.playbackSpeed;
+                
+                // Handle looping
+                if (this.currentTime >= this.totalDuration) {
+                    if (this.isLooping) {
+                        this.currentTime = this.currentTime % this.totalDuration;
+                    } else {
+                        this.currentTime = this.totalDuration;
+                        this.isPlaying = false;
+                        document.getElementById('playPause').textContent = '▶️ Play';
+                        document.getElementById('playPause').style.backgroundColor = '#2196F3';
+                        document.getElementById('animationStatus').textContent = '⏹️ Animation Complete';
+                        document.getElementById('animationStatus').style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+                    }
+                }
+                
+                // Apply animations
+                this.animations.forEach((animation, index) => {
+                    const obj = this.objects[index];
+                    const elapsed = this.currentTime - animation.startTime;
+                    
+                    if (elapsed >= 0 && elapsed <= animation.duration) {
+                        let progress = elapsed / animation.duration;
+                        
+                        // Handle yoyo animation
+                        const yoyo = document.getElementById('yoyo').checked;
+                        if (yoyo) {
+                            if (progress <= 0.5) {
+                                progress = progress * 2;
+                            } else {
+                                progress = (1 - progress) * 2;
+                            }
+                        }
+                        
+                        progress = this.applyEasing(progress, animation.easing);
+                        
+                        // Apply animation based on type
+                        if (animation.target.rotation) {
+                            const rot = this.interpolateValues(animation.initial.rotation, animation.target.rotation, progress);
+                            obj.mesh.setRotation(rot.x, rot.y, rot.z);
+                        }
+                        
+                        if (animation.target.position) {
+                            const pos = this.interpolateValues(animation.initial.position, animation.target.position, progress);
+                            obj.mesh.setPosition(pos.x, pos.y, pos.z);
+                        }
+                        
+                        if (animation.target.scale) {
+                            const scale = this.interpolateValues(animation.initial.scale, animation.target.scale, progress);
+                            obj.mesh.setScale(scale.x, scale.y, scale.z);
+                        }
+                    }
+                });
+                
+                this.updateTimeline();
+            }
+            
+            updateTimeline() {
+                const progress = Math.min(this.currentTime / this.totalDuration, 1) * 100;
+                document.getElementById('timelineProgress').style.width = progress + '%';
+                document.getElementById('currentTime').textContent = this.currentTime.toFixed(1);
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                this.updateAnimationFrame();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        try {
+            new AnimationDemo();
+            console.log('✅ Animation demo loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Animation demo:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

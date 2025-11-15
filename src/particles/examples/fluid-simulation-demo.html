@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPH Fluid Simulation Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #000510, #001122);
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas {
+            display: block;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        
+        #info h1 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .control {
+            margin: 10px 0;
+        }
+        
+        .control label {
+            display: inline-block;
+            width: 100px;
+        }
+        
+        .control input[type="range"] {
+            width: 150px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="info">
+        <h1>SPH Fluid Simulation</h1>
+        <p><strong>Smoothed Particle Hydrodynamics (SPH)</strong> implementation for realistic fluid dynamics.</p>
+        <p>Features:</p>
+        <ul>
+            <li>Pressure and viscosity forces</li>
+            <li>Surface tension</li>
+            <li>Boundary collisions</li>
+            <li>Spatial grid optimization</li>
+        </ul>
+        <p><strong>Instructions:</strong> Click to add forces to the fluid. Watch realistic water behavior!</p>
+    </div>
+    
+    <div id="controls">
+        <div class="control">
+            <label>Particles:</label>
+            <input type="range" id="particleCount" min="200" max="1500" value="800" step="100">
+            <span id="particleCountValue">800</span>
+        </div>
+        <div class="control">
+            <label>Viscosity:</label>
+            <input type="range" id="viscosity" min="0.01" max="0.3" value="0.1" step="0.01">
+            <span id="viscosityValue">0.1</span>
+        </div>
+        <div class="control">
+            <label>Pressure:</label>
+            <input type="range" id="pressure" min="100" max="400" value="200" step="20">
+            <span id="pressureValue">200</span>
+        </div>
+        <button id="reset">Reset Simulation</button>
+        <button id="addColumn">Add Water Column</button>
+    </div>
+    
+    <div id="stats">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Active Particles: <span id="activeParticles">0</span></div>
+        <div>Avg Density: <span id="avgDensity">0</span></div>
+        <div>Kinetic Energy: <span id="kineticEnergy">0</span></div>
+    </div>
+
+    <script type="module">
+        import { Scene, PerspectiveCamera, WebGLRenderer } from '../../core/index.js';
+        import { OrbitControls } from '../../controls/index.js';
+        import { Vector3, Color } from '../../core/math/index.js';
+        import { FluidSimulation, createDamBreakSimulation, createWaterSplashSimulation } from '../FluidSimulation.js';
+
+        class FluidDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+                this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true });
+                this.controls = null;
+                this.fluidSystem = null;
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 0;
+                
+                this.init();
+                this.setupControls();
+                this.loadSimulation();
+                this.animate();
+            }
+            
+            init() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x001020, 1);
+                
+                this.camera.position.set(0, 8, 20);
+                this.controls = new OrbitControls(this.camera, this.canvas);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                
+                // Add lights
+                const ambientLight = new AmbientLight(0x404040, 0.6);
+                const directionalLight = new DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 10);
+                this.scene.add(ambientLight);
+                this.scene.add(directionalLight);
+                
+                // Add boundary visualization
+                this.addBoundaries();
+                
+                // Mouse interaction
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+            }
+            
+            addBoundaries() {
+                // Add wireframe boundaries
+                const boundaryMaterial = new MeshBasicMaterial({ 
+                    color: 0x444444, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                const min = new Vector3(-10, -5, -10);
+                const max = new Vector3(10, 15, 10);
+                const size = new Vector3().subVectors(max, min);
+                
+                const boundaryGeometry = new BoxGeometry(size.x, size.y, size.z);
+                const boundary = new Mesh(boundaryGeometry, boundaryMaterial);
+                boundary.position.copy(new Vector3().addVectors(min, max).multiplyScalar(0.5));
+                
+                this.scene.add(boundary);
+            }
+            
+            setupControls() {
+                const particleCountSlider = document.getElementById('particleCount');
+                const particleCountValue = document.getElementById('particleCountValue');
+                const viscositySlider = document.getElementById('viscosity');
+                const viscosityValue = document.getElementById('viscosityValue');
+                const pressureSlider = document.getElementById('pressure');
+                const pressureValue = document.getElementById('pressureValue');
+                
+                particleCountSlider.addEventListener('input', (e) => {
+                    particleCountValue.textContent = e.target.value;
+                    this.loadSimulation(parseInt(e.target.value));
+                });
+                
+                viscositySlider.addEventListener('input', (e) => {
+                    viscosityValue.textContent = e.target.value;
+                    if (this.fluidSystem) {
+                        this.fluidSystem.viscosity = parseFloat(e.target.value);
+                    }
+                });
+                
+                pressureSlider.addEventListener('input', (e) => {
+                    pressureValue.textContent = e.target.value;
+                    if (this.fluidSystem) {
+                        this.fluidSystem.pressureStiffness = parseFloat(e.target.value);
+                    }
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.loadSimulation();
+                });
+                
+                document.getElementById('addColumn').addEventListener('click', () => {
+                    this.addWaterColumn();
+                });
+            }
+            
+            loadSimulation(particleCount = 800) {
+                if (this.fluidSystem) {
+                    this.scene.remove(this.fluidSystem);
+                    this.fluidSystem.dispose();
+                }
+                
+                const viscosity = parseFloat(document.getElementById('viscosity').value);
+                const pressure = parseFloat(document.getElementById('pressure').value);
+                
+                // Create dam break simulation
+                this.fluidSystem = createDamBreakSimulation({
+                    particleRadius: 0.08,
+                    smoothingRadius: 0.2,
+                    restDensity: 1000,
+                    viscosity: viscosity,
+                    pressureStiffness: pressure,
+                    columnWidth: 2,
+                    columnHeight: Math.min(particleCount / 100, 8),
+                    columnDepth: 2,
+                    bounds: {
+                        min: new Vector3(-10, -5, -10),
+                        max: new Vector3(10, 15, 10)
+                    }
+                });
+                
+                this.scene.add(this.fluidSystem);
+                console.log(`SPH Fluid simulation loaded with ${particleCount} particles`);
+            }
+            
+            addWaterColumn() {
+                if (!this.fluidSystem) return;
+                
+                const columns = [
+                    new Vector3(-5, 0, -5),
+                    new Vector3(5, 0, -5),
+                    new Vector3(-5, 0, 5),
+                    new Vector3(5, 0, 5)
+                ];
+                
+                const randomColumn = columns[Math.floor(Math.random() * columns.length)];
+                const particles = [];
+                
+                for (let x = 0; x < 2; x++) {
+                    for (let y = 0; y < 6; y++) {
+                        for (let z = 0; z < 2; z++) {
+                            particles.push(new Vector3(
+                                randomColumn.x + x * 0.2,
+                                randomColumn.y + y * 0.2,
+                                randomColumn.z + z * 0.2
+                            ));
+                        }
+                    }
+                }
+                
+                this.fluidSystem.addParticles(particles);
+            }
+            
+            handleClick(event) {
+                if (!this.fluidSystem) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Convert to world coordinates
+                const worldX = mouseX * 15;
+                const worldY = (1 - mouseY) * 12.5;
+                const worldZ = 0;
+                
+                const clickPos = new Vector3(worldX, worldY, worldZ);
+                
+                // Apply force in random direction
+                const force = new Vector3(
+                    (Math.random() - 0.5) * 30,
+                    Math.random() * 20,
+                    (Math.random() - 0.5) * 30
+                );
+                
+                this.fluidSystem.applyForce(clickPos, 5, force);
+            }
+            
+            updateStats() {
+                const currentTime = performance.now();
+                this.frameCount++;
+                
+                if (currentTime >= this.lastTime + 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                    
+                    document.getElementById('fps').textContent = this.fps;
+                }
+                
+                if (this.fluidSystem) {
+                    const stats = this.fluidSystem.getStats();
+                    document.getElementById('activeParticles').textContent = stats.activeParticles;
+                    document.getElementById('avgDensity').textContent = Math.round(stats.averageDensity);
+                    document.getElementById('kineticEnergy').textContent = Math.round(stats.kineticEnergy);
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = Math.min(0.016, (performance.now() - this.lastTime) / 1000);
+                
+                if (this.fluidSystem) {
+                    this.fluidSystem.update(deltaTime);
+                }
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                
+                this.updateStats();
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+            window.location.reload(); // Simple resize handling
+        });
+        
+        window.addEventListener('load', () => {
+            new FluidDemo();
+        });
+    </script>
+</body>
+</html>

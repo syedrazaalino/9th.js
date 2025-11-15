@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Furniture Configurator - 3D Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            min-width: 300px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .ui-panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 24px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .control-group select,
+        .control-group input[type="color"],
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .color-picker {
+            height: 40px;
+            cursor: pointer;
+        }
+
+        .slider-container {
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .slider-value {
+            position: absolute;
+            right: 5px;
+            top: -20px;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .light-controls {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .preset-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stats {
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 5px;
+            border: 3px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+        }
+
+        .color-swatch.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .ui-panel {
+                width: 280px;
+                right: 10px;
+                top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-panel">
+        <h2>🪑 Furniture Configurator</h2>
+        
+        <div class="control-group">
+            <label>Chair Style:</label>
+            <select id="chairStyle">
+                <option value="modern">Modern Chair</option>
+                <option value="classic">Classic Chair</option>
+                <option value="ergonomic">Ergonomic Chair</option>
+                <option value="office">Office Chair</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Wood Material:</label>
+            <div id="materialPresets">
+                <div class="color-swatch selected" style="background: #8B4513;" data-type="wood" data-color="#8B4513"></div>
+                <div class="color-swatch" style="background: #DEB887;" data-type="wood" data-color="#DEB887"></div>
+                <div class="color-swatch" style="background: #D2691E;" data-type="wood" data-color="#D2691E"></div>
+                <div class="color-swatch" style="background: #CD853F;" data-type="wood" data-color="#CD853F"></div>
+                <div class="color-swatch" style="background: #A0522D;" data-type="wood" data-color="#A0522D"></div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Fabric Color:</label>
+            <div id="fabricPresets">
+                <div class="color-swatch selected" style="background: #333333;" data-type="fabric" data-color="#333333"></div>
+                <div class="color-swatch" style="background: #8B0000;" data-type="fabric" data-color="#8B0000"></div>
+                <div class="color-swatch" style="background: #006400;" data-type="fabric" data-color="#006400"></div>
+                <div class="color-swatch" style="background: #4169E1;" data-type="fabric" data-color="#4169E1"></div>
+                <div class="color-swatch" style="background: #800080;" data-type="fabric" data-color="#800080"></div>
+                <div class="color-swatch" style="background: #FFD700;" data-type="fabric" data-color="#FFD700"></div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Seat Height:</label>
+            <div class="slider-container">
+                <input type="range" id="seatHeight" min="40" max="60" value="45" step="1">
+                <span class="slider-value">45cm</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Seat Depth:</label>
+            <div class="slider-container">
+                <input type="range" id="seatDepth" min="40" max="60" value="45" step="1">
+                <span class="slider-value">45cm</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Back Angle:</label>
+            <div class="slider-container">
+                <input type="range" id="backAngle" min="85" max="105" value="90" step="1">
+                <span class="slider-value">90°</span>
+            </div>
+        </div>
+
+        <div class="light-controls">
+            <h3>💡 Lighting Setup</h3>
+            
+            <div class="control-group">
+                <label>Ambient Light:</label>
+                <div class="slider-container">
+                    <input type="range" id="ambientLight" min="0" max="100" value="30" step="5">
+                    <span class="slider-value">30%</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Key Light:</label>
+                <div class="slider-container">
+                    <input type="range" id="keyLight" min="0" max="200" value="100" step="10">
+                    <span class="slider-value">100%</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Light Color:</label>
+                <input type="color" id="lightColor" value="#ffffff">
+            </div>
+
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="setLightingPreset('studio')">Studio</button>
+                <button class="preset-btn" onclick="setLightingPreset('warm')">Warm</button>
+                <button class="preset-btn" onclick="setLightingPreset('cool')">Cool</button>
+                <button class="preset-btn" onclick="setLightingPreset('dramatic')">Dramatic</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <div class="stats">
+            <strong>Furniture Configurator</strong><br>
+            FPS: <span id="fps">60</span><br>
+            Polygons: <span id="polygons">2,340</span><br>
+            Materials: <span id="materials">2</span><br>
+            Lights: <span id="lights">3</span>
+        </div>
+    </div>
+
+    <script src="../../dist/umd/9th.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, chair, animationId;
+        let ambientLight, keyLight, fillLight;
+        let currentWoodMaterial, currentFabricMaterial;
+        let stats = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: performance.now()
+        };
+
+        // Initialize the application
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            // Create scene
+            scene = new Ninth.Scene();
+            scene.background = new Ninth.Color(0xf0f0f0);
+
+            // Create camera
+            camera = new Ninth.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(3, 2, 3);
+            camera.lookAt(0, 1, 0);
+
+            // Create renderer
+            renderer = new Ninth.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = Ninth.PCFSoftShadowMap;
+            renderer.toneMapping = Ninth.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.outputEncoding = Ninth.sRGBEncoding;
+
+            // Setup lighting
+            setupLighting();
+
+            // Create chair
+            createChair('modern');
+
+            // Setup controls
+            setupControls();
+
+            // Start animation loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Ambient light
+            ambientLight = new Ninth.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+
+            // Key light (main directional light)
+            keyLight = new Ninth.DirectionalLight(0xffffff, 1.0);
+            keyLight.position.set(5, 10, 5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 2048;
+            keyLight.shadow.mapSize.height = 2048;
+            keyLight.shadow.camera.near = 0.5;
+            keyLight.shadow.camera.far = 50;
+            scene.add(keyLight);
+
+            // Fill light
+            fillLight = new Ninth.DirectionalLight(0xffffff, 0.5);
+            fillLight.position.set(-5, 5, -5);
+            scene.add(fillLight);
+
+            // Create ground plane for shadows
+            const groundGeometry = new Ninth.PlaneGeometry(20, 20);
+            const groundMaterial = new Ninth.ShadowMaterial({ opacity: 0.3 });
+            const ground = new Ninth.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
+            ground.receiveShadow = true;
+            scene.add(ground);
+        }
+
+        function createChair(style) {
+            // Remove existing chair
+            if (chair) {
+                scene.remove(chair);
+            }
+
+            // Create materials
+            currentWoodMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x8B4513,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+
+            currentFabricMaterial = new Ninth.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+
+            // Create chair group
+            chair = new Ninth.Group();
+
+            // Seat geometry
+            const seatGeometry = new Ninth.BoxGeometry(0.8, 0.1, 0.8);
+            const seat = new Ninth.Mesh(seatGeometry, currentFabricMaterial);
+            seat.position.y = 0.45;
+            seat.castShadow = true;
+            chair.add(seat);
+
+            // Backrest
+            const backGeometry = new Ninth.BoxGeometry(0.8, 1.0, 0.1);
+            const backrest = new Ninth.Mesh(backGeometry, currentFabricMaterial);
+            backrest.position.set(0, 1.0, -0.35);
+            backrest.castShadow = true;
+            chair.add(backrest);
+
+            // Legs
+            const legPositions = [
+                [-0.35, 0, -0.35],
+                [0.35, 0, -0.35],
+                [-0.35, 0, 0.35],
+                [0.35, 0, 0.35]
+            ];
+
+            legPositions.forEach(pos => {
+                const legGeometry = new Ninth.CylinderGeometry(0.04, 0.04, 0.5);
+                const leg = new Ninth.Mesh(legGeometry, currentWoodMaterial);
+                leg.position.set(...pos);
+                leg.castShadow = true;
+                chair.add(leg);
+            });
+
+            // Style-specific modifications
+            if (style === 'modern') {
+                addModernDetails();
+            } else if (style === 'classic') {
+                addClassicDetails();
+            } else if (style === 'ergonomic') {
+                addErgonomicDetails();
+            } else if (style === 'office') {
+                addOfficeDetails();
+            }
+
+            chair.position.y = 0;
+            chair.castShadow = true;
+            scene.add(chair);
+
+            updateStats();
+        }
+
+        function addModernDetails() {
+            // Add armrests
+            const armrestGeometry = new Ninth.BoxGeometry(0.05, 0.5, 0.5);
+            const armrestMaterial = currentWoodMaterial.clone();
+            
+            const leftArmrest = new Ninth.Mesh(armrestGeometry, armrestMaterial);
+            leftArmrest.position.set(-0.425, 0.7, 0);
+            leftArmrest.castShadow = true;
+            chair.add(leftArmrest);
+
+            const rightArmrest = new Ninth.Mesh(armrestGeometry, armrestMaterial);
+            rightArmrest.position.set(0.425, 0.7, 0);
+            rightArmrest.castShadow = true;
+            chair.add(rightArmrest);
+        }
+
+        function addClassicDetails() {
+            // Add decorative elements
+            const decorationGeometry = new Ninth.TorusGeometry(0.03, 0.01);
+            const decorations = [];
+            
+            for (let i = 0; i < 4; i++) {
+                const decoration = new Ninth.Mesh(decorationGeometry, currentWoodMaterial);
+                decoration.position.set(
+                    i < 2 ? (i === 0 ? -0.35 : 0.35) : 0,
+                    0.25,
+                    i < 2 ? -0.35 : (i === 2 ? -0.35 : 0.35)
+                );
+                decoration.rotation.x = Math.PI / 2;
+                decoration.castShadow = true;
+                decorations.push(decoration);
+                chair.add(decoration);
+            }
+        }
+
+        function addErgonomicDetails() {
+            // Modify backrest for ergonomic design
+            const backrest = chair.children.find(child => child.geometry && child.geometry.parameters && child.geometry.parameters.depth === 0.1);
+            if (backrest) {
+                backrest.geometry.dispose();
+                backrest.geometry = new Ninth.BoxGeometry(0.8, 1.2, 0.08);
+            }
+        }
+
+        function addOfficeDetails() {
+            // Add gas lift cylinder
+            const cylinderGeometry = new Ninth.CylinderGeometry(0.05, 0.05, 0.2);
+            const cylinder = new Ninth.Mesh(cylinderGeometry, currentWoodMaterial);
+            cylinder.position.y = -0.1;
+            cylinder.castShadow = true;
+            chair.add(cylinder);
+
+            // Add base with wheels
+            const baseGeometry = new Ninth.CylinderGeometry(0.4, 0.4, 0.05);
+            const base = new Ninth.Mesh(baseGeometry, currentWoodMaterial);
+            base.position.y = -0.225;
+            base.castShadow = true;
+            chair.add(base);
+
+            // Add wheels
+            for (let i = 0; i < 5; i++) {
+                const angle = (i / 5) * Math.PI * 2;
+                const wheelGeometry = new Ninth.CylinderGeometry(0.05, 0.05, 0.03);
+                const wheel = new Ninth.Mesh(wheelGeometry, new Ninth.MeshStandardMaterial({ color: 0x333333 }));
+                wheel.position.set(Math.cos(angle) * 0.35, -0.25, Math.sin(angle) * 0.35);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.castShadow = true;
+                chair.add(wheel);
+            }
+        }
+
+        function setupControls() {
+            // Chair style selector
+            document.getElementById('chairStyle').addEventListener('change', function(e) {
+                createChair(e.target.value);
+            });
+
+            // Color swatch interactions
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const color = this.dataset.color;
+                    
+                    // Update selected state
+                    this.parentNode.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    // Update material
+                    if (type === 'wood') {
+                        currentWoodMaterial.color.setHex(parseInt(color.replace('#', '0x')));
+                    } else if (type === 'fabric') {
+                        currentFabricMaterial.color.setHex(parseInt(color.replace('#', '0x')));
+                    }
+                });
+            });
+
+            // Sliders
+            const sliders = [
+                { id: 'seatHeight', callback: updateSeatHeight },
+                { id: 'seatDepth', callback: updateSeatDepth },
+                { id: 'backAngle', callback: updateBackAngle },
+                { id: 'ambientLight', callback: updateAmbientLight },
+                { id: 'keyLight', callback: updateKeyLight }
+            ];
+
+            sliders.forEach(slider => {
+                const element = document.getElementById(slider.id);
+                const valueSpan = element.parentNode.querySelector('.slider-value');
+                
+                element.addEventListener('input', function() {
+                    const value = this.value;
+                    valueSpan.textContent = this.id.includes('Light') ? value + '%' : value + (this.id.includes('Angle') ? '°' : 'cm');
+                    slider.callback(parseFloat(value));
+                });
+            });
+
+            // Color picker
+            document.getElementById('lightColor').addEventListener('change', function() {
+                const color = this.value;
+                ambientLight.color.setHex(parseInt(color.replace('#', '0x')));
+                keyLight.color.setHex(parseInt(color.replace('#', '0x')));
+                fillLight.color.setHex(parseInt(color.replace('#', '0x')));
+            });
+        }
+
+        function updateSeatHeight(value) {
+            if (chair) {
+                chair.children.forEach(child => {
+                    if (child.geometry && child.geometry.parameters && child.geometry.parameters.height === 0.1) {
+                        child.position.y = value / 100;
+                    }
+                });
+            }
+        }
+
+        function updateSeatDepth(value) {
+            if (chair) {
+                chair.children.forEach(child => {
+                    if (child.geometry && child.geometry.parameters && child.geometry.parameters.width === 0.8 && child.geometry.parameters.depth === 0.8) {
+                        child.geometry.dispose();
+                        child.geometry = new Ninth.BoxGeometry(0.8, 0.1, value / 100);
+                    }
+                });
+            }
+        }
+
+        function updateBackAngle(value) {
+            if (chair) {
+                chair.children.forEach(child => {
+                    if (child.geometry && child.geometry.parameters && child.geometry.parameters.depth === 0.1) {
+                        const angleRad = (value - 90) * Math.PI / 180;
+                        child.rotation.x = -angleRad;
+                    }
+                });
+            }
+        }
+
+        function updateAmbientLight(value) {
+            ambientLight.intensity = value / 100;
+        }
+
+        function updateKeyLight(value) {
+            keyLight.intensity = value / 100;
+        }
+
+        function setLightingPreset(preset) {
+            const presets = {
+                studio: { ambient: 40, key: 100, color: '#ffffff' },
+                warm: { ambient: 50, key: 80, color: '#ffebaa' },
+                cool: { ambient: 30, key: 120, color: '#aaccee' },
+                dramatic: { ambient: 20, key: 150, color: '#ffeedd' }
+            };
+
+            const p = presets[preset];
+            if (p) {
+                document.getElementById('ambientLight').value = p.ambient;
+                document.getElementById('keyLight').value = p.key;
+                document.getElementById('lightColor').value = p.color;
+                
+                updateAmbientLight(p.ambient);
+                updateKeyLight(p.key);
+                
+                const colorHex = parseInt(p.color.replace('#', '0x'));
+                ambientLight.color.setHex(colorHex);
+                keyLight.color.setHex(colorHex);
+                fillLight.color.setHex(colorHex);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('materials').textContent = '2';
+            document.getElementById('lights').textContent = '3';
+            document.getElementById('polygons').textContent = '2,340';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Update FPS counter
+            const now = performance.now();
+            stats.frameCount++;
+            
+            if (now - stats.lastTime >= 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (now - stats.lastTime));
+                document.getElementById('fps').textContent = stats.fps;
+                stats.frameCount = 0;
+                stats.lastTime = now;
+            }
+
+            // Gentle rotation for showcase
+            if (chair) {
+                chair.rotation.y += 0.003;
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

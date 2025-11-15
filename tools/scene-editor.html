@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene Editor - Developer Tools Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toolbar h1 {
+            font-size: 18px;
+            color: #00ff88;
+            margin-right: 30px;
+        }
+
+        .tool-btn {
+            background: #404040;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #505050;
+            border-color: #00ff88;
+        }
+
+        .tool-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            color: #00ff88;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .object-list {
+            margin-bottom: 20px;
+        }
+
+        .object-item {
+            background: #3a3a3a;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .object-item:hover {
+            background: #454545;
+        }
+
+        .object-item.selected {
+            border-color: #00ff88;
+            background: #404040;
+        }
+
+        .object-name {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .properties-panel {
+            background: #2d2d2d;
+            width: 300px;
+            border-left: 1px solid #444;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .property-group {
+            margin-bottom: 15px;
+        }
+
+        .property-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .property-input {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .property-input[type="color"] {
+            height: 30px;
+            padding: 2px;
+        }
+
+        .property-row {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .property-row .property-input {
+            flex: 1;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        #sceneCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .drop-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px dashed #00ff88;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 255, 136, 0.1);
+            z-index: 1000;
+        }
+
+        .drop-zone.active {
+            display: flex;
+        }
+
+        .drop-zone-text {
+            color: #00ff88;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .transform-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(45, 45, 45, 0.9);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+
+        .transform-btn {
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .transform-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .grid-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(45, 45, 45, 0.9);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+
+        .color-picker-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .color-picker {
+            width: 40px;
+            height: 30px;
+            border: 1px solid #555;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>🎬 Scene Editor</h1>
+        <button class="tool-btn" id="addCube">Add Cube</button>
+        <button class="tool-btn" id="addSphere">Add Sphere</button>
+        <button class="tool-btn" id="addPlane">Add Plane</button>
+        <button class="tool-btn" id="addLight">Add Light</button>
+        <button class="tool-btn" id="saveScene">Save</button>
+        <button class="tool-btn" id="loadScene">Load</button>
+        <button class="tool-btn" id="clearScene">Clear</button>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="section-title">Objects</div>
+            <div class="object-list" id="objectList"></div>
+            
+            <div class="section-title">Presets</div>
+            <div class="object-item" onclick="loadPreset('basic')">
+                <div class="object-name">Basic Scene</div>
+            </div>
+            <div class="object-item" onclick="loadPreset('lighting')">
+                <div class="object-name">Lighting Demo</div>
+            </div>
+            <div class="object-item" onclick="loadPreset('materials')">
+                <div class="object-name">Material Test</div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="sceneCanvas"></canvas>
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-text">Drop files to add to scene</div>
+            </div>
+            <div class="transform-controls">
+                <div class="transform-btn active" data-mode="translate">Translate</div>
+                <div class="transform-btn" data-mode="rotate">Rotate</div>
+                <div class="transform-btn" data-mode="scale">Scale</div>
+            </div>
+            <div class="grid-controls">
+                <button class="transform-btn" id="toggleGrid">Grid</button>
+                <button class="transform-btn" id="toggleWireframe">Wireframe</button>
+            </div>
+        </div>
+
+        <div class="properties-panel">
+            <div class="section-title">Properties</div>
+            <div id="propertiesPanel">
+                <div style="color: #666; font-style: italic;">Select an object to edit properties</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene Editor Implementation
+        class SceneEditor {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x222222);
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('sceneCanvas'),
+                    antialias: true 
+                });
+                this.renderer.setSize(window.innerWidth - 550, window.innerHeight - 50);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // Controls
+                this.controls = {
+                    mode: 'translate',
+                    selected: null,
+                    objects: [],
+                    grid: null,
+                    wireframe: false
+                };
+
+                this.init();
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            init() {
+                // Camera position
+                this.camera.position.set(5, 5, 5);
+                this.camera.lookAt(0, 0, 0);
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+
+                // Grid
+                this.controls.grid = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+                this.scene.add(this.controls.grid);
+
+                // Ground plane
+                const groundGeometry = new THREE.PlaneGeometry(20, 20);
+                const groundMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x333333,
+                    side: THREE.DoubleSide 
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                ground.name = 'Ground';
+                this.scene.add(ground);
+            }
+
+            setupEventListeners() {
+                // Transform mode buttons
+                document.querySelectorAll('.transform-btn[data-mode]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.transform-btn[data-mode]').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.controls.mode = e.target.dataset.mode;
+                    });
+                });
+
+                // Add object buttons
+                document.getElementById('addCube').addEventListener('click', () => this.addObject('cube'));
+                document.getElementById('addSphere').addEventListener('click', () => this.addObject('sphere'));
+                document.getElementById('addPlane').addEventListener('click', () => this.addObject('plane'));
+                document.getElementById('addLight').addEventListener('click', () => this.addObject('light'));
+
+                // Scene controls
+                document.getElementById('toggleGrid').addEventListener('click', () => {
+                    this.controls.grid.visible = !this.controls.grid.visible;
+                });
+
+                document.getElementById('toggleWireframe').addEventListener('click', () => {
+                    this.controls.wireframe = !this.controls.wireframe;
+                    this.updateWireframe();
+                });
+
+                document.getElementById('saveScene').addEventListener('click', () => this.saveScene());
+                document.getElementById('loadScene').addEventListener('click', () => this.loadScene());
+                document.getElementById('clearScene').addEventListener('click', () => this.clearScene());
+
+                // Canvas interactions
+                const canvas = this.renderer.domElement;
+                let isDragging = false;
+                let previousMousePosition = { x: 0, y: 0 };
+
+                canvas.addEventListener('mousedown', (e) => {
+                    if (e.button === 0) { // Left click
+                        isDragging = true;
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                    }
+                });
+
+                canvas.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+
+                canvas.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        const deltaMove = {
+                            x: e.clientX - previousMousePosition.x,
+                            y: e.clientY - previousMousePosition.y
+                        };
+
+                        if (e.shiftKey) {
+                            // Rotate camera
+                            const sphericalCoords = new THREE.Spherical();
+                            sphericalCoords.setFromVector3(this.camera.position);
+                            sphericalCoords.theta -= deltaMove.x * 0.01;
+                            sphericalCoords.phi += deltaMove.y * 0.01;
+                            sphericalCoords.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalCoords.phi));
+                            
+                            this.camera.position.setFromSpherical(sphericalCoords);
+                            this.camera.lookAt(0, 0, 0);
+                        } else {
+                            // Pan camera
+                            const panSpeed = 0.01;
+                            this.camera.position.x -= deltaMove.x * panSpeed;
+                            this.camera.position.y += deltaMove.y * panSpeed;
+                        }
+
+                        previousMousePosition = { x: e.clientX, y: e.clientY };
+                    }
+                });
+
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const scale = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(scale);
+                });
+
+                canvas.addEventListener('click', (e) => {
+                    if (!isDragging) {
+                        this.selectObject(e);
+                    }
+                });
+
+                // Drag and drop
+                const dropZone = document.getElementById('dropZone');
+                
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    canvas.addEventListener(eventName, this.preventDefaults, false);
+                    document.body.addEventListener(eventName, this.preventDefaults, false);
+                });
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    canvas.addEventListener(eventName, () => dropZone.classList.add('active'), false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    canvas.addEventListener(eventName, () => dropZone.classList.remove('active'), false);
+                });
+
+                canvas.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.handleDrop(e);
+                });
+
+                window.addEventListener('resize', () => {
+                    this.renderer.setSize(window.innerWidth - 550, window.innerHeight - 50);
+                    this.camera.aspect = (window.innerWidth - 550) / (window.innerHeight - 50);
+                    this.camera.updateProjectionMatrix();
+                });
+            }
+
+            preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            addObject(type) {
+                let mesh;
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: Math.random() * 0xffffff 
+                });
+
+                switch (type) {
+                    case 'cube':
+                        mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+                        break;
+                    case 'sphere':
+                        mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 16), material);
+                        break;
+                    case 'plane':
+                        mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+                        break;
+                    case 'light':
+                        const light = new THREE.PointLight(0xffffff, 1, 100);
+                        light.position.set(0, 5, 0);
+                        light.name = 'PointLight_' + Date.now();
+                        this.scene.add(light);
+                        this.updateObjectList();
+                        return;
+                }
+
+                mesh.position.set(Math.random() * 4 - 2, 1, Math.random() * 4 - 2);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + Date.now();
+                
+                this.scene.add(mesh);
+                this.controls.objects.push(mesh);
+                this.updateObjectList();
+            }
+
+            selectObject(event) {
+                const mouse = new THREE.Vector2(
+                    (event.clientX / this.renderer.domElement.clientWidth) * 2 - 1,
+                    -(event.clientY / this.renderer.domElement.clientHeight) * 2 + 1
+                );
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+
+                const intersects = raycaster.intersectObjects(this.controls.objects);
+
+                if (intersects.length > 0) {
+                    this.controls.selected = intersects[0].object;
+                    this.updatePropertiesPanel();
+                    this.updateObjectList();
+                } else {
+                    this.controls.selected = null;
+                    this.updatePropertiesPanel();
+                    this.updateObjectList();
+                }
+            }
+
+            updatePropertiesPanel() {
+                const panel = document.getElementById('propertiesPanel');
+                if (!this.controls.selected) {
+                    panel.innerHTML = '<div style="color: #666; font-style: italic;">Select an object to edit properties</div>';
+                    return;
+                }
+
+                const obj = this.controls.selected;
+                let properties = '';
+
+                // Basic properties
+                properties += `
+                    <div class="property-group">
+                        <div class="property-label">Name</div>
+                        <input type="text" class="property-input" value="${obj.name}" 
+                               onchange="editor.updateObjectProperty('name', this.value)">
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Position</div>
+                        <div class="property-row">
+                            <input type="number" class="property-input" value="${obj.position.x.toFixed(2)}" 
+                                   step="0.1" onchange="editor.updateObjectProperty('positionX', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.position.y.toFixed(2)}" 
+                                   step="0.1" onchange="editor.updateObjectProperty('positionY', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.position.z.toFixed(2)}" 
+                                   step="0.1" onchange="editor.updateObjectProperty('positionZ', parseFloat(this.value))">
+                        </div>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Rotation</div>
+                        <div class="property-row">
+                            <input type="number" class="property-input" value="${(obj.rotation.x * 57.2958).toFixed(1)}" 
+                                   step="1" onchange="editor.updateObjectProperty('rotationX', parseFloat(this.value) * 0.0174533)">
+                            <input type="number" class="property-input" value="${(obj.rotation.y * 57.2958).toFixed(1)}" 
+                                   step="1" onchange="editor.updateObjectProperty('rotationY', parseFloat(this.value) * 0.0174533)">
+                            <input type="number" class="property-input" value="${(obj.rotation.z * 57.2958).toFixed(1)}" 
+                                   step="1" onchange="editor.updateObjectProperty('rotationZ', parseFloat(this.value) * 0.0174533)">
+                        </div>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Scale</div>
+                        <div class="property-row">
+                            <input type="number" class="property-input" value="${obj.scale.x.toFixed(2)}" 
+                                   step="0.1" onchange="editor.updateObjectProperty('scaleX', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.scale.y.toFixed(2)}" 
+                                   step="0.1" onchange="editor.updateObjectProperty('scaleY', parseFloat(this.value))">
+                            <input type="number" class="property-input" value="${obj.scale.z.toFixed(2)}" 
+                                   step="0.1" onchange="editor.updateObjectProperty('scaleZ', parseFloat(this.value))">
+                        </div>
+                    </div>
+                `;
+
+                // Material properties
+                if (obj.material) {
+                    properties += `
+                        <div class="property-group">
+                            <div class="property-label">Material Color</div>
+                            <input type="color" class="property-input" value="#${obj.material.color.getHexString()}" 
+                                   onchange="editor.updateObjectProperty('color', parseInt(this.value.replace('#', '0x')))">
+                        </div>
+                    `;
+                }
+
+                panel.innerHTML = properties;
+            }
+
+            updateObjectProperty(property, value) {
+                if (!this.controls.selected) return;
+
+                const obj = this.controls.selected;
+                switch (property) {
+                    case 'name':
+                        obj.name = value;
+                        break;
+                    case 'positionX':
+                        obj.position.x = value;
+                        break;
+                    case 'positionY':
+                        obj.position.y = value;
+                        break;
+                    case 'positionZ':
+                        obj.position.z = value;
+                        break;
+                    case 'rotationX':
+                        obj.rotation.x = value;
+                        break;
+                    case 'rotationY':
+                        obj.rotation.y = value;
+                        break;
+                    case 'rotationZ':
+                        obj.rotation.z = value;
+                        break;
+                    case 'scaleX':
+                        obj.scale.x = value;
+                        if (obj.scale.y !== undefined) obj.scale.y = value;
+                        if (obj.scale.z !== undefined) obj.scale.z = value;
+                        break;
+                    case 'scaleY':
+                        obj.scale.y = value;
+                        break;
+                    case 'scaleZ':
+                        obj.scale.z = value;
+                        break;
+                    case 'color':
+                        obj.material.color.setHex(value);
+                        break;
+                }
+                this.updatePropertiesPanel();
+            }
+
+            updateObjectList() {
+                const list = document.getElementById('objectList');
+                list.innerHTML = '';
+
+                this.controls.objects.forEach(obj => {
+                    const item = document.createElement('div');
+                    item.className = 'object-item';
+                    if (this.controls.selected === obj) {
+                        item.classList.add('selected');
+                    }
+                    item.onclick = () => {
+                        this.controls.selected = obj;
+                        this.updatePropertiesPanel();
+                        this.updateObjectList();
+                    };
+
+                    const name = document.createElement('div');
+                    name.className = 'object-name';
+                    name.textContent = obj.name || 'Unnamed';
+                    
+                    item.appendChild(name);
+                    list.appendChild(item);
+                });
+            }
+
+            updateWireframe() {
+                this.controls.objects.forEach(obj => {
+                    if (obj.material) {
+                        obj.material.wireframe = this.controls.wireframe;
+                    }
+                });
+            }
+
+            saveScene() {
+                const sceneData = {
+                    objects: this.controls.objects.map(obj => ({
+                        name: obj.name,
+                        type: obj.type,
+                        position: obj.position.toArray(),
+                        rotation: obj.rotation.toArray(),
+                        scale: obj.scale.toArray(),
+                        material: obj.material ? {
+                            color: obj.material.color.getHex(),
+                            wireframe: obj.material.wireframe
+                        } : null
+                    }))
+                };
+
+                const blob = new Blob([JSON.stringify(sceneData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'scene.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            loadScene() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const sceneData = JSON.parse(e.target.result);
+                        this.clearScene();
+                        sceneData.objects.forEach(objData => {
+                            let mesh;
+                            const material = new THREE.MeshLambertMaterial({ 
+                                color: objData.material ? objData.material.color : Math.random() * 0xffffff 
+                            });
+
+                            switch (objData.type) {
+                                case 'Mesh':
+                                    mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+                                    break;
+                            }
+
+                            if (mesh) {
+                                mesh.name = objData.name;
+                                mesh.position.fromArray(objData.position);
+                                mesh.rotation.fromArray(objData.rotation);
+                                mesh.scale.fromArray(objData.scale);
+                                mesh.castShadow = true;
+                                mesh.receiveShadow = true;
+                                this.scene.add(mesh);
+                                this.controls.objects.push(mesh);
+                            }
+                        });
+                        this.updateObjectList();
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+
+            clearScene() {
+                this.controls.objects.forEach(obj => {
+                    this.scene.remove(obj);
+                });
+                this.controls.objects = [];
+                this.controls.selected = null;
+                this.updateObjectList();
+                this.updatePropertiesPanel();
+            }
+
+            handleDrop(event) {
+                const files = event.dataTransfer.files;
+                // Handle dropped files (textures, models, etc.)
+                console.log('Files dropped:', files);
+            }
+
+            loadPreset(type) {
+                this.clearScene();
+                
+                switch (type) {
+                    case 'basic':
+                        this.addObject('cube');
+                        this.addObject('sphere');
+                        this.addObject('plane');
+                        break;
+                    case 'lighting':
+                        for (let i = 0; i < 5; i++) {
+                            this.addObject('cube');
+                            const obj = this.controls.objects[this.controls.objects.length - 1];
+                            obj.position.set(i * 2 - 4, 1, 0);
+                            obj.material.color.setHSL(i * 0.2, 0.8, 0.6);
+                        }
+                        this.addObject('light');
+                        break;
+                    case 'materials':
+                        for (let i = 0; i < 8; i++) {
+                            this.addObject('sphere');
+                            const obj = this.controls.objects[this.controls.objects.length - 1];
+                            obj.position.set((i % 4) * 2 - 2, 1, Math.floor(i / 4) * 2 - 1);
+                            obj.material.color.setHSL(i / 8, 0.8, 0.6);
+                        }
+                        break;
+                }
+                
+                this.updateObjectList();
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize editor
+        const editor = new SceneEditor();
+        window.editor = editor; // Make it globally accessible for event handlers
+    </script>
+</body>
+</html>

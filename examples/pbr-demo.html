@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced PBR Materials and IBL Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            max-width: 300px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            font-size: 12px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        
+        .control-group input {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
+        }
+        
+        button:hover {
+            background: #555;
+        }
+        
+        .material-selector {
+            margin-bottom: 10px;
+        }
+        
+        .material-name {
+            color: #0f0;
+            font-weight: bold;
+        }
+        
+        .material-info {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        
+        h3 {
+            color: #0f0;
+            margin-top: 0;
+        }
+        
+        h4 {
+            color: #ff0;
+            margin: 15px 0 5px 0;
+        }
+        
+        .pbr-info {
+            color: #0ff;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="info-panel">
+        <h3>Advanced PBR & IBL System</h3>
+        <div class="pbr-info">
+            <strong>Cook-Torrance BRDF</strong><br>
+            <strong>GGX Distribution</strong><br>
+            <strong>Smith Geometry</strong><br>
+            <strong>Fresnel Schlick</strong><br>
+            <strong>Image-Based Lighting</strong><br>
+            <strong>Reflection Probes</strong><br>
+            <strong>Multi-bounce GI</strong>
+        </div>
+        
+        <h4>Controls</h4>
+        <div class="material-selector">
+            <label for="materialSelect">Select Material:</label>
+            <select id="materialSelect">
+                <option value="gold">Gold (Metal)</option>
+                <option value="wood">Wood (Dielectric)</option>
+                <option value="glass">Glass (Transmission)</option>
+                <option value="carPaint">Car Paint (Clearcoat)</option>
+                <option value="fabric">Fabric (Sheen)</option>
+                <option value="iridescent">Iridescent</option>
+                <option value="anisotropic">Anisotropic Metal</option>
+                <option value="subsurface">Subsurface Scattering</option>
+                <option value="multilayer">Multi-layer Coating</option>
+            </select>
+        </div>
+        
+        <div id="materialDetails"></div>
+    </div>
+    
+    <div id="controls">
+        <h3>Material Properties</h3>
+        
+        <div class="control-group">
+            <label>Roughness: <span id="roughnessValue">0.5</span></label>
+            <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.5">
+        </div>
+        
+        <div class="control-group">
+            <label>Metalness: <span id="metalnessValue">0.0</span></label>
+            <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.0">
+        </div>
+        
+        <div class="control-group">
+            <label>Env Map Intensity: <span id="envIntensityValue">1.0</span></label>
+            <input type="range" id="envIntensity" min="0" max="2" step="0.1" value="1.0">
+        </div>
+        
+        <div class="control-group">
+            <label>Clearcoat: <span id="clearcoatValue">0.0</span></label>
+            <input type="range" id="clearcoat" min="0" max="1" step="0.01" value="0.0">
+        </div>
+        
+        <div class="control-group">
+            <label>Transmission: <span id="transmissionValue">0.0</span></label>
+            <input type="range" id="transmission" min="0" max="1" step="0.01" value="0.0">
+        </div>
+        
+        <div class="control-group">
+            <label>Iridescence: <span id="iridescenceValue">0.0</span></label>
+            <input type="range" id="iridescence" min="0" max="1" step="0.01" value="0.0">
+        </div>
+        
+        <div class="control-group">
+            <label>Anisotropy: <span id="anisotropyValue">0.0</span></label>
+            <input type="range" id="anisotropy" min="0" max="1" step="0.01" value="0.0">
+        </div>
+        
+        <div class="control-group">
+            <label>Subsurface: <span id="subsurfaceValue">0.0</span></label>
+            <input type="range" id="subsurface" min="0" max="1" step="0.01" value="0.0">
+        </div>
+        
+        <h4>IBL Settings</h4>
+        <div class="control-group">
+            <label>Sample Count: <span id="sampleCountValue">1024</span></label>
+            <input type="range" id="sampleCount" min="128" max="2048" step="128" value="1024">
+        </div>
+        
+        <div class="control-group">
+            <label>Prefilter Resolution: <span id="prefilterValue">128</span></label>
+            <input type="range" id="prefilter" min="32" max="512" step="32" value="128">
+        </div>
+        
+        <div class="control-group">
+            <button id="updateIBL">Update IBL</button>
+            <button id="resetMaterials">Reset Materials</button>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { 
+            PBRMaterial, 
+            IBLRenderer, 
+            PBRMaterialFactory, 
+            PBRUtils, 
+            PBRDebugger,
+            CookTorranceBRDF
+        } from './src/rendering/PBR.js';
+        
+        // Mock basic classes for demo
+        class Vector3 {
+            constructor(x = 0, y = 0, z = 0) {
+                this.x = x; this.y = y; this.z = z;
+            }
+            
+            static fromValues(x, y, z) { return new Vector3(x, y, z); }
+            
+            clone() { return new Vector3(this.x, this.y, this.z); }
+            normalize() {
+                const len = Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z);
+                if (len > 0) { this.x /= len; this.y /= len; this.z /= len; }
+                return this;
+            }
+            multiplyScalar(scalar) {
+                return new Vector3(this.x * scalar, this.y * scalar, this.z * scalar);
+            }
+            add(v) { return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z); }
+            subtract(v) { return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z); }
+            divideScalar(scalar) { return new Vector3(this.x / scalar, this.y / scalar, this.z / scalar); }
+            dot(v) { return this.x * v.x + this.y * v.y + this.z * v.z; }
+            reflect(normal) {
+                const d = this.dot(normal);
+                return this.subtract(normal.multiplyScalar(2 * d));
+            }
+            distanceTo(v) {
+                const dx = this.x - v.x;
+                const dy = this.y - v.y;
+                const dz = this.z - v.z;
+                return Math.sqrt(dx*dx + dy*dy + dz*dz);
+            }
+        }
+        
+        class PBRDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.initializeDemo();
+                this.setupEventListeners();
+                this.animate();
+            }
+            
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                });
+            }
+            
+            initializeDemo() {
+                // Initialize IBL renderer
+                this.iblRenderer = new IBLRenderer(null, {
+                    sampleCount: 1024,
+                    prefilterResolution: 128
+                });
+                
+                // Create material library
+                this.materials = this.createMaterialLibrary();
+                this.currentMaterialIndex = 0;
+                this.materialKeys = Object.keys(this.materials);
+                
+                // Animation state
+                this.time = 0;
+                this.cameraAngle = 0;
+            }
+            
+            createMaterialLibrary() {
+                const materials = {};
+                
+                // Gold (Metal)
+                materials.gold = new PBRMaterial({
+                    name: 'Gold',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(1.000, 0.766, 0.336)),
+                    metalness: 1.0,
+                    roughness: 0.2,
+                    envMapIntensity: 1.0,
+                    baseRoughness: 0.2
+                });
+                
+                // Wood (Dielectric)
+                materials.wood = new PBRMaterial({
+                    name: 'Wood',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.4, 0.2, 0.1)),
+                    metalness: 0.0,
+                    roughness: 0.8,
+                    envMapIntensity: 1.0,
+                    baseRoughness: 0.8
+                });
+                
+                // Glass (Transmission)
+                materials.glass = new PBRMaterial({
+                    name: 'Glass',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(1.0, 1.0, 1.0)),
+                    metalness: 0.0,
+                    roughness: 0.0,
+                    ior: 1.5,
+                    transmission: 1.0,
+                    thickness: 2.0,
+                    envMapIntensity: 1.2,
+                    baseRoughness: 0.0
+                });
+                
+                // Car Paint (Clearcoat)
+                materials.carPaint = new PBRMaterial({
+                    name: 'Car Paint',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.1, 0.0, 0.8)),
+                    metalness: 0.0,
+                    roughness: 0.3,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1,
+                    envMapIntensity: 1.0,
+                    baseRoughness: 0.3
+                });
+                
+                // Fabric (Sheen)
+                materials.fabric = new PBRMaterial({
+                    name: 'Fabric',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.8, 0.7, 0.6)),
+                    metalness: 0.0,
+                    roughness: 0.7,
+                    sheen: 1.0,
+                    sheenTint: PBRUtils.sRGBToLinear(Vector3.fromValues(0.95, 0.64, 0.54)),
+                    envMapIntensity: 1.0,
+                    baseRoughness: 0.7
+                });
+                
+                // Iridescent
+                materials.iridescent = new PBRMaterial({
+                    name: 'Iridescent',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.8, 0.8, 0.8)),
+                    metalness: 0.0,
+                    roughness: 0.1,
+                    iridescence: 1.0,
+                    iridescenceIOR: 1.3,
+                    envMapIntensity: 1.5,
+                    baseRoughness: 0.1
+                });
+                
+                // Anisotropic Metal
+                materials.anisotropic = new PBRMaterial({
+                    name: 'Anisotropic Metal',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.8, 0.8, 0.85)),
+                    metalness: 1.0,
+                    roughness: 0.3,
+                    anisotropy: 0.8,
+                    envMapIntensity: 1.2,
+                    baseRoughness: 0.3
+                });
+                
+                // Subsurface Scattering
+                materials.subsurface = new PBRMaterial({
+                    name: 'Subsurface Scattering',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.9, 0.7, 0.6)),
+                    metalness: 0.0,
+                    roughness: 0.4,
+                    subsurface: 1.0,
+                    subsurfaceColor: PBRUtils.sRGBToLinear(Vector3.fromValues(0.9, 0.7, 0.6)),
+                    envMapIntensity: 1.0,
+                    baseRoughness: 0.4
+                });
+                
+                // Multi-layer Coating
+                materials.multilayer = new PBRMaterial({
+                    name: 'Multi-layer Coating',
+                    color: PBRUtils.sRGBToLinear(Vector3.fromValues(0.2, 0.4, 0.8)),
+                    metalness: 0.0,
+                    roughness: 0.3,
+                    transmission: 0.6,
+                    thickness: 2.0,
+                    ior: 1.4,
+                    clearcoat: 0.8,
+                    clearcoatRoughness: 0.2,
+                    envMapIntensity: 1.3,
+                    baseRoughness: 0.3
+                });
+                
+                return materials;
+            }
+            
+            setupEventListeners() {
+                // Material selector
+                document.getElementById('materialSelect').addEventListener('change', (e) => {
+                    const materialName = e.target.value;
+                    this.currentMaterialIndex = this.materialKeys.indexOf(materialName);
+                    this.updateMaterialDetails();
+                    this.updateControls();
+                });
+                
+                // Property controls
+                const controls = ['roughness', 'metalness', 'envIntensity', 'clearcoat', 
+                                'transmission', 'iridescence', 'anisotropy', 'subsurface'];
+                
+                controls.forEach(control => {
+                    const slider = document.getElementById(control);
+                    const valueDisplay = document.getElementById(control + 'Value');
+                    
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        valueDisplay.textContent = value.toFixed(2);
+                        this.updateCurrentMaterialProperty(control, value);
+                    });
+                });
+                
+                // IBL controls
+                document.getElementById('sampleCount').addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    document.getElementById('sampleCountValue').textContent = value;
+                });
+                
+                document.getElementById('prefilter').addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    document.getElementById('prefilterValue').textContent = value;
+                });
+                
+                // Buttons
+                document.getElementById('updateIBL').addEventListener('click', () => {
+                    this.updateIBL();
+                });
+                
+                document.getElementById('resetMaterials').addEventListener('click', () => {
+                    this.resetMaterials();
+                });
+                
+                // Initialize UI
+                this.updateMaterialDetails();
+                this.updateControls();
+            }
+            
+            updateCurrentMaterialProperty(property, value) {
+                const material = this.getCurrentMaterial();
+                
+                switch (property) {
+                    case 'roughness':
+                        material.setProperty('roughness', value);
+                        material.setProperty('baseRoughness', value);
+                        break;
+                    case 'metalness':
+                        material.setProperty('metalness', value);
+                        break;
+                    case 'envIntensity':
+                        material.setProperty('envMapIntensity', value);
+                        break;
+                    case 'clearcoat':
+                        material.setProperty('clearcoat', value);
+                        break;
+                    case 'transmission':
+                        material.setProperty('transmission', value);
+                        break;
+                    case 'iridescence':
+                        material.setProperty('iridescence', value);
+                        break;
+                    case 'anisotropy':
+                        material.setProperty('anisotropy', value);
+                        break;
+                    case 'subsurface':
+                        material.setProperty('subsurface', value);
+                        break;
+                }
+            }
+            
+            updateMaterialDetails() {
+                const material = this.getCurrentMaterial();
+                const details = document.getElementById('materialDetails');
+                
+                let html = `<div class="material-name">${material.name}</div>`;
+                html += `<div class="material-info">`;
+                html += `Metalness: ${material.metalness.toFixed(2)}<br>`;
+                html += `Roughness: ${material.roughness.toFixed(2)}<br>`;
+                html += `Env Intensity: ${material.envMapIntensity.toFixed(2)}<br>`;
+                
+                if (material.clearcoat > 0) {
+                    html += `Clearcoat: ${material.clearcoat.toFixed(2)}<br>`;
+                }
+                if (material.transmission > 0) {
+                    html += `Transmission: ${material.transmission.toFixed(2)}<br>`;
+                }
+                if (material.iridescence > 0) {
+                    html += `Iridescence: ${material.iridescence.toFixed(2)}<br>`;
+                }
+                if (material.anisotropy > 0) {
+                    html += `Anisotropy: ${material.anisotropy.toFixed(2)}<br>`;
+                }
+                if (material.subsurface > 0) {
+                    html += `Subsurface: ${material.subsurface.toFixed(2)}<br>`;
+                }
+                
+                html += `</div>`;
+                details.innerHTML = html;
+            }
+            
+            updateControls() {
+                const material = this.getCurrentMaterial();
+                
+                document.getElementById('roughness').value = material.roughness;
+                document.getElementById('roughnessValue').textContent = material.roughness.toFixed(2);
+                
+                document.getElementById('metalness').value = material.metalness;
+                document.getElementById('metalnessValue').textContent = material.metalness.toFixed(2);
+                
+                document.getElementById('envIntensity').value = material.envMapIntensity;
+                document.getElementById('envIntensityValue').textContent = material.envMapIntensity.toFixed(2);
+                
+                document.getElementById('clearcoat').value = material.clearcoat;
+                document.getElementById('clearcoatValue').textContent = material.clearcoat.toFixed(2);
+                
+                document.getElementById('transmission').value = material.transmission;
+                document.getElementById('transmissionValue').textContent = material.transmission.toFixed(2);
+                
+                document.getElementById('iridescence').value = material.iridescence;
+                document.getElementById('iridescenceValue').textContent = material.iridescence.toFixed(2);
+                
+                document.getElementById('anisotropy').value = material.anisotropy;
+                document.getElementById('anisotropyValue').textContent = material.anisotropy.toFixed(2);
+                
+                document.getElementById('subsurface').value = material.subsurface;
+                document.getElementById('subsurfaceValue').textContent = material.subsurface.toFixed(2);
+            }
+            
+            updateIBL() {
+                const sampleCount = parseInt(document.getElementById('sampleCount').value);
+                const prefilterRes = parseInt(document.getElementById('prefilter').value);
+                
+                this.iblRenderer.sampleCount = sampleCount;
+                this.iblRenderer.prefilterResolution = prefilterRes;
+                
+                // In a real implementation, this would regenerate the IBL maps
+                console.log(`Updated IBL: ${sampleCount} samples, ${prefilterRes} prefilter resolution`);
+            }
+            
+            resetMaterials() {
+                // Reset all materials to their base values
+                Object.values(this.materials).forEach(material => {
+                    const baseRoughness = material.getProperty('baseRoughness') || material.roughness;
+                    material.setProperty('roughness', baseRoughness);
+                    material.setProperty('metalness', material.metalness || 0);
+                    material.setProperty('envMapIntensity', material.envMapIntensity || 1);
+                    material.setProperty('clearcoat', material.clearcoat || 0);
+                    material.setProperty('transmission', material.transmission || 0);
+                    material.setProperty('iridescence', material.iridescence || 0);
+                    material.setProperty('anisotropy', material.anisotropy || 0);
+                    material.setProperty('subsurface', material.subsurface || 0);
+                });
+                
+                this.updateControls();
+                this.updateMaterialDetails();
+            }
+            
+            getCurrentMaterial() {
+                const materialName = this.materialKeys[this.currentMaterialIndex];
+                return this.materials[materialName];
+            }
+            
+            animate() {
+                this.time += 0.016; // 60 FPS
+                this.cameraAngle += 0.005;
+                
+                this.render();
+                
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            render() {
+                const ctx = this.ctx;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Clear canvas
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, width, height);
+                
+                // Create gradient background
+                const gradient = ctx.createRadialGradient(
+                    width/2, height/2, 0,
+                    width/2, height/2, Math.max(width, height)/2
+                );
+                gradient.addColorStop(0, '#111');
+                gradient.addColorStop(1, '#000');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+                
+                // Render demo content
+                this.renderMaterialShowcase(ctx, width, height);
+                this.renderIBLVisualization(ctx, width, height);
+                this.renderBRDFVisualization(ctx, width, height);
+                this.renderInfo(ctx, width, height);
+            }
+            
+            renderMaterialShowcase(ctx, width, height) {
+                const centerX = width * 0.3;
+                const centerY = height * 0.6;
+                const radius = Math.min(width, height) * 0.15;
+                
+                // Draw rotating material spheres
+                const materialNames = Object.keys(this.materials);
+                const numMaterials = materialNames.length;
+                
+                for (let i = 0; i < Math.min(5, numMaterials); i++) {
+                    const angle = (i / 5) * Math.PI * 2 + this.time * 0.2;
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    
+                    const materialName = materialNames[i];
+                    const material = this.materials[materialName];
+                    
+                    this.drawMaterialSphere(ctx, x, y, 30, material);
+                }
+                
+                // Highlight current material
+                const currentMaterial = this.getCurrentMaterial();
+                this.drawMaterialSphere(ctx, width * 0.7, height * 0.6, 50, currentMaterial);
+            }
+            
+            drawMaterialSphere(ctx, x, y, radius, material) {
+                // Simple PBR-inspired rendering
+                const gradient = ctx.createRadialGradient(
+                    x - radius * 0.3, y - radius * 0.3, 0,
+                    x, y, radius
+                );
+                
+                // Base color in linear space
+                const baseColor = material.color;
+                const metalness = material.metalness;
+                const roughness = material.roughness;
+                
+                // Create highlight based on material properties
+                let highlightColor, baseColorStr;
+                
+                if (metalness > 0.5) {
+                    // Metallic material
+                    const metallicFactor = metalness;
+                    highlightColor = `rgb(${Math.min(255, 200 + 55 * metallicFactor)}, 
+                                       ${Math.min(255, 150 + 105 * metallicFactor)}, 
+                                       ${Math.min(255, 100 + 155 * metallicFactor)})`;
+                    baseColorStr = `rgb(${Math.min(255, baseColor.x * 150)}, 
+                                     ${Math.min(255, baseColor.y * 150)}, 
+                                     ${Math.min(255, baseColor.z * 150)})`;
+                } else {
+                    // Dielectric material
+                    highlightColor = `rgba(255, 255, 255, ${0.8 - roughness * 0.6})`;
+                    baseColorStr = `rgb(${Math.min(255, baseColor.x * 100)}, 
+                                     ${Math.min(255, baseColor.y * 100)}, 
+                                     ${Math.min(255, baseColor.z * 100)})`;
+                }
+                
+                gradient.addColorStop(0, highlightColor);
+                gradient.addColorStop(0.7, baseColorStr);
+                gradient.addColorStop(1, '#000');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add transmission effect for glass
+                if (material.transmission > 0.5) {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${material.transmission * 0.5})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                
+                // Add clearcoat effect
+                if (material.clearcoat > 0.5) {
+                    ctx.strokeStyle = `rgba(100, 200, 255, ${material.clearcoat * 0.3})`;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                
+                // Material label
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(material.name, x, y + radius + 15);
+            }
+            
+            renderIBLVisualization(ctx, width, height) {
+                const x = 50;
+                const y = height - 150;
+                
+                // IBL environment map representation
+                ctx.fillStyle = '#222';
+                ctx.fillRect(x, y, 100, 100);
+                
+                // Draw simplified environment sampling
+                for (let i = 0; i < 64; i++) {
+                    const angle = (i / 64) * Math.PI * 2;
+                    const radius = 30 + Math.sin(this.time + i * 0.1) * 10;
+                    const px = x + 50 + Math.cos(angle) * radius;
+                    const py = y + 50 + Math.sin(angle) * radius;
+                    
+                    ctx.fillStyle = `hsl(${i * 5}, 70%, 50%)`;
+                    ctx.fillRect(px, py, 2, 2);
+                }
+                
+                ctx.fillStyle = '#0f0';
+                ctx.font = '12px Arial';
+                ctx.fillText('IBL Environment', x, y - 5);
+            }
+            
+            renderBRDFVisualization(ctx, width, height) {
+                const x = width - 150;
+                const y = height - 150;
+                
+                // BRDF visualization
+                ctx.fillStyle = '#222';
+                ctx.fillRect(x, y, 100, 100);
+                
+                // Draw BRDF response curve
+                ctx.strokeStyle = '#0ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                for (let i = 0; i < 50; i++) {
+                    const angle = (i / 50) * Math.PI;
+                    const roughness = 0.2;
+                    const intensity = Math.cos(angle) * (1 - roughness) + roughness;
+                    
+                    const px = x + i * 2;
+                    const py = y + 100 - intensity * 80;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(px, py);
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+                
+                ctx.stroke();
+                
+                ctx.fillStyle = '#0ff';
+                ctx.font = '12px Arial';
+                ctx.fillText('BRDF Response', x, y - 5);
+            }
+            
+            renderInfo(ctx, width, height) {
+                // Performance info
+                ctx.fillStyle = '#666';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`FPS: ${Math.round(1/0.016)}`, 10, 20);
+                ctx.fillText(`Time: ${this.time.toFixed(1)}s`, 10, 35);
+                ctx.fillText(`Materials: ${Object.keys(this.materials).length}`, 10, 50);
+                
+                // Current material BRDF info
+                const material = this.getCurrentMaterial();
+                const N = new Vector3(0, 1, 0);
+                const V = new Vector3(0, 0, 1);
+                const L = new Vector3(1, 1, 1).normalize();
+                
+                const H = V.clone().add(L).normalize();
+                const D = CookTorranceBRDF.distributionGGX(N, H, material.roughness);
+                const G = CookTorranceBRDF.geometrySmith(N, V, L, material.roughness);
+                
+                ctx.fillText(`GGX D: ${D.toFixed(3)}`, 10, height - 60);
+                ctx.fillText(`Smith G: ${G.toFixed(3)}`, 10, height - 45);
+                ctx.fillText(`Roughness: ${material.roughness.toFixed(2)}`, 10, height - 30);
+                ctx.fillText(`Metalness: ${material.metalness.toFixed(2)}`, 10, height - 15);
+            }
+        }
+        
+        // Start the demo when page loads
+        window.addEventListener('load', () => {
+            new PBRDemo();
+        });
+    </script>
+</body>
+</html>

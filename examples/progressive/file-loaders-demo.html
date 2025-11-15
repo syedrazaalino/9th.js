@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - File Loaders Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls select, #controls input[type="file"], #controls input[type="checkbox"] {
+            margin-bottom: 8px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: calc(50% - 4px);
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        #controls button.secondary {
+            background: #2196F3;
+        }
+        
+        #controls button.secondary:hover {
+            background: #1976D2;
+        }
+        
+        #controls button.warning {
+            background: #ff9800;
+        }
+        
+        #controls button.warning:hover {
+            background: #f57c00;
+        }
+        
+        #controls .control-group {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #loadingStatus {
+            background: rgba(33, 150, 243, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        #fileList {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+        
+        #fileList .file-item {
+            padding: 4px;
+            margin: 2px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            font-size: 11px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>📁 File Loaders Demo</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Load 3D models from various formats</li>
+            <li>Understand loading progress and error handling</li>
+            <li>Learn about texture and material loading</li>
+            <li>Master file format compatibility</li>
+        </ul>
+        <p><strong>What you see:</strong> Interactive file loader supporting multiple formats (OBJ, GLTF, FBX) with progress tracking, error handling, and model manipulation controls.</p>
+    </div>
+    
+    <div id="controls">
+        <div id="loadingStatus">
+            📁 Ready to Load
+        </div>
+        
+        <div class="control-group">
+            <h4>📂 File Loading</h4>
+            
+            <label for="fileLoader">Load File:</label>
+            <input type="file" id="fileLoader" multiple accept=".obj,.gltf,.glb,.fbx,.dae,.3ds">
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <small>Progress: <span id="progressText">0%</span></small>
+            
+            <div style="margin: 10px 0;">
+                <button id="loadSample" class="secondary">🎯 Load Sample Models</button>
+                <button id="clearScene" class="warning">🗑️ Clear Scene</button>
+            </div>
+            
+            <div id="fileList"></div>
+        </div>
+        
+        <div class="control-group">
+            <h4>🔧 Loading Options</h4>
+            
+            <label for="formatFilter">Filter by Format:</label>
+            <select id="formatFilter">
+                <option value="all">All Formats</option>
+                <option value="obj">OBJ</option>
+                <option value="gltf">GLTF/GLB</option>
+                <option value="fbx">FBX</option>
+                <option value="dae">DAE</option>
+            </select>
+            
+            <label for="textureQuality">Texture Quality:</label>
+            <select id="textureQuality">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+            </select>
+            
+            <label>
+                <input type="checkbox" id="loadTextures" checked> Load Textures
+            </label>
+            
+            <label>
+                <input type="checkbox" id="loadAnimations"> Load Animations
+            </label>
+            
+            <label>
+                <input type="checkbox" id="generateNormals"> Generate Normals
+            </label>
+            
+            <label>
+                <input type="checkbox" id="flipY"> Flip Y Axis
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎮 Model Controls</h4>
+            
+            <label for="scale">Scale:</label>
+            <input type="range" id="scale" min="0.1" max="5" step="0.1" value="1">
+            <span id="scale-value">1.0</span>
+            
+            <label for="rotation">Rotation Speed:</label>
+            <input type="range" id="rotation" min="0" max="2" step="0.1" value="0.5">
+            <span id="rotation-value">0.5</span>
+            
+            <div style="margin: 10px 0;">
+                <button id="centerModel">🎯 Center Model</button>
+                <button id="fitToView">👁️ Fit to View</button>
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <button id="wireframe">🔲 Wireframe</button>
+                <button id="solid">🎨 Solid</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h4>📊 Model Info</h4>
+            
+            <div id="modelInfo" style="font-size: 12px; background: rgba(255, 255, 255, 0.1); padding: 8px; border-radius: 4px;">
+                <div>Models: <span id="modelCount">0</span></div>
+                <div>Vertices: <span id="vertexCount">0</span></div>
+                <div>Faces: <span id="faceCount">0</span></div>
+                <div>Materials: <span id="materialCount">0</span></div>
+                <div>Textures: <span id="textureCount">0</span></div>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎨 Sample Models</h4>
+            
+            <button id="loadCube" class="secondary">📦 Procedural Cube</button>
+            <button id="loadSphere" class="secondary">🔵 Procedural Sphere</button>
+            <button id="loadComplex" class="secondary">🏢 Complex Model</button>
+            <button id="loadCharacter" class="secondary">👤 Character Model</button>
+        </div>
+        
+        <div style="margin-top: 10px;">
+            <small>FPS: <span id="fps">0</span></small>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html" class="current">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class FileLoadersDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.loadedModels = [];
+                this.currentModel = null;
+                this.rotationSpeed = 0.5;
+                this.isLoading = false;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.init();
+                this.setupScene();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#0a0a1a');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 0, 10);
+                
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                this.setupLighting();
+                this.setupFileLoaders();
+            }
+            
+            setupLighting() {
+                const ambient = new NinthJS.AmbientLight(0.4, '#ffffff');
+                this.scene.add(ambient);
+                
+                const directional = new NinthJS.DirectionalLight(0.8, '#ffffff');
+                directional.setDirection(-1, -1, -1);
+                this.scene.add(directional);
+            }
+            
+            setupFileLoaders() {
+                // Initialize loaders for different formats
+                this.loaders = {
+                    obj: new NinthJS.OBJLoader(),
+                    gltf: new NinthJS.GLTFLoader(),
+                    fbx: new NinthJS.FBXLoader(),
+                    dae: new NinthJS.DAELoader()
+                };
+                
+                // Setup loading manager
+                this.loadingManager = new NinthJS.LoadingManager();
+                this.loadingManager.onLoad = () => {
+                    this.updateLoadingStatus('✅ Loading Complete');
+                    this.isLoading = false;
+                };
+                
+                this.loadingManager.onProgress = (url, loaded, total) => {
+                    const progress = Math.round((loaded / total) * 100);
+                    this.updateProgress(progress);
+                };
+                
+                this.loadingManager.onError = (url) => {
+                    this.updateLoadingStatus(`❌ Error loading: ${url}`);
+                    this.isLoading = false;
+                };
+            }
+            
+            setupScene() {
+                // Add a reference grid
+                this.createGrid();
+                
+                // Add axes helper
+                this.createAxesHelper();
+            }
+            
+            createGrid() {
+                const gridSize = 20;
+                const gridDivisions = 20;
+                
+                // Create grid lines
+                for (let i = -gridDivisions / 2; i <= gridDivisions / 2; i++) {
+                    const material = new NinthJS.BasicMaterial({ 
+                        color: i === 0 ? '#ff0000' : '#444444',
+                        opacity: 0.3,
+                        transparent: true
+                    });
+                    
+                    // X-axis lines
+                    const xGeometry = new NinthJS.BufferGeometry();
+                    xGeometry.setAttribute('position', new NinthJS.Float32BufferAttribute([
+                        -gridSize / 2, 0, i * (gridSize / gridDivisions),
+                        gridSize / 2, 0, i * (gridSize / gridDivisions)
+                    ], 3));
+                    const xLine = new NinthJS.Line(xGeometry, material);
+                    this.scene.add(xLine);
+                    
+                    // Z-axis lines
+                    const zGeometry = new NinthJS.BufferGeometry();
+                    zGeometry.setAttribute('position', new NinthJS.Float32BufferAttribute([
+                        i * (gridSize / gridDivisions), 0, -gridSize / 2,
+                        i * (gridSize / gridDivisions), 0, gridSize / 2
+                    ], 3));
+                    const zLine = new NinthJS.Line(zGeometry, material);
+                    this.scene.add(zLine);
+                }
+            }
+            
+            createAxesHelper() {
+                const axes = new NinthJS.Group();
+                
+                // X axis (red)
+                const xGeometry = new NinthJS.BufferGeometry();
+                xGeometry.setAttribute('position', new NinthJS.Float32BufferAttribute([0, 0, 0, 2, 0, 0], 3));
+                const xMaterial = new NinthJS.BasicMaterial({ color: '#ff0000' });
+                const xAxis = new NinthJS.Line(xGeometry, xMaterial);
+                axes.add(xAxis);
+                
+                // Y axis (green)
+                const yGeometry = new NinthJS.BufferGeometry();
+                yGeometry.setAttribute('position', new NinthJS.Float32BufferAttribute([0, 0, 0, 0, 2, 0], 3));
+                const yMaterial = new NinthJS.BasicMaterial({ color: '#00ff00' });
+                const yAxis = new NinthJS.Line(yGeometry, yMaterial);
+                axes.add(yAxis);
+                
+                // Z axis (blue)
+                const zGeometry = new NinthJS.BufferGeometry();
+                zGeometry.setAttribute('position', new NinthJS.Float32BufferAttribute([0, 0, 0, 0, 0, 2], 3));
+                const zMaterial = new NinthJS.BasicMaterial({ color: '#0000ff' });
+                const zAxis = new NinthJS.Line(zGeometry, zMaterial);
+                axes.add(zAxis);
+                
+                this.scene.add(axes);
+            }
+            
+            setupControls() {
+                // File input
+                document.getElementById('fileLoader').addEventListener('change', (e) => {
+                    this.handleFileSelection(e.target.files);
+                });
+                
+                // Sample model buttons
+                document.getElementById('loadSample').addEventListener('click', () => {
+                    this.loadSampleModels();
+                });
+                
+                document.getElementById('clearScene').addEventListener('click', () => {
+                    this.clearScene();
+                });
+                
+                // Model controls
+                const scaleSlider = document.getElementById('scale');
+                const scaleValue = document.getElementById('scale-value');
+                scaleSlider.addEventListener('input', (e) => {
+                    const scale = parseFloat(e.target.value);
+                    scaleValue.textContent = scale.toFixed(1);
+                    this.scaleCurrentModel(scale);
+                });
+                
+                const rotationSlider = document.getElementById('rotation');
+                const rotationValue = document.getElementById('rotation-value');
+                rotationSlider.addEventListener('input', (e) => {
+                    this.rotationSpeed = parseFloat(e.target.value);
+                    rotationValue.textContent = this.rotationSpeed.toFixed(1);
+                });
+                
+                document.getElementById('centerModel').addEventListener('click', () => {
+                    this.centerCurrentModel();
+                });
+                
+                document.getElementById('fitToView').addEventListener('click', () => {
+                    this.fitToView();
+                });
+                
+                document.getElementById('wireframe').addEventListener('click', () => {
+                    this.toggleWireframe(true);
+                });
+                
+                document.getElementById('solid').addEventListener('click', () => {
+                    this.toggleWireframe(false);
+                });
+                
+                // Sample model creation
+                document.getElementById('loadCube').addEventListener('click', () => {
+                    this.createProceduralCube();
+                });
+                
+                document.getElementById('loadSphere').addEventListener('click', () => {
+                    this.createProceduralSphere();
+                });
+                
+                document.getElementById('loadComplex').addEventListener('click', () => {
+                    this.createComplexModel();
+                });
+                
+                document.getElementById('loadCharacter').addEventListener('click', () => {
+                    this.createCharacterModel();
+                });
+                
+                // Filter change
+                document.getElementById('formatFilter').addEventListener('change', (e) => {
+                    this.filterFiles(e.target.value);
+                });
+            }
+            
+            handleFileSelection(files) {
+                if (files.length === 0) return;
+                
+                Array.from(files).forEach(file => {
+                    this.loadFile(file);
+                });
+            }
+            
+            loadFile(file) {
+                const extension = file.name.split('.').pop().toLowerCase();
+                
+                if (!this.isFormatSupported(extension)) {
+                    this.updateLoadingStatus(`❌ Unsupported format: ${extension}`);
+                    return;
+                }
+                
+                this.isLoading = true;
+                this.updateLoadingStatus(`🔄 Loading ${file.name}...`);
+                this.updateProgress(0);
+                
+                // Create URL for the file
+                const url = URL.createObjectURL(file);
+                
+                // Load based on format
+                switch (extension) {
+                    case 'obj':
+                        this.loadOBJ(url, file.name);
+                        break;
+                    case 'gltf':
+                    case 'glb':
+                        this.loadGLTF(url, file.name);
+                        break;
+                    case 'fbx':
+                        this.loadFBX(url, file.name);
+                        break;
+                    case 'dae':
+                        this.loadDAE(url, file.name);
+                        break;
+                }
+            }
+            
+            loadOBJ(url, name) {
+                try {
+                    this.loaders.obj.load(
+                        url,
+                        (object) => {
+                            this.addLoadedModel(object, name, 'obj');
+                            URL.revokeObjectURL(url);
+                        },
+                        (progress) => {
+                            this.updateProgress(progress.loaded / progress.total * 100);
+                        },
+                        (error) => {
+                            this.updateLoadingStatus(`❌ OBJ loading failed: ${error.message}`);
+                            URL.revokeObjectURL(url);
+                        }
+                    );
+                } catch (error) {
+                    this.updateLoadingStatus(`❌ OBJ loader error: ${error.message}`);
+                }
+            }
+            
+            loadGLTF(url, name) {
+                try {
+                    this.loaders.gltf.load(
+                        url,
+                        (gltf) => {
+                            this.addLoadedModel(gltf.scene, name, 'gltf');
+                            URL.revokeObjectURL(url);
+                        },
+                        (progress) => {
+                            this.updateProgress(progress.loaded / progress.total * 100);
+                        },
+                        (error) => {
+                            this.updateLoadingStatus(`❌ GLTF loading failed: ${error.message}`);
+                            URL.revokeObjectURL(url);
+                        }
+                    );
+                } catch (error) {
+                    this.updateLoadingStatus(`❌ GLTF loader error: ${error.message}`);
+                }
+            }
+            
+            loadFBX(url, name) {
+                try {
+                    this.loaders.fbx.load(
+                        url,
+                        (object) => {
+                            this.addLoadedModel(object, name, 'fbx');
+                            URL.revokeObjectURL(url);
+                        },
+                        (progress) => {
+                            this.updateProgress(progress.loaded / progress.total * 100);
+                        },
+                        (error) => {
+                            this.updateLoadingStatus(`❌ FBX loading failed: ${error.message}`);
+                            URL.revokeObjectURL(url);
+                        }
+                    );
+                } catch (error) {
+                    this.updateLoadingStatus(`❌ FBX loader error: ${error.message}`);
+                }
+            }
+            
+            loadDAE(url, name) {
+                try {
+                    this.loaders.dae.load(
+                        url,
+                        (object) => {
+                            this.addLoadedModel(object, name, 'dae');
+                            URL.revokeObjectURL(url);
+                        },
+                        (progress) => {
+                            this.updateProgress(progress.loaded / progress.total * 100);
+                        },
+                        (error) => {
+                            this.updateLoadingStatus(`❌ DAE loading failed: ${error.message}`);
+                            URL.revokeObjectURL(url);
+                        }
+                    );
+                } catch (error) {
+                    this.updateLoadingStatus(`❌ DAE loader error: ${error.message}`);
+                }
+            }
+            
+            addLoadedModel(object, name, format) {
+                // Process the loaded model
+                this.processModel(object);
+                
+                // Set position and add to scene
+                object.setPosition(0, 0, 0);
+                this.scene.add(object);
+                
+                // Store model info
+                const modelInfo = {
+                    object,
+                    name,
+                    format,
+                    vertexCount: this.getVertexCount(object),
+                    faceCount: this.getFaceCount(object),
+                    materialCount: this.getMaterialCount(object),
+                    textureCount: this.getTextureCount(object)
+                };
+                
+                this.loadedModels.push(modelInfo);
+                this.currentModel = object;
+                
+                // Update UI
+                this.updateFileList();
+                this.updateModelInfo();
+                this.fitToView();
+                
+                this.updateLoadingStatus(`✅ ${name} loaded successfully`);
+            }
+            
+            processModel(object) {
+                // Apply loading options
+                if (document.getElementById('generateNormals').checked) {
+                    this.generateNormals(object);
+                }
+                
+                if (document.getElementById('flipY').checked) {
+                    this.flipYAxis(object);
+                }
+                
+                // Apply texture quality
+                const quality = document.getElementById('textureQuality').value;
+                if (document.getElementById('loadTextures').checked) {
+                    this.applyTextureQuality(object, quality);
+                }
+            }
+            
+            generateNormals(object) {
+                object.traverse((child) => {
+                    if (child.isMesh && child.geometry) {
+                        child.geometry.computeVertexNormals();
+                    }
+                });
+            }
+            
+            flipYAxis(object) {
+                object.rotation.x = -Math.PI / 2;
+            }
+            
+            applyTextureQuality(object, quality) {
+                const settings = {
+                    low: { maxSize: 256, quality: 0.5 },
+                    medium: { maxSize: 512, quality: 0.75 },
+                    high: { maxSize: 1024, quality: 1.0 }
+                };
+                
+                const setting = settings[quality];
+                
+                object.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (child.material.map) {
+                            child.material.map.minFilter = NinthJS.LinearFilter;
+                            child.material.map.magFilter = NinthJS.LinearFilter;
+                            child.material.map.generateMipmaps = false;
+                        }
+                    }
+                });
+            }
+            
+            isFormatSupported(extension) {
+                const supportedFormats = ['obj', 'gltf', 'glb', 'fbx', 'dae'];
+                return supportedFormats.includes(extension);
+            }
+            
+            getVertexCount(object) {
+                let count = 0;
+                object.traverse((child) => {
+                    if (child.isMesh && child.geometry) {
+                        const geometry = child.geometry;
+                        if (geometry.attributes.position) {
+                            count += geometry.attributes.position.count;
+                        }
+                    }
+                });
+                return count;
+            }
+            
+            getFaceCount(object) {
+                let count = 0;
+                object.traverse((child) => {
+                    if (child.isMesh && child.geometry) {
+                        const geometry = child.geometry;
+                        if (geometry.index) {
+                            count += geometry.index.count / 3;
+                        } else if (geometry.attributes.position) {
+                            count += geometry.attributes.position.count / 3;
+                        }
+                    }
+                });
+                return count;
+            }
+            
+            getMaterialCount(object) {
+                const materials = new Set();
+                object.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => materials.add(mat));
+                        } else {
+                            materials.add(child.material);
+                        }
+                    }
+                });
+                return materials.size;
+            }
+            
+            getTextureCount(object) {
+                let count = 0;
+                object.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const material = Array.isArray(child.material) ? child.material[0] : child.material;
+                        const textureProperties = ['map', 'normalMap', 'roughnessMap', 'metalnessMap'];
+                        textureProperties.forEach(prop => {
+                            if (material[prop]) count++;
+                        });
+                    }
+                });
+                return count;
+            }
+            
+            updateLoadingStatus(message) {
+                document.getElementById('loadingStatus').textContent = message;
+            }
+            
+            updateProgress(percentage) {
+                document.getElementById('progressFill').style.width = percentage + '%';
+                document.getElementById('progressText').textContent = Math.round(percentage) + '%';
+            }
+            
+            updateFileList() {
+                const fileList = document.getElementById('fileList');
+                fileList.innerHTML = '';
+                
+                this.loadedModels.forEach((model, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <strong>${model.name}</strong><br>
+                        Format: ${model.format.toUpperCase()}<br>
+                        Vertices: ${model.vertexCount} | Faces: ${model.faceCount}
+                    `;
+                    
+                    fileItem.addEventListener('click', () => {
+                        this.selectModel(index);
+                    });
+                    
+                    fileList.appendChild(fileItem);
+                });
+            }
+            
+            updateModelInfo() {
+                const totalVertices = this.loadedModels.reduce((sum, model) => sum + model.vertexCount, 0);
+                const totalFaces = this.loadedModels.reduce((sum, model) => sum + model.faceCount, 0);
+                const totalMaterials = this.loadedModels.reduce((sum, model) => sum + model.materialCount, 0);
+                const totalTextures = this.loadedModels.reduce((sum, model) => sum + model.textureCount, 0);
+                
+                document.getElementById('modelCount').textContent = this.loadedModels.length;
+                document.getElementById('vertexCount').textContent = totalVertices;
+                document.getElementById('faceCount').textContent = totalFaces;
+                document.getElementById('materialCount').textContent = totalMaterials;
+                document.getElementById('textureCount').textContent = totalTextures;
+            }
+            
+            selectModel(index) {
+                const model = this.loadedModels[index];
+                if (model) {
+                    this.currentModel = model.object;
+                    this.updateLoadingStatus(`📄 Selected: ${model.name}`);
+                }
+            }
+            
+            scaleCurrentModel(scale) {
+                if (this.currentModel) {
+                    this.currentModel.scale.set(scale, scale, scale);
+                }
+            }
+            
+            centerCurrentModel() {
+                if (this.currentModel) {
+                    this.currentModel.setPosition(0, 0, 0);
+                }
+            }
+            
+            fitToView() {
+                if (this.currentModel) {
+                    const box = new NinthJS.Box3().setFromObject(this.currentModel);
+                    const size = box.getSize(new NinthJS.Vector3());
+                    const center = box.getCenter(new NinthJS.Vector3());
+                    
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const fov = this.camera.fov * (Math.PI / 180);
+                    const cameraDistance = Math.abs(maxDim / Math.sin(fov / 2));
+                    
+                    this.camera.setPosition(center.x, center.y, center.z + cameraDistance * 1.2);
+                    this.camera.lookAt(center.x, center.y, center.z);
+                }
+            }
+            
+            toggleWireframe(enabled) {
+                if (this.currentModel) {
+                    this.currentModel.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => {
+                                    mat.wireframe = enabled;
+                                });
+                            } else {
+                                child.material.wireframe = enabled;
+                            }
+                        }
+                    });
+                }
+            }
+            
+            filterFiles(format) {
+                // Implementation for filtering loaded files
+                this.updateFileList();
+            }
+            
+            clearScene() {
+                this.loadedModels.forEach(model => {
+                    this.scene.remove(model.object);
+                });
+                this.loadedModels = [];
+                this.currentModel = null;
+                
+                this.updateFileList();
+                this.updateModelInfo();
+                this.updateLoadingStatus('🗑️ Scene cleared');
+            }
+            
+            loadSampleModels() {
+                this.updateLoadingStatus('🔄 Loading sample models...');
+                
+                // Simulate loading sample models
+                setTimeout(() => {
+                    this.createProceduralCube();
+                    setTimeout(() => {
+                        this.createProceduralSphere();
+                        setTimeout(() => {
+                            this.createComplexModel();
+                            this.updateLoadingStatus('✅ Sample models loaded');
+                        }, 500);
+                    }, 500);
+                }, 500);
+            }
+            
+            createProceduralCube() {
+                const geometry = new NinthJS.BoxGeometry(2, 2, 2);
+                const material = new NinthJS.PhongMaterial({
+                    color: '#4488ff',
+                    shininess: 100
+                });
+                const cube = new NinthJS.Mesh(geometry);
+                cube.material = material;
+                cube.setPosition(-4, 0, 0);
+                
+                this.scene.add(cube);
+                
+                const modelInfo = {
+                    object: cube,
+                    name: 'Procedural Cube',
+                    format: 'procedural',
+                    vertexCount: 24,
+                    faceCount: 12,
+                    materialCount: 1,
+                    textureCount: 0
+                };
+                
+                this.loadedModels.push(modelInfo);
+                this.currentModel = cube;
+                this.updateFileList();
+                this.updateModelInfo();
+            }
+            
+            createProceduralSphere() {
+                const geometry = new NinthJS.SphereGeometry(1.5, 32, 16);
+                const material = new NinthJS.LambertMaterial({
+                    color: '#ff6b35'
+                });
+                const sphere = new NinthJS.Mesh(geometry);
+                sphere.material = material;
+                sphere.setPosition(0, 0, 0);
+                
+                this.scene.add(sphere);
+                
+                const modelInfo = {
+                    object: sphere,
+                    name: 'Procedural Sphere',
+                    format: 'procedural',
+                    vertexCount: 512,
+                    faceCount: 512,
+                    materialCount: 1,
+                    textureCount: 0
+                };
+                
+                this.loadedModels.push(modelInfo);
+                this.currentModel = sphere;
+                this.updateFileList();
+                this.updateModelInfo();
+            }
+            
+            createComplexModel() {
+                const group = new NinthJS.Group();
+                
+                // Create a house-like structure
+                const baseGeometry = new NinthJS.BoxGeometry(3, 2, 3);
+                const baseMaterial = new NinthJS.PhongMaterial({ color: '#8B4513' });
+                const base = new NinthJS.Mesh(baseGeometry);
+                base.material = baseMaterial;
+                group.add(base);
+                
+                const roofGeometry = new NinthJS.ConeGeometry(2.5, 1.5, 4);
+                const roofMaterial = new NinthJS.PhongMaterial({ color: '#DC143C' });
+                const roof = new NinthJS.Mesh(roofGeometry);
+                roof.material = roofMaterial;
+                roof.setPosition(0, 2, 0);
+                roof.setRotation(0, Math.PI / 4, 0);
+                group.add(roof);
+                
+                // Add windows
+                for (let i = 0; i < 4; i++) {
+                    const windowGeometry = new NinthJS.PlaneGeometry(0.8, 0.8);
+                    const windowMaterial = new NinthJS.LambertMaterial({ 
+                        color: '#87CEEB',
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const window = new NinthJS.Mesh(windowGeometry);
+                    window.material = windowMaterial;
+                    
+                    const angle = (i / 4) * Math.PI * 2;
+                    window.setPosition(Math.cos(angle) * 1.6, 0, Math.sin(angle) * 1.6);
+                    window.lookAt(0, 0, 0);
+                    group.add(window);
+                }
+                
+                group.setPosition(4, 0, 0);
+                this.scene.add(group);
+                
+                const modelInfo = {
+                    object: group,
+                    name: 'Complex House Model',
+                    format: 'procedural',
+                    vertexCount: 100,
+                    faceCount: 80,
+                    materialCount: 3,
+                    textureCount: 0
+                };
+                
+                this.loadedModels.push(modelInfo);
+                this.currentModel = group;
+                this.updateFileList();
+                this.updateModelInfo();
+            }
+            
+            createCharacterModel() {
+                const character = new NinthJS.Group();
+                
+                // Simple humanoid figure
+                const bodyGeometry = new NinthJS.CylinderGeometry(0.5, 0.6, 3, 8);
+                const bodyMaterial = new NinthJS.LambertMaterial({ color: '#FFD700' });
+                const body = new NinthJS.Mesh(bodyGeometry);
+                body.material = bodyMaterial;
+                character.add(body);
+                
+                const headGeometry = new NinthJS.SphereGeometry(0.8, 16, 16);
+                const headMaterial = new NinthJS.LambertMaterial({ color: '#FFDBAC' });
+                const head = new NinthJS.Mesh(headGeometry);
+                head.material = headMaterial;
+                head.setPosition(0, 2.5, 0);
+                character.add(head);
+                
+                // Arms
+                for (let i = 0; i < 2; i++) {
+                    const armGeometry = new NinthJS.CylinderGeometry(0.2, 0.2, 2, 8);
+                    const armMaterial = new NinthJS.LambertMaterial({ color: '#FFDBAC' });
+                    const arm = new NinthJS.Mesh(armGeometry);
+                    arm.material = armMaterial;
+                    arm.setPosition(i === 0 ? -1 : 1, 1, 0);
+                    arm.setRotation(0, 0, Math.PI / 2);
+                    character.add(arm);
+                }
+                
+                // Legs
+                for (let i = 0; i < 2; i++) {
+                    const legGeometry = new NinthJS.CylinderGeometry(0.25, 0.25, 2.5, 8);
+                    const legMaterial = new NinthJS.LambertMaterial({ color: '#000080' });
+                    const leg = new NinthJS.Mesh(legGeometry);
+                    leg.material = legMaterial;
+                    leg.setPosition(i === 0 ? -0.3 : 0.3, -2.5, 0);
+                    character.add(leg);
+                }
+                
+                character.setPosition(0, 0, 4);
+                this.scene.add(character);
+                
+                const modelInfo = {
+                    object: character,
+                    name: 'Character Model',
+                    format: 'procedural',
+                    vertexCount: 200,
+                    faceCount: 150,
+                    materialCount: 4,
+                    textureCount: 0
+                };
+                
+                this.loadedModels.push(modelInfo);
+                this.currentModel = character;
+                this.updateFileList();
+                this.updateModelInfo();
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                
+                // Rotate current model
+                if (this.currentModel && this.rotationSpeed > 0) {
+                    const time = performance.now() * 0.001 * this.rotationSpeed;
+                    this.currentModel.setRotation(0, time, 0);
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        try {
+            new FileLoadersDemo();
+            console.log('✅ File Loaders demo loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading File Loaders demo:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

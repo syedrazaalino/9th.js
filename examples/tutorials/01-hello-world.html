@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>01 - Hello World: Basic Setup</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 24px;
+            color: #4fc3f7;
+        }
+        
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #4fc3f7;
+        }
+        
+        code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #4fc3f7;
+        }
+        
+        .highlight {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎯 Tutorial 01: Hello World</h1>
+        <div class="step">
+            <strong>Goal:</strong> Learn basic 3D scene setup
+        </div>
+        <div class="step">
+            <strong>What you'll learn:</strong>
+            <ul>
+                <li>Creating a 3D scene</li>
+                <li>Setting up a camera</li>
+                <li>Initializing the renderer</li>
+                <li>Adding objects to the scene</li>
+                <li>The render loop</li>
+            </ul>
+        </div>
+        <div class="step">
+            <strong>Key Concepts:</strong>
+            <ul>
+                <li><code>Scene</code> - Container for all 3D objects</li>
+                <li><code>Camera</code> - Defines what we see</li>
+                <li><code>Renderer</code> - Draws the scene</li>
+                <li><code>Mesh</code> - Basic 3D object</li>
+            </ul>
+        </div>
+        <div class="step">
+            <span class="highlight">✨ Watch the rotating cube!</span>
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <!-- Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 01: HELLO WORLD - BASIC SETUP
+         * ==========================================
+         * 
+         * This is your first 3D scene! Let's break down what we're doing:
+         * 
+         * 1. SCENE: Think of this as a 3D world or container
+         *    - Everything 3D goes inside the scene
+         *    - Like a stage where objects perform
+         * 
+         * 2. CAMERA: This is your "eye" in the 3D world
+         *    - Defines the viewpoint and what you see
+         *    - Like a camera or your eyes looking at objects
+         * 
+         * 3. RENDERER: This draws everything to the screen
+         *    - Converts 3D data to 2D pixels
+         *    - Like a painter bringing the scene to life
+         * 
+         * 4. MESH: A basic 3D object
+         *    - Made of geometry (shape) + material (appearance)
+         *    - Like a statue: shape + paint/color
+         */
+        
+        // ==========================================
+        // STEP 1: CREATE THE SCENE
+        // ==========================================
+        // The scene is your 3D world container. Everything you want to display
+        // goes inside this scene.
+        const scene = new THREE.Scene();
+        
+        // Optional: Set a background color for the scene
+        // This creates a nice gradient effect when combined with CSS
+        scene.background = new THREE.Color(0x1a1a2e);
+        
+        console.log('✅ Scene created successfully!');
+        
+        // ==========================================
+        // STEP 2: CREATE THE CAMERA
+        // ==========================================
+        // The camera defines your perspective. There are different types,
+        // but PerspectiveCamera is most common for 3D applications.
+        // 
+        // Parameters:
+        // - Field of View (FOV): How wide the camera sees (in degrees)
+        // - Aspect Ratio: Width / Height of your screen
+        // - Near Clipping Plane: Closest distance to render
+        // - Far Clipping Plane: Farthest distance to render
+        const camera = new THREE.PerspectiveCamera(
+            75,                                    // FOV: 75 degrees (pretty wide)
+            window.innerWidth / window.innerHeight, // Aspect ratio
+            0.1,                                   // Near: 0.1 units
+            1000                                   // Far: 1000 units
+        );
+        
+        // Position the camera back a bit so we can see the cube
+        camera.position.z = 5;
+        
+        console.log('✅ Camera positioned successfully!');
+        
+        // ==========================================
+        // STEP 3: CREATE THE RENDERER
+        // ==========================================
+        // The renderer is what draws everything to your screen.
+        // It takes the scene and camera and creates the final image.
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        // Set the size of the rendering area
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Add some pixel density handling for high-DPI displays
+        renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // Add the canvas to our container
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        console.log('✅ Renderer initialized successfully!');
+        
+        // ==========================================
+        // STEP 4: CREATE A MESH (3D OBJECT)
+        // ==========================================
+        // A mesh is made of two parts:
+        // 1. GEOMETRY: The shape/structure (vertices, faces)
+        // 2. MATERIAL: The appearance (color, texture, shine)
+        
+        // Create a box geometry (1x1x1 cube)
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        
+        // Create a material (how the object looks)
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x00ff88,
+            wireframe: false  // Set to true to see just the wireframe
+        });
+        
+        // Create the mesh by combining geometry and material
+        const cube = new THREE.Mesh(geometry, material);
+        
+        // Add the cube to our scene
+        scene.add(cube);
+        
+        console.log('✅ Cube added to scene!');
+        
+        // ==========================================
+        // STEP 5: CREATE THE RENDER LOOP
+        // ==========================================
+        // This is the animation loop that runs every frame.
+        // Think of it as a movie projector that updates 60 times per second.
+        
+        function animate() {
+            // Request the next animation frame
+            // This creates a smooth 60fps animation loop
+            requestAnimationFrame(animate);
+            
+            // ==========================================
+            // STEP 6: ANIMATE THE CUBE
+            // ==========================================
+            // Rotate the cube a little bit on each frame
+            cube.rotation.x += 0.01;  // Rotate around X-axis
+            cube.rotation.y += 0.01;  // Rotate around Y-axis
+            
+            // Optional: You can also animate the scale
+            // cube.scale.x = Math.sin(Date.now() * 0.001) * 0.5 + 1;
+            // cube.scale.y = Math.sin(Date.now() * 0.001) * 0.5 + 1;
+            // cube.scale.z = Math.sin(Date.now() * 0.001) * 0.5 + 1;
+            
+            // ==========================================
+            // STEP 7: RENDER THE SCENE
+            // ==========================================
+            // Finally, render the scene from the camera's perspective
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // STEP 8: HANDLE WINDOW RESIZE
+        // ==========================================
+        // Make sure the scene looks good when you resize the window
+        window.addEventListener('resize', function() {
+            // Update camera aspect ratio
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            
+            // Update renderer size
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // ==========================================
+        // START THE ANIMATION!
+        // ==========================================
+        // Everything is set up, now start the animation loop!
+        animate();
+        
+        // ==========================================
+        // EXPERIMENT IDEAS:
+        // ==========================================
+        // 1. Try changing the cube color:
+        //    material.color.setHex(0xff0000); // Red cube
+        
+        // 2. Try different shapes:
+        //    const geometry = new THREE.SphereGeometry(1, 32, 32);
+        //    const geometry = new THREE.ConeGeometry(1, 2, 32);
+        
+        // 3. Try wireframe mode:
+        //    material.wireframe = true;
+        
+        // 4. Try different rotations:
+        //    cube.rotation.z += 0.02;
+        
+        // 5. Try adding more cubes:
+        //    const cube2 = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: 0xff0000}));
+        //    cube2.position.x = 2;
+        //    scene.add(cube2);
+        
+        console.log('🎉 Hello World setup complete! Check out Tutorial 02 for basic shapes!');
+    </script>
+</body>
+</html>

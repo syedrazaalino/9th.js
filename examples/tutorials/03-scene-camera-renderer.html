@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>03 - Scene, Camera, Renderer Deep Dive</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 350px;
+            line-height: 1.5;
+            font-size: 13px;
+        }
+        
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            color: #e1bee7;
+        }
+        
+        .step {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #e1bee7;
+        }
+        
+        .demo-section {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #81c784;
+            font-size: 12px;
+        }
+        
+        .highlight {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+        
+        .controls {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls button.active {
+            background: #4caf50;
+            border-color: #4caf50;
+        }
+        
+        #camera-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>📹 Tutorial 03: Camera & Scene Setup</h1>
+        <div class="step">
+            <strong>Goal:</strong> Master camera and scene configuration
+        </div>
+        <div class="demo-section">
+            <strong>🎬 Camera Types:</strong><br>
+            <button id="perspective-btn" class="active">Perspective Camera</button><br>
+            <button id="orthographic-btn">Orthographic Camera</button>
+        </div>
+        <div class="step">
+            <strong>Scene Setup Concepts:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 12px;">
+                <li>Scene as a 3D container</li>
+                <li>Camera positioning and FOV</li>
+                <li>Renderer configuration</li>
+                <li>Coordinate systems</li>
+                <li>View frustum and culling</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>🎮 Try These:</strong><br>
+            <button id="toggle-grid">Toggle Grid</button>
+            <button id="toggle-axes">Toggle Axes</button>
+            <button id="change-fov">Change FOV</button>
+            <button id="reset-camera">Reset Camera</button>
+        </div>
+        <div class="step">
+            <span class="highlight">👁️ Watch how camera type affects perspective!</span>
+        </div>
+    </div>
+    
+    <div id="camera-info">
+        <strong>Camera Settings:</strong><br>
+        Type: <span id="camera-type">Perspective</span><br>
+        FOV: <span id="fov-value">75°</span><br>
+        Position: <span id="camera-pos">0, 5, 15</span>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 03: SCENE, CAMERA, RENDERER DEEP DIVE
+         * ==========================================
+         * 
+         * This tutorial explores the three pillars of 3D rendering:
+         * 
+         * 1. SCENE: The 3D world container
+         *    - Holds all objects, lights, and cameras
+         *    - Defines the coordinate system
+         *    - Can have background colors, fog, etc.
+         * 
+         * 2. CAMERA: Your "eye" in 3D space
+         *    - Two main types: Perspective and Orthographic
+         *    - Defines the viewpoint and what gets rendered
+         *    - Has position, rotation, and viewing parameters
+         * 
+         * 3. RENDERER: The drawing engine
+         *    - Takes scene + camera → 2D image
+         *    - Handles WebGL, color management, etc.
+         *    - Manages the canvas and drawing buffer
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let currentCameraType = 'perspective';
+        let gridHelper, axesHelper;
+        let animationId;
+        
+        // ==========================================
+        // SCENE SETUP
+        // ==========================================
+        function createScene() {
+            // Create the scene - our 3D world container
+            scene = new THREE.Scene();
+            
+            // Set a gradient background
+            const bgColor = new THREE.Color(0x1a1a2e);
+            scene.background = bgColor;
+            
+            // Add fog for depth perception (optional)
+            // scene.fog = new THREE.Fog(0x1a1a2e, 10, 50);
+            
+            console.log('✅ Scene created with gradient background');
+            return scene;
+        }
+        
+        // ==========================================
+        // CAMERA SETUP - TWO TYPES
+        // ==========================================
+        
+        // 1. PERSPECTIVE CAMERA (Most common)
+        // Mimics how human eyes see - objects get smaller with distance
+        function createPerspectiveCamera() {
+            const fov = 75;  // Field of View in degrees
+            const aspect = window.innerWidth / window.innerHeight;
+            const near = 0.1;  // Near clipping plane
+            const far = 1000;   // Far clipping plane
+            
+            camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            
+            // Position the camera
+            camera.position.set(0, 5, 15);
+            camera.lookAt(0, 0, 0);  // Look at the center of the scene
+            
+            console.log(`✅ Perspective camera created (FOV: ${fov}°)`);
+            updateCameraInfo();
+            return camera;
+        }
+        
+        // 2. ORTHOGRAPHIC CAMERA
+        // No perspective distortion - objects stay same size regardless of distance
+        // Good for 2D games, architectural drawings, UI elements
+        function createOrthographicCamera() {
+            const frustumSize = 20;  // How much of the scene is visible
+            const aspect = window.innerWidth / window.innerHeight;
+            
+            camera = new THREE.OrthographicCamera(
+                -frustumSize * aspect / 2,  // left
+                frustumSize * aspect / 2,   // right
+                frustumSize / 2,            // top
+                -frustumSize / 2,           // bottom
+                0.1,                        // near
+                1000                        // far
+            );
+            
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+            
+            console.log('✅ Orthographic camera created');
+            updateCameraInfo();
+            return camera;
+        }
+        
+        // ==========================================
+        // RENDERER SETUP
+        // ==========================================
+        function createRenderer() {
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: false
+            });
+            
+            // Set the size
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Handle high-DPI displays
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Optional: Enable shadow mapping
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Color management (for better color reproduction)
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            console.log('✅ Renderer configured with shadows and color management');
+            return renderer;
+        }
+        
+        // ==========================================
+        // SCENE CONTENT - HELPFUL VISUAL AIDS
+        // ==========================================
+        function createSceneContent() {
+            // Grid Helper - shows the ground plane
+            gridHelper = new THREE.GridHelper(30, 30, 0x888888, 0x444444);
+            scene.add(gridHelper);
+            
+            // Axes Helper - shows X (red), Y (green), Z (blue) axes
+            axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+            
+            // Create a few objects at different distances
+            const objectCount = 8;
+            const objects = [];
+            
+            for (let i = 0; i < objectCount; i++) {
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color().setHSL(i / objectCount, 0.7, 0.5),
+                    roughness: 0.3,
+                    metalness: 0.1
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Position objects in a circle and at different heights
+                const angle = (i / objectCount) * Math.PI * 2;
+                const radius = 8;
+                mesh.position.x = Math.cos(angle) * radius;
+                mesh.position.z = Math.sin(angle) * radius;
+                mesh.position.y = Math.sin(angle * 2) * 3;
+                
+                // Enable shadows
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                scene.add(mesh);
+                objects.push(mesh);
+            }
+            
+            // Add a large ground plane
+            const groundGeometry = new THREE.PlaneGeometry(40, 40);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            console.log(`✅ Scene content created with ${objectCount} objects, grid, axes, and lights`);
+            return objects;
+        }
+        
+        // ==========================================
+        // CAMERA TYPE SWITCHING
+        // ==========================================
+        function switchCamera(type) {
+            // Remove old camera from scene
+            if (camera) {
+                scene.remove(camera);
+            }
+            
+            // Create new camera
+            if (type === 'perspective') {
+                createPerspectiveCamera();
+            } else {
+                createOrthographicCamera();
+            }
+            
+            currentCameraType = type;
+            updateCameraInfo();
+            
+            console.log(`Switched to ${type} camera`);
+        }
+        
+        // ==========================================
+        // CAMERA INFORMATION DISPLAY
+        // ==========================================
+        function updateCameraInfo() {
+            document.getElementById('camera-type').textContent = 
+                currentCameraType.charAt(0).toUpperCase() + currentCameraType.slice(1);
+            
+            if (camera instanceof THREE.PerspectiveCamera) {
+                document.getElementById('fov-value').textContent = `${camera.fov}°`;
+            } else {
+                document.getElementById('fov-value').textContent = 'N/A';
+            }
+            
+            document.getElementById('camera-pos').textContent = 
+                `${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)}`;
+        }
+        
+        // ==========================================
+        // INTERACTIVE CONTROLS
+        // ==========================================
+        function setupControls() {
+            // Camera type buttons
+            document.getElementById('perspective-btn').addEventListener('click', () => {
+                switchCamera('perspective');
+                document.getElementById('perspective-btn').classList.add('active');
+                document.getElementById('orthographic-btn').classList.remove('active');
+            });
+            
+            document.getElementById('orthographic-btn').addEventListener('click', () => {
+                switchCamera('orthographic');
+                document.getElementById('orthographic-btn').classList.add('active');
+                document.getElementById('perspective-btn').classList.remove('active');
+            });
+            
+            // Grid toggle
+            document.getElementById('toggle-grid').addEventListener('click', () => {
+                gridHelper.visible = !gridHelper.visible;
+            });
+            
+            // Axes toggle
+            document.getElementById('toggle-axes').addEventListener('click', () => {
+                axesHelper.visible = !axesHelper.visible;
+            });
+            
+            // Change FOV
+            document.getElementById('change-fov').addEventListener('click', () => {
+                if (camera instanceof THREE.PerspectiveCamera) {
+                    camera.fov = Math.random() * 100 + 30; // Random FOV between 30-130
+                    camera.updateProjectionMatrix();
+                    updateCameraInfo();
+                }
+            });
+            
+            // Reset camera
+            document.getElementById('reset-camera').addEventListener('click', () => {
+                camera.position.set(0, 5, 15);
+                camera.lookAt(0, 0, 0);
+                if (camera instanceof THREE.PerspectiveCamera) {
+                    camera.fov = 75;
+                    camera.updateProjectionMatrix();
+                }
+                updateCameraInfo();
+            });
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Rotate all the colored cubes
+            scene.traverse((child) => {
+                if (child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry) {
+                    child.rotation.x += 0.01;
+                    child.rotation.y += 0.02;
+                }
+            });
+            
+            // Gentle camera movement for visual interest
+            if (camera instanceof THREE.PerspectiveCamera) {
+                const time = Date.now() * 0.0005;
+                camera.position.x = Math.sin(time) * 15;
+                camera.position.z = Math.cos(time) * 15;
+                camera.lookAt(0, 0, 0);
+                updateCameraInfo();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // For orthographic camera, also update the frustum
+            if (camera instanceof THREE.OrthographicCamera) {
+                const frustumSize = 20;
+                const aspect = window.innerWidth / window.innerHeight;
+                camera.left = -frustumSize * aspect / 2;
+                camera.right = frustumSize * aspect / 2;
+                camera.top = frustumSize / 2;
+                camera.bottom = -frustumSize / 2;
+                camera.updateProjectionMatrix();
+            }
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🎬 Starting Scene, Camera, Renderer Demo...');
+            
+            createScene();
+            createPerspectiveCamera();  // Start with perspective
+            createRenderer();
+            createSceneContent();
+            setupControls();
+            
+            window.addEventListener('resize', handleResize);
+            
+            animate();
+            
+            console.log('✅ Demo initialized successfully!');
+            console.log('💡 Try switching between Perspective and Orthographic cameras to see the difference!');
+        }
+        
+        // Start the application
+        init();
+        
+        // ==========================================
+        // EXPERIMENT IDEAS:
+        // ==========================================
+        // 1. Try different FOV values (30, 60, 120 degrees)
+        // 2. Move the camera closer and further from objects
+        // 3. Look at the scene from different angles
+        // 4. Add fog to the scene to understand near/far planes
+        // 5. Experiment with orthographic camera for UI elements
+        // 6. Try placing the camera inside the object circle
+        // 7. Add a second camera and render both to different parts of the screen
+    </script>
+</body>
+</html>

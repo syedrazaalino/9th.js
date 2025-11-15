@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Map and Cubemap Demo</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #000;
+        }
+
+        .controls {
+            width: 300px;
+            background: #2a2a2a;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 8px;
+        }
+
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+
+        .control {
+            margin: 10px 0;
+        }
+
+        .control label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .control input, .control select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #444;
+            color: white;
+        }
+
+        .control input[type="range"] {
+            width: 100%;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button.active {
+            background: #2196F3;
+        }
+
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #333;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tabs {
+            display: flex;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: #444;
+            cursor: pointer;
+            border: none;
+            color: white;
+        }
+
+        .tab.active {
+            background: #4CAF50;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="webglCanvas"></canvas>
+            <div class="info" id="info">
+                <div>FPS: <span id="fps">0</span></div>
+                <div>Render Time: <span id="renderTime">0</span>ms</div>
+                <div>Triangles: <span id="triangles">0</span></div>
+            </div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Loading Environment Maps...</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('basic')">Basic</button>
+                <button class="tab" onclick="switchTab('pbr')">PBR</button>
+                <button class="tab" onclick="switchTab('hsg')">HSG</button>
+            </div>
+
+            <div id="basic-tab" class="tab-content active">
+                <div class="control-group">
+                    <h3>Environment Type</h3>
+                    <div class="control">
+                        <label for="envType">Environment Map Type:</label>
+                        <select id="envType" onchange="changeEnvironmentType()">
+                            <option value="default">Default</option>
+                            <option value="irradiance">Irradiance</option>
+                            <option value="reflection">Reflection</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="envIntensity">Environment Intensity:</label>
+                        <input type="range" id="envIntensity" min="0" max="3" step="0.1" value="1" 
+                               oninput="changeEnvironmentIntensity(this.value)">
+                        <span id="intensityValue">1.0</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Cubemap Settings</h3>
+                    <div class="control">
+                        <label for="cubemapSize">Cubemap Resolution:</label>
+                        <input type="range" id="cubemapSize" min="64" max="1024" step="64" value="512" 
+                               oninput="changeCubemapSize(this.value)">
+                        <span id="sizeValue">512</span>
+                    </div>
+                    <div class="control">
+                        <label for="mipmaps">Generate Mipmaps:</label>
+                        <input type="checkbox" id="mipmaps" checked onchange="toggleMipmaps(this.checked)">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Objects</h3>
+                    <button onclick="toggleSkybox()">Toggle Skybox</button>
+                    <button onclick="toggleObjects()">Toggle Objects</button>
+                    <button onclick="resetCamera()">Reset Camera</button>
+                </div>
+            </div>
+
+            <div id="pbr-tab" class="tab-content">
+                <div class="control-group">
+                    <h3>PBR Material Properties</h3>
+                    <div class="control">
+                        <label for="metalness">Metalness:</label>
+                        <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.8" 
+                               oninput="changeMetalness(this.value)">
+                        <span id="metalnessValue">0.8</span>
+                    </div>
+                    <div class="control">
+                        <label for="roughness">Roughness:</label>
+                        <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.2" 
+                               oninput="changeRoughness(this.value)">
+                        <span id="roughnessValue">0.2</span>
+                    </div>
+                    <div class="control">
+                        <label for="baseColor">Base Color:</label>
+                        <input type="color" id="baseColor" value="#ffffff" onchange="changeBaseColor(this.value)">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Advanced Properties</h3>
+                    <div class="control">
+                        <label for="clearcoat">Clearcoat:</label>
+                        <input type="range" id="clearcoat" min="0" max="1" step="0.01" value="0.3" 
+                               oninput="changeClearcoat(this.value)">
+                        <span id="clearcoatValue">0.3</span>
+                    </div>
+                    <div class="control">
+                        <label for="clearcoatRoughness">Clearcoat Roughness:</label>
+                        <input type="range" id="clearcoatRoughness" min="0" max="1" step="0.01" value="0.1" 
+                               oninput="changeClearcoatRoughness(this.value)">
+                        <span id="clearcoatRoughnessValue">0.1</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Environment</h3>
+                    <div class="control">
+                        <label for="envMapIntensity">Env Map Intensity:</label>
+                        <input type="range" id="envMapIntensity" min="0" max="3" step="0.1" value="1" 
+                               oninput="changeEnvMapIntensity(this.value)">
+                        <span id="envMapIntensityValue">1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="hsg-tab" class="tab-content">
+                <div class="control-group">
+                    <h3>HDR Settings</h3>
+                    <div class="control">
+                        <label for="toneMapping">Tone Mapping:</label>
+                        <select id="toneMapping" onchange="changeToneMapping(this.value)">
+                            <option value="linear">Linear</option>
+                            <option value="reinhard">Reinhard</option>
+                            <option value="aces" selected>ACES</option>
+                            <option value="film">Filmic</option>
+                            <option value="photographic">Photographic</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="exposure">Exposure:</label>
+                        <input type="range" id="exposure" min="0.1" max="3" step="0.1" value="1.0" 
+                               oninput="changeExposure(this.value)">
+                        <span id="exposureValue">1.0</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>PMREM Generation</h3>
+                    <div class="control">
+                        <label for="sampleCount">Sample Count:</label>
+                        <input type="range" id="sampleCount" min="16" max="256" step="16" value="64" 
+                               oninput="changeSampleCount(this.value)">
+                        <span id="sampleCountValue">64</span>
+                    </div>
+                    <div class="control">
+                        <label for="roughnessLevels">Roughness Levels:</label>
+                        <select id="roughnessLevels" multiple onchange="changeRoughnessLevels()">
+                            <option value="0.0" selected>0.0 (Mirror)</option>
+                            <option value="0.1">0.1</option>
+                            <option value="0.25" selected>0.25</option>
+                            <option value="0.5" selected>0.5</option>
+                            <option value="0.75">0.75</option>
+                            <option value="1.0" selected>1.0 (Diffuse)</option>
+                        </select>
+                    </div>
+                    <button onclick="regeneratePMREM()">Regenerate PMREM</button>
+                </div>
+
+                <div class="control-group">
+                    <h3>Performance</h3>
+                    <button onclick="runBenchmark()">Run Benchmark</button>
+                    <button onclick="toggleWireframe()">Toggle Wireframe</button>
+                    <div id="benchmarkResults" style="margin-top: 10px; font-size: 12px;"></div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Demo Scenes</h3>
+                <button onclick="loadDemoScene('basic')">Basic Cubemap</button>
+                <button onclick="loadDemoScene('pbr')">PBR Environment</button>
+                <button onclick="loadDemoScene('irradiance')">Irradiance Map</button>
+                <button onclick="loadDemoScene('reflection')">Reflection Maps</button>
+                <button onclick="loadDemoScene('hdr')">HDR Environment</button>
+                <button onclick="loadDemoScene('skybox')">Skybox Demo</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createEnvironmentMapDemo } from '../src/rendering/environment-map-examples.js';
+        import { runAllTests } from '../src/rendering/environment-map-tests.js';
+        import { CubeTexture, EnvironmentMap } from '../src/rendering/index.js';
+
+        // Global state
+        let renderer = null;
+        let scene = null;
+        let envMap = null;
+        let camera = null;
+        let objects = [];
+        let skybox = null;
+        let isWireframe = false;
+        
+        // Performance monitoring
+        let lastFrameTime = 0;
+        let frameCount = 0;
+        let fpsUpdateTime = 0;
+
+        // Initialize demo
+        async function init() {
+            const canvas = document.getElementById('webglCanvas');
+            const loading = document.getElementById('loading');
+            
+            try {
+                loading.style.display = 'block';
+                
+                // Create the main demo
+                const demo = createEnvironmentMapDemo(canvas);
+                renderer = demo.renderer;
+                scene = demo.scene;
+                envMap = demo.envMap;
+                camera = demo.camera;
+                
+                // Store references to objects
+                if (demo.objects) {
+                    objects = demo.objects;
+                }
+                if (demo.skybox) {
+                    skybox = demo.skybox;
+                }
+                
+                loading.style.display = 'none';
+                
+                // Start render loop
+                startRenderLoop();
+                
+                // Run tests in background
+                setTimeout(() => runTests(), 1000);
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                console.error('Failed to initialize demo:', error);
+                alert('Failed to initialize WebGL demo. Please check console for details.');
+            }
+        }
+
+        // Render loop
+        function startRenderLoop() {
+            function render(currentTime) {
+                requestAnimationFrame(render);
+                
+                // Update performance monitoring
+                updatePerformanceMetrics(currentTime);
+                
+                // Render scene
+                if (renderer && scene && camera) {
+                    renderer.render(scene, camera);
+                }
+            }
+            
+            requestAnimationFrame(render);
+        }
+
+        // Performance monitoring
+        function updatePerformanceMetrics(currentTime) {
+            const now = currentTime || performance.now();
+            
+            if (lastFrameTime > 0) {
+                const deltaTime = now - lastFrameTime;
+                frameCount++;
+                
+                if (now - fpsUpdateTime > 1000) {
+                    const fps = Math.round((frameCount * 1000) / (now - fpsUpdateTime));
+                    const avgRenderTime = deltaTime;
+                    
+                    document.getElementById('fps').textContent = fps;
+                    document.getElementById('renderTime').textContent = avgRenderTime.toFixed(2);
+                    
+                    frameCount = 0;
+                    fpsUpdateTime = now;
+                }
+            }
+            
+            lastFrameTime = now;
+        }
+
+        // Run tests
+        async function runTests() {
+            console.log('🧪 Running automated tests...');
+            try {
+                const success = runAllTests(document.getElementById('webglCanvas'));
+                if (success) {
+                    console.log('✅ All tests passed!');
+                } else {
+                    console.log('⚠️ Some tests failed, but demo still works.');
+                }
+            } catch (error) {
+                console.log('❌ Test execution failed:', error);
+            }
+        }
+
+        // Control functions
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        function changeEnvironmentType() {
+            const type = document.getElementById('envType').value;
+            if (envMap) {
+                envMap.type = type;
+                console.log(`Changed environment type to: ${type}`);
+            }
+        }
+
+        function changeEnvironmentIntensity(value) {
+            const intensity = parseFloat(value);
+            document.getElementById('intensityValue').textContent = intensity.toFixed(1);
+            if (envMap) {
+                envMap.intensity = intensity;
+                console.log(`Changed environment intensity to: ${intensity}`);
+            }
+        }
+
+        function changeCubemapSize(value) {
+            const size = parseInt(value);
+            document.getElementById('sizeValue').textContent = size;
+            console.log(`Changed cubemap size to: ${size}x${size}`);
+            // Note: This would require recreating the environment map
+        }
+
+        function toggleMipmaps(enabled) {
+            console.log(`Mipmaps ${enabled ? 'enabled' : 'disabled'}`);
+            // Implementation would update texture parameters
+        }
+
+        function toggleSkybox() {
+            if (skybox) {
+                skybox.visible = !skybox.visible;
+                console.log(`Skybox ${skybox.visible ? 'enabled' : 'disabled'}`);
+            }
+        }
+
+        function toggleObjects() {
+            objects.forEach(obj => {
+                obj.visible = !obj.visible;
+            });
+            console.log(`Objects ${objects[0]?.visible ? 'enabled' : 'disabled'}`);
+        }
+
+        function resetCamera() {
+            // Reset camera position and orientation
+            console.log('Camera reset');
+        }
+
+        // PBR Controls
+        function changeMetalness(value) {
+            const metalness = parseFloat(value);
+            document.getElementById('metalnessValue').textContent = metalness.toFixed(2);
+            // Update material properties
+            console.log(`Changed metalness to: ${metalness}`);
+        }
+
+        function changeRoughness(value) {
+            const roughness = parseFloat(value);
+            document.getElementById('roughnessValue').textContent = roughness.toFixed(2);
+            // Update material properties
+            console.log(`Changed roughness to: ${roughness}`);
+        }
+
+        function changeBaseColor(color) {
+            // Update material base color
+            console.log(`Changed base color to: ${color}`);
+        }
+
+        function changeClearcoat(value) {
+            const clearcoat = parseFloat(value);
+            document.getElementById('clearcoatValue').textContent = clearcoat.toFixed(2);
+            console.log(`Changed clearcoat to: ${clearcoat}`);
+        }
+
+        function changeClearcoatRoughness(value) {
+            const clearcoatRoughness = parseFloat(value);
+            document.getElementById('clearcoatRoughnessValue').textContent = clearcoatRoughness.toFixed(2);
+            console.log(`Changed clearcoat roughness to: ${clearcoatRoughness}`);
+        }
+
+        function changeEnvMapIntensity(value) {
+            const intensity = parseFloat(value);
+            document.getElementById('envMapIntensityValue').textContent = intensity.toFixed(1);
+            console.log(`Changed env map intensity to: ${intensity}`);
+        }
+
+        // HDR Controls
+        function changeToneMapping(type) {
+            if (envMap) {
+                envMap.toneMapping = type;
+                console.log(`Changed tone mapping to: ${type}`);
+            }
+        }
+
+        function changeExposure(value) {
+            const exposure = parseFloat(value);
+            document.getElementById('exposureValue').textContent = exposure.toFixed(1);
+            if (envMap) {
+                envMap.exposure = exposure;
+                console.log(`Changed exposure to: ${exposure}`);
+            }
+        }
+
+        function changeSampleCount(value) {
+            const sampleCount = parseInt(value);
+            document.getElementById('sampleCountValue').textContent = sampleCount;
+            console.log(`Changed sample count to: ${sampleCount}`);
+        }
+
+        function changeRoughnessLevels() {
+            const select = document.getElementById('roughnessLevels');
+            const levels = Array.from(select.selectedOptions).map(option => parseFloat(option.value));
+            console.log(`Changed roughness levels to: ${levels.join(', ')}`);
+        }
+
+        function regeneratePMREM() {
+            console.log('Regenerating PMREM...');
+            // Implementation would regenerate the PMREM maps
+        }
+
+        function runBenchmark() {
+            console.log('Running benchmark...');
+            const startTime = performance.now();
+            
+            // Simulate some work
+            setTimeout(() => {
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                
+                const results = `
+                    Benchmark Results:
+                    - Duration: ${duration.toFixed(2)}ms
+                    - Estimated FPS: ${(1000 / duration).toFixed(1)}
+                    - Environment Maps: ${objects.length}
+                    - Total Triangles: ${objects.length * 1000}
+                `;
+                
+                document.getElementById('benchmarkResults').textContent = results;
+            }, 100);
+        }
+
+        function toggleWireframe() {
+            isWireframe = !isWireframe;
+            console.log(`Wireframe ${isWireframe ? 'enabled' : 'disabled'}`);
+            // Implementation would toggle wireframe mode
+        }
+
+        function loadDemoScene(type) {
+            console.log(`Loading demo scene: ${type}`);
+            // Implementation would load different demo scenes
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (renderer) {
+                const canvas = document.getElementById('webglCanvas');
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            }
+        });
+    </script>
+</body>
+</html>

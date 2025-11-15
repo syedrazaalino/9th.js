@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVisualSync - Frequency Spectrum</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #4ECDC4;
+        }
+        
+        .controls h3 {
+            margin: 0 0 15px 0;
+            color: #4ECDC4;
+            text-align: center;
+        }
+        
+        .file-input {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed #4ECDC4;
+            color: white;
+            border-radius: 5px;
+            width: 200px;
+            text-align: center;
+            cursor: pointer;
+        }
+        
+        .play-button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #4ECDC4, #45B7D1);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+        
+        .play-button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .spectrum-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80vw;
+            height: 60vh;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #4ECDC4;
+            border-radius: 10px;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .bars-container {
+            display: flex;
+            align-items: end;
+            height: 100%;
+            width: 100%;
+            gap: 3px;
+        }
+        
+        .spectrum-bar {
+            flex: 1;
+            background: linear-gradient(to top, 
+                #FF6B6B 0%, 
+                #4ECDC4 25%, 
+                #45B7D1 50%, 
+                #FFEAA7 75%, 
+                #FFFFFF 100%);
+            border-radius: 2px 2px 0 0;
+            min-height: 5px;
+            transition: height 0.1s ease;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .spectrum-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: wave 2s infinite;
+        }
+        
+        @keyframes wave {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .frequency-labels {
+            position: absolute;
+            bottom: 5px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #4ECDC4;
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #FFEAA7;
+        }
+        
+        .metric {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .metric-label {
+            color: #4ECDC4;
+        }
+        
+        .metric-value {
+            color: #FFEAA7;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <h3>🎵 Frequency Spectrum Analyzer</h3>
+        <input type="file" id="audioFile" class="file-input" accept="audio/*">
+        <br>
+        <button id="playButton" class="play-button" disabled>▶️ Play</button>
+        <button id="pauseButton" class="play-button" disabled>⏸️ Pause</button>
+        <br>
+        <label style="display: block; margin-top: 15px;">Volume: 
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5" style="width: 100%; margin: 10px 0;">
+        </label>
+        <span id="volumeValue">0.5</span>
+    </div>
+    
+    <div class="spectrum-display">
+        <div class="bars-container" id="barsContainer"></div>
+        <div class="frequency-labels">
+            <span>20 Hz</span>
+            <span>200 Hz</span>
+            <span>2 kHz</span>
+            <span>20 kHz</span>
+        </div>
+    </div>
+    
+    <div class="info-panel">
+        <h4 style="margin: 0 0 10px 0; color: #FFEAA7;">Audio Analysis</h4>
+        <div class="metric">
+            <span class="metric-label">Bass (20-250 Hz):</span>
+            <span class="metric-value" id="bassValue">0%</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Mid (250-4000 Hz):</span>
+            <span class="metric-value" id="midValue">0%</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Treble (4000+ Hz):</span>
+            <span class="metric-value" id="trebleValue">0%</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Overall Volume:</span>
+            <span class="metric-value" id="volumeAnalysisValue">0%</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Spectral Centroid:</span>
+            <span class="metric-value" id="centroidValue">0%</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Peak Frequency:</span>
+            <span class="metric-value" id="peakValue">0 Hz</span>
+        </div>
+    </div>
+
+    <script type="module">
+        import { AudioVisualSync, FrequencyVisualizer } from '../src/core/AudioVisualSync.js';
+        import { Scene } from '../src/core/Scene.js';
+        import { PerspectiveCamera } from '../src/cameras/PerspectiveCamera.js';
+        import { WebGLRenderer } from '../src/core/WebGLRenderer.js';
+        import { Mesh } from '../src/core/Mesh.js';
+        import { BoxGeometry } from '../src/geometry/BoxGeometry.js';
+        import { MeshBasicMaterial } from '../src/materials/MeshBasicMaterial.js';
+
+        class FrequencySpectrumAnalyzer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.audioSync = new AudioVisualSync();
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new WebGLRenderer(this.canvas);
+                
+                this.isPlaying = false;
+                this.spectrumBars = [];
+                this.fftSize = 1024;
+                
+                this.init();
+            }
+            
+            init() {
+                // Setup renderer
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000, 1.0);
+                
+                // Setup camera
+                this.camera.position.z = 10;
+                this.camera.lookAt(0, 0, 0);
+                
+                // Create background grid
+                this.createBackground();
+                
+                // Create spectrum bars
+                this.createSpectrumBars();
+                
+                // Register with audio sync
+                this.audioSync.registerVisualObject(this);
+                
+                // Setup controls
+                this.setupControls();
+                
+                // Start render loop
+                this.animate();
+            }
+            
+            createBackground() {
+                // Create a simple grid background for visualization
+                const gridSize = 20;
+                const spacing = 1;
+                
+                for (let x = -gridSize; x <= gridSize; x += spacing) {
+                    for (let z = -gridSize; z <= gridSize; z += spacing) {
+                        const geometry = new BoxGeometry(0.02, 0.02, 0.02);
+                        const material = new MeshBasicMaterial({
+                            color: 0x111111,
+                            transparent: true,
+                            opacity: 0.3
+                        });
+                        
+                        const dot = new Mesh(geometry, material);
+                        dot.position.set(x * 0.5, -5, z * 0.5);
+                        this.scene.add(dot);
+                    }
+                }
+            }
+            
+            createSpectrumBars() {
+                const container = document.getElementById('barsContainer');
+                const barCount = 128;
+                
+                for (let i = 0; i < barCount; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'spectrum-bar';
+                    bar.style.height = '5px';
+                    
+                    // Add delay to wave animation for each bar
+                    bar.style.animationDelay = (i * 0.02) + 's';
+                    
+                    container.appendChild(bar);
+                    this.spectrumBars.push(bar);
+                }
+            }
+            
+            setupControls() {
+                const audioFile = document.getElementById('audioFile');
+                const playButton = document.getElementById('playButton');
+                const pauseButton = document.getElementById('pauseButton');
+                const volumeSlider = document.getElementById('volumeSlider');
+                const volumeValue = document.getElementById('volumeValue');
+                
+                audioFile.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            await this.audioSync.loadAudio(file);
+                            playButton.disabled = false;
+                            pauseButton.disabled = false;
+                        } catch (error) {
+                            console.error('Failed to load audio:', error);
+                            alert('Failed to load audio file. Please try a different file.');
+                        }
+                    }
+                });
+                
+                playButton.addEventListener('click', async () => {
+                    await this.audioSync.playAudio();
+                    this.isPlaying = true;
+                });
+                
+                pauseButton.addEventListener('click', () => {
+                    this.audioSync.stopAudio();
+                    this.isPlaying = false;
+                });
+                
+                volumeSlider.addEventListener('input', (e) => {
+                    const volume = parseFloat(e.target.value);
+                    this.audioSync.setVolume(volume);
+                    volumeValue.textContent = volume.toFixed(2);
+                });
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            update(audioData, isBeat) {
+                const frequencyData = this.audioSync.getFrequencyData();
+                
+                if (frequencyData && frequencyData.length > 0) {
+                    // Update spectrum bars
+                    const barCount = this.spectrumBars.length;
+                    const step = Math.floor(frequencyData.length / barCount);
+                    
+                    for (let i = 0; i < barCount; i++) {
+                        const index = i * step;
+                        const value = frequencyData[Math.min(index, frequencyData.length - 1)];
+                        const normalizedValue = value / 255;
+                        
+                        // Convert to height (5px to 100% of container)
+                        const containerHeight = document.querySelector('.spectrum-display').clientHeight - 40;
+                        const barHeight = 5 + (normalizedValue * containerHeight);
+                        
+                        this.spectrumBars[i].style.height = barHeight + 'px';
+                        
+                        // Add glow effect for high intensities
+                        if (normalizedValue > 0.7) {
+                            this.spectrumBars[i].style.boxShadow = `0 0 20px rgba(78, 205, 196, 0.8)`;
+                        } else {
+                            this.spectrumBars[i].style.boxShadow = '0 0 10px rgba(78, 205, 196, 0.3)';
+                        }
+                        
+                        // Beat flash effect
+                        if (isBeat) {
+                            this.spectrumBars[i].style.filter = 'brightness(2)';
+                            setTimeout(() => {
+                                this.spectrumBars[i].style.filter = 'brightness(1)';
+                            }, 100);
+                        }
+                    }
+                }
+                
+                // Update audio analysis display
+                this.updateAnalysisDisplay(audioData);
+            }
+            
+            updateAnalysisDisplay(audioData) {
+                document.getElementById('bassValue').textContent = Math.round(audioData.bass * 100) + '%';
+                document.getElementById('midValue').textContent = Math.round(audioData.mid * 100) + '%';
+                document.getElementById('trebleValue').textContent = Math.round(audioData.treble * 100) + '%';
+                document.getElementById('volumeAnalysisValue').textContent = Math.round(audioData.volume * 100) + '%';
+                document.getElementById('centroidValue').textContent = Math.round(audioData.spectralCentroid * 100) + '%';
+                
+                // Calculate peak frequency
+                const frequencyData = this.audioSync.getFrequencyData();
+                if (frequencyData) {
+                    let maxIndex = 0;
+                    let maxValue = 0;
+                    
+                    for (let i = 0; i < frequencyData.length; i++) {
+                        if (frequencyData[i] > maxValue) {
+                            maxValue = frequencyData[i];
+                            maxIndex = i;
+                        }
+                    }
+                    
+                    // Convert bin index to frequency
+                    const nyquist = this.audioSync.audioContext ? this.audioSync.audioContext.sampleRate / 2 : 22050;
+                    const binWidth = nyquist / frequencyData.length;
+                    const peakFrequency = Math.round(maxIndex * binWidth);
+                    document.getElementById('peakValue').textContent = peakFrequency + ' Hz';
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update audio analysis
+                this.audioSync.update();
+                
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Start the application
+        window.addEventListener('load', () => {
+            new FrequencySpectrumAnalyzer();
+        });
+    </script>
+</body>
+</html>

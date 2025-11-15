@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Particle Physics Simulation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .control-group select,
+        .control-group input[type="range"],
+        .control-group input[type="checkbox"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .simulation-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .particle-data {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 250px;
+            z-index: 100;
+        }
+
+        .collisions-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .particle-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .particle-legend {
+            margin-top: 15px;
+        }
+
+        .particle-color {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .particle-color span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .collision-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .collision-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .energy-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(71, 85, 105, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Loading particle physics simulation...</div>
+        
+        <div class="controls">
+            <h3>Particle Physics Controls</h3>
+            
+            <div class="control-group">
+                <label for="simulationType">Simulation Type:</label>
+                <select id="simulationType">
+                    <option value="particle-collider">Particle Collider</option>
+                    <option value="quantum-field">Quantum Field Theory</option>
+                    <option value="standard-model">Standard Model</option>
+                    <option value="particle-decay">Particle Decay</option>
+                    <option value="boson-exchange">Boson Exchange</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="energy">Beam Energy:</label>
+                <div class="slider-group">
+                    <input type="range" id="energy" min="1" max="100" step="1" value="50">
+                    <div class="value-display">7 TeV</div>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showFields" checked>
+                <label for="showFields">Show Force Fields</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showTrails" checked>
+                <label for="showTrails">Show Particle Trails</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showInteractions">
+                <label for="showInteractions">Show Interactions</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showWavefunctions">
+                <label for="showWavefunctions">Show Wavefunctions</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="startCollision">Start Collision</button>
+                <button id="resetSimulation">Reset</button>
+            </div>
+        </div>
+        
+        <div class="simulation-info">
+            <h3>Simulation Status</h3>
+            <div class="particle-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="particleCount">0</div>
+                    <div class="stat-label">Particles</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="collisionCount">0</div>
+                    <div class="stat-label">Collisions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="energyLevel">7 TeV</div>
+                    <div class="stat-label">Beam Energy</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="temperature">0K</div>
+                    <div class="stat-label">Effective Temp</div>
+                </div>
+            </div>
+            
+            <div id="currentParticle">
+                <h4>Selected Particle</h4>
+                <div id="particleDetails">
+                    <p><strong>Type:</strong> None Selected</p>
+                    <p><strong>Energy:</strong> -</p>
+                    <p><strong>Momentum:</strong> -</p>
+                    <p><strong>Charge:</strong> -</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="particle-data">
+            <h3>Physical Constants</h3>
+            <div style="font-size: 12px; line-height: 1.4;">
+                <p><strong>Speed of Light:</strong> 299,792,458 m/s</p>
+                <p><strong>Planck's Constant:</strong> 6.626×10⁻³⁴ J⋅s</p>
+                <p><strong>Elementary Charge:</strong> 1.602×10⁻¹⁹ C</p>
+                <p><strong>Fine Structure:</strong> 1/137</p>
+                <p><strong>Compton Wavelength:</strong> 2.426×10⁻¹² m</p>
+                <p><strong>Strong Coupling:</strong> 0.118</p>
+            </div>
+            
+            <div class="particle-legend">
+                <h4>Particle Types</h4>
+                <div class="particle-color">
+                    <span style="background: #ff4444;"></span> Quarks
+                </div>
+                <div class="particle-color">
+                    <span style="background: #44ff44;"></span> Leptons
+                </div>
+                <div class="particle-color">
+                    <span style="background: #4444ff;"></span> Gauge Bosons
+                </div>
+                <div class="particle-color">
+                    <span style="background: #ffff44;"></span> Higgs Boson
+                </div>
+                <div class="particle-color">
+                    <span style="background: #ff44ff;"></span> Antiparticles
+                </div>
+            </div>
+        </div>
+        
+        <div class="collisions-panel">
+            <h3>Collision Analysis</h3>
+            <div class="energy-bar">
+                <div class="energy-fill" id="energyBar" style="width: 50%"></div>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8;">
+                Available collision energy: <span id="availableEnergy">3.5 TeV</span>
+            </p>
+            <div class="collision-log" id="collisionLog">
+                <div class="collision-entry">Ready for collision...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class ParticlePhysicsSimulator {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.particles = [];
+                this.trails = [];
+                this.fields = [];
+                this.collisions = [];
+                this.selectedParticle = null;
+                this.collisionCount = 0;
+                this.beamEnergy = 7;
+                this.animationId = null;
+                
+                this.particleTypes = {
+                    electron: { 
+                        mass: 0.511, color: 0x44ff44, charge: -1, 
+                        radius: 0.05, name: 'Electron (e⁻)' 
+                    },
+                    positron: { 
+                        mass: 0.511, color: 0xff44ff, charge: +1, 
+                        radius: 0.05, name: 'Positron (e⁺)' 
+                    },
+                    proton: { 
+                        mass: 938.272, color: 0xff4444, charge: +1, 
+                        radius: 0.1, name: 'Proton (p)' 
+                    },
+                    antiproton: { 
+                        mass: 938.272, color: 0x44ff44, charge: -1, 
+                        radius: 0.1, name: 'Antiproton (p̄)' 
+                    },
+                    muon: { 
+                        mass: 105.658, color: 0x44ff44, charge: -1, 
+                        radius: 0.08, name: 'Muon (μ⁻)' 
+                    },
+                    photon: { 
+                        mass: 0, color: 0xffff44, charge: 0, 
+                        radius: 0.03, name: 'Photon (γ)' 
+                    },
+                    gluon: { 
+                        mass: 0, color: 0x4444ff, charge: 0, 
+                        radius: 0.03, name: 'Gluon (g)' 
+                    },
+                    higgs: { 
+                        mass: 125.09, color: 0xffff44, charge: 0, 
+                        radius: 0.12, name: 'Higgs Boson (H)' 
+                    },
+                    up_quark: { 
+                        mass: 2.2, color: 0xff4444, charge: +2/3, 
+                        radius: 0.04, name: 'Up Quark (u)' 
+                    },
+                    down_quark: { 
+                        mass: 4.7, color: 0xff4444, charge: -1/3, 
+                        radius: 0.04, name: 'Down Quark (d)' 
+                    }
+                };
+                
+                this.forceInteractions = {
+                    electromagnetic: { strength: 1.0, range: Infinity, particle: 'photon' },
+                    weak: { strength: 0.001, range: 1e-18, particle: 'w_boson' },
+                    strong: { strength: 1.0, range: 1e-15, particle: 'gluon' },
+                    gravitational: { strength: 1e-45, range: Infinity, particle: 'graviton' }
+                };
+                
+                this.init();
+                this.setupEventListeners();
+                this.createInitialParticles();
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                
+                // Camera
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 0, 20);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setClearColor(0x0f0f23, 1);
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+                
+                const pointLight = new PointLight(0xffffff, 0.8);
+                pointLight.position.set(10, 10, 10);
+                this.scene.add(pointLight);
+                
+                // Controls
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    this.scene.rotation.x = rotationX;
+                    this.scene.rotation.y = rotationY;
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    this.camera.position.z += delta;
+                    this.camera.position.z = Math.max(5, Math.min(100, this.camera.position.z));
+                });
+                
+                canvas.addEventListener('click', (e) => {
+                    this.handleParticleSelection(e);
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('simulationType').addEventListener('change', (e) => {
+                    this.changeSimulationType(e.target.value);
+                });
+                
+                document.getElementById('energy').addEventListener('input', (e) => {
+                    this.beamEnergy = parseFloat(e.target.value) * 0.14; // TeV
+                    e.target.nextElementSibling.textContent = `${this.beamEnergy.toFixed(1)} TeV`;
+                    this.updateEnergyLevel();
+                });
+                
+                document.getElementById('showFields').addEventListener('change', (e) => {
+                    this.toggleForceFields(e.target.checked);
+                });
+                
+                document.getElementById('showTrails').addEventListener('change', (e) => {
+                    this.toggleParticleTrails(e.target.checked);
+                });
+                
+                document.getElementById('showInteractions').addEventListener('change', (e) => {
+                    this.toggleInteractions(e.target.checked);
+                });
+                
+                document.getElementById('showWavefunctions').addEventListener('change', (e) => {
+                    this.toggleWavefunctions(e.target.checked);
+                });
+                
+                document.getElementById('startCollision').addEventListener('click', () => {
+                    this.startCollision();
+                });
+                
+                document.getElementById('resetSimulation').addEventListener('click', () => {
+                    this.resetSimulation();
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            createInitialParticles() {
+                this.changeSimulationType('particle-collider');
+            }
+            
+            createParticle(type, position, velocity, energy = 0) {
+                const particleData = this.particleTypes[type];
+                if (!particleData) return null;
+                
+                const geometry = new SphereGeometry(particleData.radius, 16, 16);
+                const material = new MeshPhongMaterial({ 
+                    color: particleData.color,
+                    transparent: true,
+                    opacity: 0.8,
+                    emissive: particleData.color,
+                    emissiveIntensity: 0.1
+                });
+                
+                const particle = new Mesh(geometry, material);
+                particle.position.copy(position);
+                
+                const particleObj = {
+                    type: type,
+                    mesh: particle,
+                    velocity: velocity.clone(),
+                    energy: energy,
+                    charge: particleData.charge,
+                    mass: particleData.mass,
+                    radius: particleData.radius,
+                    lifetime: Infinity,
+                    decayTime: 0,
+                    trail: [],
+                    interactions: [],
+                    userData: {
+                        name: particleData.name,
+                        charge: particleData.charge,
+                        mass: particleData.mass
+                    }
+                };
+                
+                particle.userData = particleObj;
+                this.scene.add(particle);
+                this.particles.push(particleObj);
+                
+                return particleObj;
+            }
+            
+            createTrail(particle) {
+                if (!document.getElementById('showTrails').checked) return;
+                
+                const trailGeometry = new BufferGeometry();
+                const maxTrailPoints = 100;
+                const positions = new Float32Array(maxTrailPoints * 3);
+                
+                for (let i = 0; i < maxTrailPoints; i++) {
+                    const point = particle.trail[particle.trail.length - 1 - i];
+                    if (point) {
+                        positions[i * 3] = point.x;
+                        positions[i * 3 + 1] = point.y;
+                        positions[i * 3 + 2] = point.z;
+                    } else {
+                        positions[i * 3] = positions[i * 3 + 1] = positions[i * 3 + 2] = 0;
+                    }
+                }
+                
+                trailGeometry.setAttribute('position', new BufferAttribute(positions, 3));
+                
+                const trailMaterial = new LineBasicMaterial({ 
+                    color: particle.mesh.material.color,
+                    transparent: true,
+                    opacity: 0.5
+                });
+                
+                const trail = new Line(trailGeometry, trailMaterial);
+                this.scene.add(trail);
+                particle.trailLine = trail;
+            }
+            
+            createForceField(pos1, pos2, fieldType) {
+                if (!document.getElementById('showFields').checked) return;
+                
+                const distance = pos1.distanceTo(pos2);
+                const direction = pos2.clone().sub(pos1).normalize();
+                
+                // Create field visualization
+                const segments = 10;
+                const fieldPoints = [];
+                
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const point = pos1.clone().lerp(pos2, t);
+                    fieldPoints.push(point);
+                }
+                
+                const fieldGeometry = new BufferGeometry();
+                const positions = new Float32Array(fieldPoints.length * 3);
+                fieldPoints.forEach((point, i) => {
+                    positions[i * 3] = point.x;
+                    positions[i * 3 + 1] = point.y;
+                    positions[i * 3 + 2] = point.z;
+                });
+                
+                fieldGeometry.setAttribute('position', new BufferAttribute(positions, 3));
+                
+                const fieldColors = {
+                    electromagnetic: 0x4488ff,
+                    weak: 0x8844ff,
+                    strong: 0xff8844,
+                    gravitational: 0x88ff44
+                };
+                
+                const fieldMaterial = new LineBasicMaterial({ 
+                    color: fieldColors[fieldType] || 0xffffff,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                
+                const fieldLine = new Line(fieldGeometry, fieldMaterial);
+                this.fields.push(fieldLine);
+                this.scene.add(fieldLine);
+                
+                // Remove after 2 seconds
+                setTimeout(() => {
+                    this.scene.remove(fieldLine);
+                    this.fields = this.fields.filter(f => f !== fieldLine);
+                }, 2000);
+            }
+            
+            changeSimulationType(type) {
+                this.clearSimulation();
+                
+                switch (type) {
+                    case 'particle-collider':
+                        this.setupParticleCollider();
+                        break;
+                    case 'quantum-field':
+                        this.setupQuantumField();
+                        break;
+                    case 'standard-model':
+                        this.setupStandardModel();
+                        break;
+                    case 'particle-decay':
+                        this.setupParticleDecay();
+                        break;
+                    case 'boson-exchange':
+                        this.setupBosonExchange();
+                        break;
+                }
+                
+                this.updateParticleCount();
+            }
+            
+            setupParticleCollider() {
+                // Create particle beams for collision
+                for (let i = 0; i < 5; i++) {
+                    const position1 = new Vector3(-10, (i - 2) * 2, 0);
+                    const position2 = new Vector3(10, (i - 2) * 2, 0);
+                    const velocity1 = new Vector3(1, 0, 0).multiplyScalar(this.beamEnergy * 0.1);
+                    const velocity2 = new Vector3(-1, 0, 0).multiplyScalar(this.beamEnergy * 0.1);
+                    
+                    this.createParticle('proton', position1, velocity1, this.beamEnergy);
+                    this.createParticle('proton', position2, velocity2, this.beamEnergy);
+                }
+            }
+            
+            setupQuantumField() {
+                // Create quantum field particles
+                const fieldSize = 10;
+                const particlesPerType = 20;
+                
+                Object.keys(this.particleTypes).forEach(type => {
+                    for (let i = 0; i < particlesPerType; i++) {
+                        const position = new Vector3(
+                            (Math.random() - 0.5) * fieldSize,
+                            (Math.random() - 0.5) * fieldSize,
+                            (Math.random() - 0.5) * fieldSize
+                        );
+                        const velocity = new Vector3(
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5
+                        );
+                        
+                        this.createParticle(type, position, velocity);
+                    }
+                });
+            }
+            
+            setupStandardModel() {
+                // Create fundamental particles
+                const particles = ['electron', 'up_quark', 'down_quark'];
+                
+                particles.forEach((type, index) => {
+                    for (let i = 0; i < 3; i++) {
+                        const position = new Vector3(
+                            (index - 1) * 5,
+                            (i - 1) * 3,
+                            0
+                        );
+                        const velocity = new Vector3(
+                            (Math.random() - 0.5) * 0.3,
+                            (Math.random() - 0.5) * 0.3,
+                            (Math.random() - 0.5) * 0.3
+                        );
+                        
+                        this.createParticle(type, position, velocity);
+                    }
+                });
+            }
+            
+            setupParticleDecay() {
+                // Create particles that will decay
+                const unstableParticles = ['muon', 'higgs'];
+                
+                unstableParticles.forEach((type, index) => {
+                    for (let i = 0; i < 3; i++) {
+                        const position = new Vector3(
+                            (index - 0.5) * 8,
+                            (i - 1) * 4,
+                            0
+                        );
+                        const velocity = new Vector3(
+                            (Math.random() - 0.5) * 0.2,
+                            (Math.random() - 0.5) * 0.2,
+                            (Math.random() - 0.5) * 0.2
+                        );
+                        
+                        const particle = this.createParticle(type, position, velocity);
+                        if (particle) {
+                            // Set decay time (muon: ~2.2 μs, Higgs: ~1.6×10⁻²² s)
+                            particle.decayTime = type === 'muon' ? 2.2e-6 : 1.6e-22;
+                            particle.decayTimer = 0;
+                        }
+                    }
+                });
+            }
+            
+            setupBosonExchange() {
+                // Create particles that exchange bosons
+                const chargedParticles = ['electron', 'proton'];
+                
+                chargedParticles.forEach((type, index) => {
+                    for (let i = 0; i < 2; i++) {
+                        const position = new Vector3(
+                            (index - 0.5) * 6,
+                            (i - 0.5) * 2,
+                            0
+                        );
+                        const velocity = new Vector3(
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.1
+                        );
+                        
+                        this.createParticle(type, position, velocity);
+                    }
+                });
+            }
+            
+            clearSimulation() {
+                // Remove all particles
+                this.particles.forEach(particle => {
+                    this.scene.remove(particle.mesh);
+                    if (particle.trailLine) {
+                        this.scene.remove(particle.trailLine);
+                    }
+                });
+                this.particles = [];
+                
+                // Remove all trails
+                this.trails.forEach(trail => {
+                    this.scene.remove(trail);
+                });
+                this.trails = [];
+                
+                // Remove all fields
+                this.fields.forEach(field => {
+                    this.scene.remove(field);
+                });
+                this.fields = [];
+                
+                this.collisionCount = 0;
+                this.updateCollisionCount();
+            }
+            
+            handleParticleSelection(event) {
+                const mouse = new Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                const raycaster = new Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                
+                const particleMeshes = this.particles.map(p => p.mesh);
+                const intersects = raycaster.intersectObjects(particleMeshes);
+                
+                if (intersects.length > 0) {
+                    this.selectedParticle = intersects[0].object.userData;
+                    this.updateParticleInfo(this.selectedParticle);
+                }
+            }
+            
+            updateParticleInfo(particle) {
+                document.getElementById('particleDetails').innerHTML = `
+                    <p><strong>Type:</strong> ${particle.userData.name}</p>
+                    <p><strong>Energy:</strong> ${particle.energy.toFixed(3)} GeV</p>
+                    <p><strong>Momentum:</strong> ${particle.velocity.length().toFixed(3)} GeV/c</p>
+                    <p><strong>Charge:</strong> ${particle.userData.charge > 0 ? '+' : ''}${particle.userData.charge}</p>
+                    <p><strong>Mass:</strong> ${particle.userData.mass} MeV/c²</p>
+                    <p><strong>Velocity:</strong> ${(particle.velocity.length() / 10).toFixed(4)}c</p>
+                `;
+            }
+            
+            updateEnergyLevel() {
+                document.getElementById('energyLevel').textContent = `${this.beamEnergy.toFixed(1)} TeV`;
+                document.getElementById('availableEnergy').textContent = `${(this.beamEnergy * 0.5).toFixed(1)} TeV`;
+                
+                const energyBar = document.getElementById('energyBar');
+                const maxEnergy = 100; // 100 TeV maximum
+                energyBar.style.width = `${(this.beamEnergy / maxEnergy) * 100}%`;
+            }
+            
+            updateParticleCount() {
+                document.getElementById('particleCount').textContent = this.particles.length;
+            }
+            
+            updateCollisionCount() {
+                document.getElementById('collisionCount').textContent = this.collisionCount;
+            }
+            
+            toggleForceFields(show) {
+                this.fields.forEach(field => {
+                    field.visible = show;
+                });
+            }
+            
+            toggleParticleTrails(show) {
+                this.particles.forEach(particle => {
+                    if (particle.trailLine) {
+                        particle.trailLine.visible = show;
+                    }
+                });
+            }
+            
+            toggleInteractions(show) {
+                // Show/hide interaction effects
+                console.log('Interactions:', show);
+            }
+            
+            toggleWavefunctions(show) {
+                // Show/hide wavefunction visualizations
+                console.log('Wavefunctions:', show);
+            }
+            
+            startCollision() {
+                // Reset particle positions and velocities for collision
+                const leftParticles = this.particles.filter(p => p.mesh.position.x < 0);
+                const rightParticles = this.particles.filter(p => p.mesh.position.x > 0);
+                
+                leftParticles.forEach((particle, i) => {
+                    particle.velocity.x = this.beamEnergy * 0.1 + Math.random() * 0.1;
+                    particle.velocity.y = (Math.random() - 0.5) * 0.2;
+                    particle.velocity.z = (Math.random() - 0.5) * 0.2;
+                });
+                
+                rightParticles.forEach(particle => {
+                    particle.velocity.x = -this.beamEnergy * 0.1 - Math.random() * 0.1;
+                    particle.velocity.y = (Math.random() - 0.5) * 0.2;
+                    particle.velocity.z = (Math.random() - 0.5) * 0.2;
+                });
+                
+                this.logCollision('High-energy collision initiated');
+            }
+            
+            resetSimulation() {
+                this.changeSimulationType(document.getElementById('simulationType').value);
+                this.selectedParticle = null;
+                document.getElementById('particleDetails').innerHTML = `
+                    <p><strong>Type:</strong> None Selected</p>
+                    <p><strong>Energy:</strong> -</p>
+                    <p><strong>Momentum:</strong> -</p>
+                    <p><strong>Charge:</strong> -</p>
+                `;
+            }
+            
+            logCollision(message) {
+                const log = document.getElementById('collisionLog');
+                const entry = document.createElement('div');
+                entry.className = 'collision-entry';
+                entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                log.insertBefore(entry, log.firstChild);
+                
+                // Keep only last 10 entries
+                while (log.children.length > 10) {
+                    log.removeChild(log.lastChild);
+                }
+            }
+            
+            updateParticles(deltaTime) {
+                this.particles.forEach(particle => {
+                    // Update position
+                    particle.mesh.position.add(particle.velocity.clone().multiplyScalar(deltaTime));
+                    
+                    // Update trail
+                    if (document.getElementById('showTrails').checked) {
+                        particle.trail.push(particle.mesh.position.clone());
+                        if (particle.trail.length > 100) {
+                            particle.trail.shift();
+                        }
+                        
+                        if (particle.trailLine && particle.trail.length > 1) {
+                            const positions = particle.trailLine.geometry.attributes.position.array;
+                            for (let i = 0; i < particle.trail.length && i < 100; i++) {
+                                const point = particle.trail[particle.trail.length - 1 - i];
+                                positions[i * 3] = point.x;
+                                positions[i * 3 + 1] = point.y;
+                                positions[i * 3 + 2] = point.z;
+                            }
+                            particle.trailLine.geometry.attributes.position.needsUpdate = true;
+                        }
+                    }
+                    
+                    // Handle particle decay
+                    if (particle.decayTime > 0) {
+                        particle.decayTimer += deltaTime;
+                        if (particle.decayTimer >= particle.decayTime) {
+                            this.decayParticle(particle);
+                        }
+                    }
+                    
+                    // Check for collisions
+                    this.checkCollisions(particle);
+                    
+                    // Apply force interactions
+                    this.applyForces(particle);
+                    
+                    // Boundary conditions
+                    const bounds = 20;
+                    if (Math.abs(particle.mesh.position.x) > bounds ||
+                        Math.abs(particle.mesh.position.y) > bounds ||
+                        Math.abs(particle.mesh.position.z) > bounds) {
+                        this.scene.remove(particle.mesh);
+                        this.removeParticle(particle);
+                    }
+                });
+            }
+            
+            checkCollisions(particle) {
+                this.particles.forEach(otherParticle => {
+                    if (particle === otherParticle) return;
+                    
+                    const distance = particle.mesh.position.distanceTo(otherParticle.mesh.position);
+                    if (distance < particle.radius + otherParticle.radius) {
+                        this.collideParticles(particle, otherParticle);
+                    }
+                });
+            }
+            
+            collideParticles(p1, p2) {
+                this.collisionCount++;
+                this.updateCollisionCount();
+                
+                // Elastic collision
+                const normal = p2.mesh.position.clone().sub(p1.mesh.position).normalize();
+                const relativeVelocity = p1.velocity.clone().sub(p2.velocity);
+                const speed = relativeVelocity.dot(normal);
+                
+                if (speed > 0) return; // Particles moving apart
+                
+                const restitution = 0.8;
+                const impulse = -(1 + restitution) * speed / (1/p1.mass + 1/p2.mass);
+                const impulseVector = normal.clone().multiplyScalar(impulse);
+                
+                p1.velocity.add(impulseVector.clone().multiplyScalar(1/p1.mass));
+                p2.velocity.sub(impulseVector.clone().multiplyScalar(1/p2.mass));
+                
+                // Visual effect for collision
+                this.createCollisionEffect(p1.mesh.position, p2.mesh.position);
+                
+                // Log collision
+                this.logCollision(`${p1.type} + ${p2.type} collision`);
+                
+                // Create new particles if energy is high enough
+                if (this.beamEnergy > 5) {
+                    this.createParticleProducts(p1, p2);
+                }
+            }
+            
+            createCollisionEffect(pos1, pos2) {
+                const midpoint = pos1.clone().add(pos2).multiplyScalar(0.5);
+                
+                // Create explosion effect
+                for (let i = 0; i < 10; i++) {
+                    const angle = (i / 10) * Math.PI * 2;
+                    const offset = new Vector3(
+                        Math.cos(angle) * 0.5,
+                        Math.sin(angle) * 0.5,
+                        (Math.random() - 0.5) * 0.5
+                    );
+                    
+                    const particle = this.createParticle(
+                        'photon',
+                        midpoint.clone().add(offset),
+                        offset.multiplyScalar(5),
+                        0.1
+                    );
+                    
+                    if (particle) {
+                        particle.lifetime = 1.0; // 1 second lifetime
+                        particle.decayTimer = 0;
+                    }
+                }
+            }
+            
+            createParticleProducts(p1, p2) {
+                const center = p1.mesh.position.clone().add(p2.mesh.position).multiplyScalar(0.5);
+                const totalEnergy = p1.energy + p2.energy;
+                
+                // Create various particle products based on energy
+                const productTypes = ['electron', 'muon', 'photon'];
+                
+                productTypes.forEach(type => {
+                    if (totalEnergy > this.particleTypes[type].mass) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const velocity = new Vector3(
+                            Math.cos(angle) * Math.random() * 2,
+                            Math.sin(angle) * Math.random() * 2,
+                            (Math.random() - 0.5) * 2
+                        );
+                        
+                        const productEnergy = totalEnergy * 0.1; // Distribute energy
+                        this.createParticle(type, center.clone(), velocity, productEnergy);
+                    }
+                });
+            }
+            
+            applyForces(particle) {
+                // Apply electromagnetic force
+                if (document.getElementById('showFields').checked) {
+                    this.particles.forEach(otherParticle => {
+                        if (particle === otherParticle) return;
+                        
+                        const distance = particle.mesh.position.distanceTo(otherParticle.mesh.position);
+                        if (distance > 0.01 && distance < 5.0) {
+                            const direction = otherParticle.mesh.position.clone().sub(particle.mesh.position);
+                            const force = direction.normalize().multiplyScalar(
+                                (particle.charge * otherParticle.charge) / (distance * distance * 100)
+                            );
+                            
+                            particle.velocity.add(force.multiplyScalar(0.01));
+                            
+                            // Show force field
+                            if (Math.random() < 0.01) {
+                                this.createForceField(
+                                    particle.mesh.position,
+                                    otherParticle.mesh.position,
+                                    'electromagnetic'
+                                );
+                            }
+                        }
+                    });
+                }
+            }
+            
+            decayParticle(particle) {
+                this.logCollision(`${particle.type} particle decayed`);
+                
+                // Create decay products
+                const decayProducts = this.getDecayProducts(particle.type);
+                decayProducts.forEach(productType => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = new Vector3(
+                        Math.cos(angle) * Math.random() * 2,
+                        Math.sin(angle) * Math.random() * 2,
+                        (Math.random() - 0.5) * 2
+                    );
+                    
+                    this.createParticle(productType, particle.mesh.position.clone(), velocity);
+                });
+                
+                // Remove original particle
+                this.scene.remove(particle.mesh);
+                this.removeParticle(particle);
+            }
+            
+            getDecayProducts(particleType) {
+                const decayMap = {
+                    muon: ['electron', 'photon'],
+                    higgs: ['photon', 'photon'],
+                    // Add more decay patterns
+                };
+                
+                return decayMap[particleType] || ['photon'];
+            }
+            
+            removeParticle(particle) {
+                const index = this.particles.indexOf(particle);
+                if (index > -1) {
+                    this.particles.splice(index, 1);
+                }
+                this.updateParticleCount();
+            }
+            
+            animate() {
+                this.animationId = requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = 0.016; // ~60 FPS
+                
+                this.updateParticles(deltaTime);
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the simulator when the page loads
+        window.addEventListener('load', () => {
+            new ParticlePhysicsSimulator();
+        });
+    </script>
+</body>
+</html>

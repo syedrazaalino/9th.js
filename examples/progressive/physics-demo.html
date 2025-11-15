@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Physics Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls select, #controls input[type="checkbox"] {
+            margin-bottom: 8px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: calc(50% - 4px);
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        #controls button.secondary {
+            background: #2196F3;
+        }
+        
+        #controls button.secondary:hover {
+            background: #1976D2;
+        }
+        
+        #controls button.danger {
+            background: #f44336;
+        }
+        
+        #controls button.danger:hover {
+            background: #d32f2f;
+        }
+        
+        #controls .control-group {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #physicsStatus {
+            background: rgba(244, 67, 54, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        #stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        #stats div {
+            text-align: center;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>⚡ Physics Demo</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Understand rigid body physics</li>
+            <li>Learn about forces and collisions</li>
+            <li>Explore constraints and joints</li>
+            <li>Master physics simulation timing</li>
+        </ul>
+        <p><strong>What you see:</strong> Interactive physics simulation with gravity, collisions, forces, and various physical objects demonstrating realistic physics behavior.</p>
+    </div>
+    
+    <div id="controls">
+        <div id="physicsStatus">
+            🛑 Physics Paused
+        </div>
+        
+        <div class="control-group">
+            <h4>🎮 Simulation Controls</h4>
+            
+            <button id="playPause" class="secondary">▶️ Start</button>
+            <button id="reset">🔄 Reset</button>
+            
+            <button id="addBox" class="secondary">📦 Add Box</button>
+            <button id="addSphere">🔵 Add Sphere</button>
+            
+            <button id="addConstraint" class="secondary">🔗 Add Constraint</button>
+            <button id="clearObjects" class="danger">🗑️ Clear</button>
+        </div>
+        
+        <div class="control-group">
+            <h4>🌍 World Settings</h4>
+            
+            <label for="gravity">Gravity:</label>
+            <input type="range" id="gravity" min="-20" max="0" step="0.5" value="-9.8">
+            <span id="gravity-value">-9.8</span>
+            
+            <label for="friction">Friction:</label>
+            <input type="range" id="friction" min="0" max="1" step="0.05" value="0.3">
+            <span id="friction-value">0.30</span>
+            
+            <label for="restitution">Restitution (Bounciness):</label>
+            <input type="range" id="restitution" min="0" max="1" step="0.05" value="0.6">
+            <span id="restitution-value">0.60</span>
+            
+            <label for="timeStep">Time Step:</label>
+            <input type="range" id="timeStep" min="0.001" max="0.05" step="0.001" value="0.016">
+            <span id="timeStep-value">0.016</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>💨 Forces</h4>
+            
+            <label for="forceStrength">Force Strength:</label>
+            <input type="range" id="forceStrength" min="0" max="100" step="1" value="50">
+            <span id="force-strength-value">50</span>
+            
+            <div>
+                <button id="applyForce" style="width: 100%; margin: 5px 0;">💥 Apply Random Force</button>
+                <button id="explosion" style="width: 100%; margin: 5px 0;" class="danger">💥 Explosion</button>
+            </div>
+            
+            <label>
+                <input type="checkbox" id="wind"> Enable Wind
+            </label>
+            
+            <label for="windStrength">Wind Strength:</label>
+            <input type="range" id="windStrength" min="0" max="50" step="1" value="10">
+            <span id="wind-strength-value">10</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎯 Constraints</h4>
+            
+            <label for="constraintType">Constraint Type:</label>
+            <select id="constraintType">
+                <option value="distance">Distance</option>
+                <option value="hinge">Hinge</option>
+                <option value="spring">Spring</option>
+                <option value="slider">Slider</option>
+            </select>
+            
+            <label for="constraintStiffness">Stiffness:</label>
+            <input type="range" id="constraintStiffness" min="0" max="1" step="0.05" value="0.8">
+            <span id="constraint-stiffness-value">0.80</span>
+            
+            <label for="constraintDamping">Damping:</label>
+            <input type="range" id="constraintDamping" min="0" max="1" step="0.05" value="0.2">
+            <span id="constraint-damping-value">0.20</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>⚙️ Simulation Settings</h4>
+            
+            <label for="substeps">Physics Substeps:</label>
+            <input type="range" id="substeps" min="1" max="10" step="1" value="3">
+            <span id="substeps-value">3</span>
+            
+            <label>
+                <input type="checkbox" id="sleep"> Enable Sleeping
+            </label>
+            
+            <label>
+                <input type="checkbox" id="debug"> Debug Draw
+            </label>
+            
+            <label>
+                <input type="checkbox" id="floor"> Static Floor
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <button id="preset1">🎢 Ramp Demo</button>
+            <button id="preset2">🏗️ Tower Stack</button>
+            <button id="preset3">🌊 Pendulum</button>
+            <button id="preset4">🎯 Destruction</button>
+        </div>
+        
+        <div id="stats">
+            <div>
+                <strong>Objects:</strong><br><span id="objectCount">0</span>
+            </div>
+            <div>
+                <strong>Constraints:</strong><br><span id="constraintCount">0</span>
+            </div>
+            <div>
+                <strong>Active:</strong><br><span id="activeCount">0</span>
+            </div>
+            <div>
+                <strong>FPS:</strong><br><span id="fps">0</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html" class="current">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class PhysicsDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.isRunning = false;
+                this.objects = [];
+                this.constraints = [];
+                this.physicsWorld = null;
+                this.timeStep = 0.016;
+                this.gravity = -9.8;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.init();
+                this.setupPhysics();
+                this.setupScene();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: true,
+                    alpha: false
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#0a0a1a');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 5, 15);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer = new NinthJS.Renderer(this.canvas);
+                
+                this.setupLighting();
+            }
+            
+            setupLighting() {
+                const ambient = new NinthJS.AmbientLight(0.4, '#ffffff');
+                this.scene.add(ambient);
+                
+                const directional = new NinthJS.DirectionalLight(0.8, '#ffffff');
+                directional.setDirection(-1, -1, -1);
+                this.scene.add(directional);
+            }
+            
+            setupPhysics() {
+                // Initialize physics world (simplified simulation)
+                this.physicsWorld = {
+                    gravity: { x: 0, y: -9.8, z: 0 },
+                    friction: 0.3,
+                    restitution: 0.6,
+                    substeps: 3,
+                    sleepingEnabled: true,
+                    debugDraw: false
+                };
+            }
+            
+            setupScene() {
+                // Create floor
+                if (document.getElementById('floor').checked) {
+                    this.createFloor();
+                }
+            }
+            
+            createFloor() {
+                const geometry = new NinthJS.PlaneGeometry(20, 20);
+                const material = new NinthJS.LambertMaterial({ color: '#333333' });
+                const floor = new NinthJS.Mesh(geometry);
+                floor.material = material;
+                floor.setRotation(-Math.PI / 2, 0, 0);
+                floor.setPosition(0, -5, 0);
+                floor.isStatic = true;
+                floor.mass = 0;
+                this.scene.add(floor);
+                
+                this.objects.push({
+                    mesh: floor,
+                    mass: 0,
+                    velocity: { x: 0, y: 0, z: 0 },
+                    force: { x: 0, y: 0, z: 0 },
+                    isStatic: true,
+                    type: 'floor'
+                });
+            }
+            
+            createBox(position = { x: 0, y: 5, z: 0 }, size = 1) {
+                const geometry = new NinthJS.BoxGeometry(size, size, size);
+                const material = new NinthJS.LambertMaterial({ 
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                });
+                const mesh = new NinthJS.Mesh(geometry);
+                mesh.material = material;
+                mesh.setPosition(position.x, position.y, position.z);
+                
+                const box = {
+                    mesh,
+                    mass: size * size * size * 0.1, // Density
+                    velocity: { x: 0, y: 0, z: 0 },
+                    force: { x: 0, y: 0, z: 0 },
+                    size,
+                    isStatic: false,
+                    type: 'box',
+                    active: true
+                };
+                
+                this.scene.add(mesh);
+                this.objects.push(box);
+                this.updateStats();
+            }
+            
+            createSphere(position = { x: 0, y: 5, z: 0 }, radius = 0.5) {
+                const geometry = new NinthJS.SphereGeometry(radius, 16, 16);
+                const material = new NinthJS.LambertMaterial({ 
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                });
+                const mesh = new NinthJS.Mesh(geometry);
+                mesh.material = material;
+                mesh.setPosition(position.x, position.y, position.z);
+                
+                const sphere = {
+                    mesh,
+                    mass: (4/3) * Math.PI * radius * radius * radius * 0.1, // Density
+                    velocity: { x: 0, y: 0, z: 0 },
+                    force: { x: 0, y: 0, z: 0 },
+                    radius,
+                    isStatic: false,
+                    type: 'sphere',
+                    active: true
+                };
+                
+                this.scene.add(mesh);
+                this.objects.push(sphere);
+                this.updateStats();
+            }
+            
+            createConstraint(object1, object2, type = 'distance') {
+                const constraint = {
+                    object1,
+                    object2,
+                    type,
+                    stiffness: parseFloat(document.getElementById('constraintStiffness').value),
+                    damping: parseFloat(document.getElementById('constraintDamping').value),
+                    restDistance: this.getDistance(object1.mesh.getPosition(), object2.mesh.getPosition())
+                };
+                
+                this.constraints.push(constraint);
+                this.updateStats();
+            }
+            
+            getDistance(pos1, pos2) {
+                const dx = pos1.x - pos2.x;
+                const dy = pos1.y - pos2.y;
+                const dz = pos1.z - pos2.z;
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+            
+            setupControls() {
+                // Simulation controls
+                document.getElementById('playPause').addEventListener('click', () => {
+                    this.toggleSimulation();
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.resetSimulation();
+                });
+                
+                document.getElementById('addBox').addEventListener('click', () => {
+                    this.createBox();
+                });
+                
+                document.getElementById('addSphere').addEventListener('click', () => {
+                    this.createSphere();
+                });
+                
+                document.getElementById('addConstraint').addEventListener('click', () => {
+                    this.addConstraintBetweenObjects();
+                });
+                
+                document.getElementById('clearObjects').addEventListener('click', () => {
+                    this.clearObjects();
+                });
+                
+                // World settings
+                const gravitySlider = document.getElementById('gravity');
+                const gravityValue = document.getElementById('gravity-value');
+                gravitySlider.addEventListener('input', (e) => {
+                    this.gravity = parseFloat(e.target.value);
+                    gravityValue.textContent = this.gravity.toFixed(1);
+                    this.physicsWorld.gravity.y = this.gravity;
+                });
+                
+                const frictionSlider = document.getElementById('friction');
+                const frictionValue = document.getElementById('friction-value');
+                frictionSlider.addEventListener('input', (e) => {
+                    this.physicsWorld.friction = parseFloat(e.target.value);
+                    frictionValue.textContent = this.physicsWorld.friction.toFixed(2);
+                });
+                
+                const restitutionSlider = document.getElementById('restitution');
+                const restitutionValue = document.getElementById('restitution-value');
+                restitutionSlider.addEventListener('input', (e) => {
+                    this.physicsWorld.restitution = parseFloat(e.target.value);
+                    restitutionValue.textContent = this.physicsWorld.restitution.toFixed(2);
+                });
+                
+                const timeStepSlider = document.getElementById('timeStep');
+                const timeStepValue = document.getElementById('timeStep-value');
+                timeStepSlider.addEventListener('input', (e) => {
+                    this.timeStep = parseFloat(e.target.value);
+                    timeStepValue.textContent = this.timeStep.toFixed(3);
+                });
+                
+                // Forces
+                const forceSlider = document.getElementById('forceStrength');
+                const forceValue = document.getElementById('force-strength-value');
+                forceSlider.addEventListener('input', (e) => {
+                    forceValue.textContent = e.target.value;
+                });
+                
+                document.getElementById('applyForce').addEventListener('click', () => {
+                    this.applyRandomForce();
+                });
+                
+                document.getElementById('explosion').addEventListener('click', () => {
+                    this.explosion();
+                });
+                
+                const windCheckbox = document.getElementById('wind');
+                const windSlider = document.getElementById('windStrength');
+                const windValue = document.getElementById('wind-strength-value');
+                
+                windSlider.addEventListener('input', (e) => {
+                    windValue.textContent = e.target.value;
+                });
+                
+                // Constraints
+                const stiffnessSlider = document.getElementById('constraintStiffness');
+                const stiffnessValue = document.getElementById('constraint-stiffness-value');
+                stiffnessSlider.addEventListener('input', (e) => {
+                    stiffnessValue.textContent = parseFloat(e.target.value).toFixed(2);
+                });
+                
+                const dampingSlider = document.getElementById('constraintDamping');
+                const dampingValue = document.getElementById('constraint-damping-value');
+                dampingSlider.addEventListener('input', (e) => {
+                    dampingValue.textContent = parseFloat(e.target.value).toFixed(2);
+                });
+                
+                // Simulation settings
+                const substepsSlider = document.getElementById('substeps');
+                const substepsValue = document.getElementById('substeps-value');
+                substepsSlider.addEventListener('input', (e) => {
+                    this.physicsWorld.substeps = parseInt(e.target.value);
+                    substepsValue.textContent = this.physicsWorld.substeps;
+                });
+                
+                document.getElementById('sleep').addEventListener('change', (e) => {
+                    this.physicsWorld.sleepingEnabled = e.target.checked;
+                });
+                
+                document.getElementById('debug').addEventListener('change', (e) => {
+                    this.physicsWorld.debugDraw = e.target.checked;
+                });
+                
+                document.getElementById('floor').addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        this.createFloor();
+                    } else {
+                        this.removeFloor();
+                    }
+                });
+                
+                // Presets
+                document.getElementById('preset1').addEventListener('click', () => {
+                    this.applyPreset('ramp');
+                });
+                
+                document.getElementById('preset2').addEventListener('click', () => {
+                    this.applyPreset('tower');
+                });
+                
+                document.getElementById('preset3').addEventListener('click', () => {
+                    this.applyPreset('pendulum');
+                });
+                
+                document.getElementById('preset4').addEventListener('click', () => {
+                    this.applyPreset('destruction');
+                });
+            }
+            
+            toggleSimulation() {
+                this.isRunning = !this.isRunning;
+                const button = document.getElementById('playPause');
+                const status = document.getElementById('physicsStatus');
+                
+                if (this.isRunning) {
+                    button.textContent = '⏸️ Pause';
+                    button.style.backgroundColor = '#ff9800';
+                    status.textContent = '▶️ Physics Running';
+                    status.style.backgroundColor = 'rgba(76, 175, 80, 0.3)';
+                } else {
+                    button.textContent = '▶️ Start';
+                    button.style.backgroundColor = '#2196F3';
+                    status.textContent = '⏸️ Physics Paused';
+                    status.style.backgroundColor = 'rgba(244, 67, 54, 0.3)';
+                }
+            }
+            
+            resetSimulation() {
+                this.isRunning = false;
+                this.objects.forEach(obj => {
+                    if (obj.type !== 'floor') {
+                        this.scene.remove(obj.mesh);
+                    }
+                });
+                this.objects = this.objects.filter(obj => obj.type === 'floor');
+                this.constraints = [];
+                
+                document.getElementById('playPause').textContent = '▶️ Start';
+                document.getElementById('playPause').style.backgroundColor = '#2196F3';
+                document.getElementById('physicsStatus').textContent = '🔄 Simulation Reset';
+                document.getElementById('physicsStatus').style.backgroundColor = 'rgba(244, 67, 54, 0.2)';
+                
+                this.updateStats();
+            }
+            
+            clearObjects() {
+                this.objects.forEach(obj => {
+                    if (obj.type !== 'floor') {
+                        this.scene.remove(obj.mesh);
+                    }
+                });
+                this.objects = this.objects.filter(obj => obj.type === 'floor');
+                this.constraints = [];
+                this.updateStats();
+            }
+            
+            addConstraintBetweenObjects() {
+                if (this.objects.length < 2) return;
+                
+                const dynamicObjects = this.objects.filter(obj => !obj.isStatic && obj.type !== 'floor');
+                if (dynamicObjects.length < 2) return;
+                
+                const object1 = dynamicObjects[Math.floor(Math.random() * dynamicObjects.length)];
+                const object2 = dynamicObjects[Math.floor(Math.random() * dynamicObjects.length)];
+                
+                if (object1 !== object2) {
+                    this.createConstraint(object1, object2, document.getElementById('constraintType').value);
+                }
+            }
+            
+            applyRandomForce() {
+                const strength = parseFloat(document.getElementById('forceStrength').value);
+                const dynamicObjects = this.objects.filter(obj => !obj.isStatic && obj.type !== 'floor');
+                
+                dynamicObjects.forEach(obj => {
+                    obj.force.x += (Math.random() - 0.5) * strength;
+                    obj.force.y += Math.random() * strength * 2;
+                    obj.force.z += (Math.random() - 0.5) * strength;
+                });
+            }
+            
+            explosion() {
+                const strength = parseFloat(document.getElementById('forceStrength').value) * 2;
+                const center = { x: 0, y: 0, z: 0 };
+                
+                this.objects.forEach(obj => {
+                    if (!obj.isStatic && obj.type !== 'floor') {
+                        const objPos = obj.mesh.getPosition();
+                        const distance = this.getDistance(objPos, center);
+                        
+                        if (distance < 10) {
+                            const direction = {
+                                x: objPos.x - center.x,
+                                y: objPos.y - center.y,
+                                z: objPos.z - center.z
+                            };
+                            
+                            const magnitude = Math.sqrt(direction.x ** 2 + direction.y ** 2 + direction.z ** 2);
+                            direction.x /= magnitude;
+                            direction.y /= magnitude;
+                            direction.z /= magnitude;
+                            
+                            const force = strength / (distance + 1);
+                            obj.velocity.x += direction.x * force;
+                            obj.velocity.y += direction.y * force;
+                            obj.velocity.z += direction.z * force;
+                        }
+                    }
+                });
+            }
+            
+            removeFloor() {
+                this.objects = this.objects.filter(obj => {
+                    if (obj.type === 'floor') {
+                        this.scene.remove(obj.mesh);
+                        return false;
+                    }
+                    return true;
+                });
+                this.updateStats();
+            }
+            
+            applyPreset(preset) {
+                this.resetSimulation();
+                
+                switch (preset) {
+                    case 'ramp':
+                        this.createRampDemo();
+                        break;
+                    case 'tower':
+                        this.createTowerDemo();
+                        break;
+                    case 'pendulum':
+                        this.createPendulumDemo();
+                        break;
+                    case 'destruction':
+                        this.createDestructionDemo();
+                        break;
+                }
+            }
+            
+            createRampDemo() {
+                // Create ramp
+                const rampGeometry = new NinthJS.PlaneGeometry(8, 4);
+                const rampMaterial = new NinthJS.LambertMaterial({ color: '#666666' });
+                const ramp = new NinthJS.Mesh(rampGeometry);
+                ramp.material = rampMaterial;
+                ramp.setRotation(-Math.PI / 6, 0, 0);
+                ramp.setPosition(0, -2, 0);
+                ramp.mass = 0;
+                ramp.isStatic = true;
+                this.scene.add(ramp);
+                
+                this.objects.push({
+                    mesh: ramp,
+                    mass: 0,
+                    velocity: { x: 0, y: 0, z: 0 },
+                    force: { x: 0, y: 0, z: 0 },
+                    isStatic: true,
+                    type: 'floor'
+                });
+                
+                // Create balls at top of ramp
+                for (let i = 0; i < 5; i++) {
+                    this.createSphere({ x: -3 + i * 1.5, y: 2, z: 0 }, 0.3);
+                }
+            }
+            
+            createTowerDemo() {
+                // Create tower of boxes
+                for (let i = 0; i < 8; i++) {
+                    this.createBox({ x: 0, y: i * 1.2, z: 0 }, 1);
+                }
+                
+                // Add spheres around
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    this.createSphere({ 
+                        x: Math.cos(angle) * 3, 
+                        y: 2, 
+                        z: Math.sin(angle) * 3 
+                    }, 0.5);
+                }
+            }
+            
+            createPendulumDemo() {
+                // Create pendulum with constraint
+                const anchor = { x: 0, y: 5, z: 0 };
+                
+                // Add constraint between invisible anchor and sphere
+                const sphere = this.objects.find(obj => {
+                    this.createSphere(anchor, 0.5);
+                    return true;
+                });
+                
+                if (sphere) {
+                    this.createConstraint({ mesh: { getPosition: () => anchor } }, sphere, 'distance');
+                }
+            }
+            
+            createDestructionDemo() {
+                // Create a structure to destroy
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        this.createBox({ x: i * 1.2 - 1.8, y: j * 1.2, z: 0 }, 1);
+                    }
+                }
+                
+                // Create a ball to hit the structure
+                this.createSphere({ x: -5, y: 3, z: 0 }, 1);
+                
+                // Apply initial velocity
+                const ball = this.objects[this.objects.length - 1];
+                ball.velocity.x = 10;
+            }
+            
+            updateStats() {
+                const dynamicObjects = this.objects.filter(obj => !obj.isStatic && obj.type !== 'floor');
+                const activeObjects = dynamicObjects.filter(obj => obj.active !== false);
+                
+                document.getElementById('objectCount').textContent = this.objects.length;
+                document.getElementById('constraintCount').textContent = this.constraints.length;
+                document.getElementById('activeCount').textContent = activeObjects.length;
+            }
+            
+            simulatePhysics() {
+                if (!this.isRunning) return;
+                
+                const deltaTime = this.timeStep;
+                const substeps = this.physicsWorld.substeps;
+                const substepTime = deltaTime / substeps;
+                
+                for (let step = 0; step < substeps; step++) {
+                    // Apply gravity and forces
+                    this.objects.forEach(obj => {
+                        if (!obj.isStatic && obj.type !== 'floor') {
+                            // Reset forces
+                            obj.force.x = 0;
+                            obj.force.y = this.physicsWorld.gravity.y * obj.mass;
+                            obj.force.z = 0;
+                            
+                            // Apply wind
+                            if (document.getElementById('wind').checked) {
+                                const windStrength = parseFloat(document.getElementById('windStrength').value);
+                                obj.force.x += windStrength;
+                                obj.force.z += Math.sin(performance.now() * 0.001) * windStrength * 0.5;
+                            }
+                            
+                            // Update velocity
+                            obj.velocity.x += (obj.force.x / obj.mass) * substepTime;
+                            obj.velocity.y += (obj.force.y / obj.mass) * substepTime;
+                            obj.velocity.z += (obj.force.z / obj.mass) * substepTime;
+                            
+                            // Apply friction
+                            obj.velocity.x *= (1 - this.physicsWorld.friction * substepTime);
+                            obj.velocity.y *= (1 - this.physicsWorld.friction * substepTime);
+                            obj.velocity.z *= (1 - this.physicsWorld.friction * substepTime);
+                            
+                            // Update position
+                            const position = obj.mesh.getPosition();
+                            position.x += obj.velocity.x * substepTime;
+                            position.y += obj.velocity.y * substepTime;
+                            position.z += obj.velocity.z * substepTime;
+                            obj.mesh.setPosition(position.x, position.y, position.z);
+                            
+                            // Simple collision with floor
+                            if (position.y < -4.5) {
+                                position.y = -4.5;
+                                obj.mesh.setPosition(position.x, position.y, position.z);
+                                obj.velocity.y *= -this.physicsWorld.restitution;
+                                obj.velocity.x *= 0.8; // Ground friction
+                            }
+                        }
+                    });
+                    
+                    // Handle collisions (simplified)
+                    this.handleCollisions();
+                    
+                    // Handle constraints
+                    this.handleConstraints();
+                }
+            }
+            
+            handleCollisions() {
+                for (let i = 0; i < this.objects.length; i++) {
+                    for (let j = i + 1; j < this.objects.length; j++) {
+                        const obj1 = this.objects[i];
+                        const obj2 = this.objects[j];
+                        
+                        if (obj1.isStatic && obj2.isStatic) continue;
+                        
+                        const pos1 = obj1.mesh.getPosition();
+                        const pos2 = obj2.mesh.getPosition();
+                        const distance = this.getDistance(pos1, pos2);
+                        
+                        // Simple sphere-sphere collision
+                        const radius1 = obj1.radius || obj1.size * 0.5 || 1;
+                        const radius2 = obj2.radius || obj2.size * 0.5 || 1;
+                        const minDistance = radius1 + radius2;
+                        
+                        if (distance < minDistance && distance > 0) {
+                            // Resolve collision
+                            const normal = {
+                                x: (pos2.x - pos1.x) / distance,
+                                y: (pos2.y - pos1.y) / distance,
+                                z: (pos2.z - pos1.z) / distance
+                            };
+                            
+                            // Separate objects
+                            const overlap = minDistance - distance;
+                            const separation = overlap / 2;
+                            
+                            if (!obj1.isStatic) {
+                                pos1.x -= normal.x * separation;
+                                pos1.y -= normal.y * separation;
+                                pos1.z -= normal.z * separation;
+                                obj1.mesh.setPosition(pos1.x, pos1.y, pos1.z);
+                            }
+                            
+                            if (!obj2.isStatic) {
+                                pos2.x += normal.x * separation;
+                                pos2.y += normal.y * separation;
+                                pos2.z += normal.z * separation;
+                                obj2.mesh.setPosition(pos2.x, pos2.y, pos2.z);
+                            }
+                            
+                            // Apply impulse (simplified)
+                            const restitution = this.physicsWorld.restitution;
+                            const impulse = overlap * restitution * 0.5;
+                            
+                            if (!obj1.isStatic) {
+                                obj1.velocity.x -= normal.x * impulse;
+                                obj1.velocity.y -= normal.y * impulse;
+                                obj1.velocity.z -= normal.z * impulse;
+                            }
+                            
+                            if (!obj2.isStatic) {
+                                obj2.velocity.x += normal.x * impulse;
+                                obj2.velocity.y += normal.y * impulse;
+                                obj2.velocity.z += normal.z * impulse;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            handleConstraints() {
+                this.constraints.forEach(constraint => {
+                    // Simplified constraint implementation
+                    // In a real physics engine, this would be much more sophisticated
+                });
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                if (currentTime - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                this.simulatePhysics();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        try {
+            new PhysicsDemo();
+            console.log('✅ Physics demo loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Physics demo:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

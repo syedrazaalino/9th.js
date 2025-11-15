@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Effects - Advanced Spell System</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle, #1a0033 0%, #000 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 16px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+        }
+        .spell-buttons {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        .spell-btn {
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .spell-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            transform: scale(1.1);
+        }
+        .spell-btn.active {
+            background: #4CAF50;
+            box-shadow: 0 0 20px #4CAF50;
+        }
+        #manaBar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        #manaFill {
+            height: 100%;
+            background: linear-gradient(90deg, #00FFFF, #0080FF);
+            width: 100%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Spell Power: <span id="spellPower">1</span></div>
+        <div>Combo: <span id="combo">0</span></div>
+        <div>Mana</div>
+        <div id="manaBar">
+            <div id="manaFill"></div>
+        </div>
+    </div>
+    
+    <div class="spell-buttons">
+        <button class="spell-btn" data-spell="fireball">Fireball (1)</button>
+        <button class="spell-btn" data-spell="lightning">Lightning (2)</button>
+        <button class="spell-btn" data-spell="frost">Frost Nova (3)</button>
+        <button class="spell-btn" data-spell="earthquake">Earthquake (4)</button>
+        <button class="spell-btn" data-spell="tornado">Tornado (5)</button>
+        <button class="spell-btn" data-spell="meteor">Meteor (6)</button>
+    </div>
+
+    <script>
+        class ParticleEffectGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+                
+                this.particles = [];
+                this.effects = [];
+                this.targets = [];
+                
+                this.score = 0;
+                this.spellPower = 1;
+                this.combo = 0;
+                this.mana = 100;
+                this.maxMana = 100;
+                this.manaRegenRate = 0.5;
+                this.currentSpell = null;
+                this.enemiesDestroyed = 0;
+                
+                this.setupControls();
+                this.setupSpellButtons();
+                this.generateTargets();
+                this.start();
+            }
+            
+            setupControls() {
+                // Mouse controls for casting spells
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    this.castSpell(x, y);
+                });
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    const spellMap = {
+                        '1': 'fireball',
+                        '2': 'lightning',
+                        '3': 'frost',
+                        '4': 'earthquake',
+                        '5': 'tornado',
+                        '6': 'meteor'
+                    };
+                    
+                    if (spellMap[e.key]) {
+                        this.selectSpell(spellMap[e.key]);
+                    }
+                });
+                
+                // Regenerate mana
+                setInterval(() => {
+                    this.mana = Math.min(this.maxMana, this.mana + this.manaRegenRate);
+                    this.updateManaBar();
+                }, 100);
+            }
+            
+            setupSpellButtons() {
+                const buttons = document.querySelectorAll('.spell-btn');
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.selectSpell(button.dataset.spell);
+                    });
+                });
+            }
+            
+            selectSpell(spellName) {
+                this.currentSpell = spellName;
+                
+                // Update button states
+                document.querySelectorAll('.spell-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.spell === spellName) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            generateTargets() {
+                for (let i = 0; i < 8; i++) {
+                    this.targets.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        radius: 20,
+                        health: 3,
+                        maxHealth: 3,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        hue: Math.random() * 360
+                    });
+                }
+            }
+            
+            castSpell(x, y) {
+                if (!this.currentSpell || this.mana < 10) return;
+                
+                const spellCost = this.getSpellCost(this.currentSpell);
+                if (this.mana < spellCost) return;
+                
+                this.mana -= spellCost;
+                this.updateManaBar();
+                
+                // Create spell effect
+                this.spells[this.currentSpell](x, y);
+                
+                this.combo++;
+                if (this.combo % 10 === 0) {
+                    this.spellPower++;
+                }
+            }
+            
+            getSpellCost(spell) {
+                const costs = {
+                    fireball: 15,
+                    lightning: 25,
+                    frost: 20,
+                    earthquake: 30,
+                    tornado: 35,
+                    meteor: 50
+                };
+                return costs[spell] || 10;
+            }
+            
+            spells = {
+                fireball: (x, y) => {
+                    // Create fireball projectile
+                    const projectile = {
+                        x: this.width / 2,
+                        y: this.height - 100,
+                        vx: (x - this.width / 2) * 0.02,
+                        vy: (y - this.height + 100) * 0.02,
+                        targetX: x,
+                        targetY: y,
+                        type: 'fireball',
+                        particles: []
+                    };
+                    
+                    this.effects.push(projectile);
+                    
+                    // Add trail particles
+                    for (let i = 0; i < 20; i++) {
+                        this.createParticle(
+                            projectile.x + (Math.random() - 0.5) * 10,
+                            projectile.y + (Math.random() - 0.5) * 10,
+                            'fire',
+                            {
+                                vx: (Math.random() - 0.5) * 3,
+                                vy: (Math.random() - 0.5) * 3,
+                                life: 30 + Math.random() * 20,
+                                size: 3 + Math.random() * 5
+                            }
+                        );
+                    }
+                },
+                
+                lightning: (x, y) => {
+                    // Create lightning bolt
+                    this.createLightning(this.width / 2, 0, x, y);
+                    
+                    // Create electrical particles
+                    for (let i = 0; i < 50; i++) {
+                        this.createParticle(
+                            x + (Math.random() - 0.5) * 100,
+                            y + (Math.random() - 0.5) * 100,
+                            'electric',
+                            {
+                                vx: (Math.random() - 0.5) * 8,
+                                vy: (Math.random() - 0.5) * 8,
+                                life: 20 + Math.random() * 20,
+                                size: 2 + Math.random() * 3
+                            }
+                        );
+                    }
+                },
+                
+                frost: (x, y) => {
+                    // Create expanding frost wave
+                    const wave = {
+                        x: x,
+                        y: y,
+                        radius: 0,
+                        maxRadius: 200,
+                        type: 'frost',
+                        speed: 5
+                    };
+                    
+                    this.effects.push(wave);
+                    
+                    // Create frost crystals
+                    for (let i = 0; i < 30; i++) {
+                        const angle = (i / 30) * Math.PI * 2;
+                        this.createParticle(
+                            x + Math.cos(angle) * 20,
+                            y + Math.sin(angle) * 20,
+                            'frost',
+                            {
+                                vx: Math.cos(angle) * 2,
+                                vy: Math.sin(angle) * 2,
+                                life: 40 + Math.random() * 30,
+                                size: 4 + Math.random() * 4
+                            }
+                        );
+                    }
+                },
+                
+                earthquake: (x, y) => {
+                    // Create earthquake effect
+                    const earthquake = {
+                        x: x,
+                        y: y,
+                        intensity: 10,
+                        duration: 60,
+                        type: 'earthquake'
+                    };
+                    
+                    this.effects.push(earthquake);
+                    
+                    // Create debris particles
+                    for (let i = 0; i < 100; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.random() * 150;
+                        this.createParticle(
+                            x + Math.cos(angle) * distance,
+                            y + Math.sin(angle) * distance,
+                            'earth',
+                            {
+                                vx: Math.cos(angle) * (2 + Math.random() * 4),
+                                vy: Math.sin(angle) * (2 + Math.random() * 4) - 2,
+                                life: 60 + Math.random() * 40,
+                                size: 3 + Math.random() * 8,
+                                gravity: 0.3
+                            }
+                        );
+                    }
+                },
+                
+                tornado: (x, y) => {
+                    // Create tornado
+                    const tornado = {
+                        x: x,
+                        y: y,
+                        rotation: 0,
+                        height: 0,
+                        maxHeight: 200,
+                        type: 'tornado'
+                    };
+                    
+                    this.effects.push(tornado);
+                    
+                    // Create swirling particles
+                    for (let i = 0; i < 80; i++) {
+                        const angle = (i / 80) * Math.PI * 2;
+                        const radius = Math.random() * 80;
+                        this.createParticle(
+                            x + Math.cos(angle) * radius,
+                            y + Math.sin(angle) * radius,
+                            'wind',
+                            {
+                                vx: -Math.sin(angle) * (3 + Math.random() * 3),
+                                vy: -2 - Math.random() * 2,
+                                life: 80 + Math.random() * 40,
+                                size: 2 + Math.random() * 4
+                            }
+                        );
+                    }
+                },
+                
+                meteor: (x, y) => {
+                    // Create meteor
+                    const meteor = {
+                        x: -100,
+                        y: -100,
+                        vx: (x + 100) * 0.05,
+                        vy: (y + 100) * 0.05,
+                        targetX: x,
+                        targetY: y,
+                        type: 'meteor',
+                        trail: []
+                    };
+                    
+                    this.effects.push(meteor);
+                    
+                    // Create meteor trail
+                    setInterval(() => {
+                        if (meteor.x < this.width + 100 && meteor.y < this.height + 100) {
+                            this.createParticle(
+                                meteor.x + (Math.random() - 0.5) * 20,
+                                meteor.y + (Math.random() - 0.5) * 20,
+                                'fire',
+                                {
+                                    vx: (Math.random() - 0.5) * 5,
+                                    vy: (Math.random() - 0.5) * 5,
+                                    life: 50,
+                                    size: 5 + Math.random() * 10
+                                }
+                            );
+                        }
+                    }, 50);
+                }
+            }
+            
+            createParticle(x, y, type, options = {}) {
+                const particle = {
+                    x: x,
+                    y: y,
+                    vx: options.vx || 0,
+                    vy: options.vy || 0,
+                    life: options.life || 60,
+                    maxLife: options.life || 60,
+                    size: options.size || 5,
+                    type: type,
+                    gravity: options.gravity || 0,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.3,
+                    hue: 0,
+                    alpha: 1
+                };
+                
+                // Set type-specific properties
+                switch (type) {
+                    case 'fire':
+                        particle.hue = Math.random() * 60 + 0; // Red to yellow
+                        particle.vx *= 0.5;
+                        particle.vy *= 0.5;
+                        particle.gravity = -0.1;
+                        break;
+                    case 'electric':
+                        particle.hue = 200 + Math.random() * 60; // Blue to cyan
+                        break;
+                    case 'frost':
+                        particle.hue = 180 + Math.random() * 60; // Cyan to blue
+                        particle.vx *= 0.3;
+                        particle.vy *= 0.3;
+                        break;
+                    case 'earth':
+                        particle.hue = 30 + Math.random() * 30; // Brown to yellow
+                        particle.gravity = 0.3;
+                        break;
+                    case 'wind':
+                        particle.hue = 180 + Math.random() * 60; // Light blue
+                        particle.alpha = 0.7;
+                        break;
+                }
+                
+                this.particles.push(particle);
+            }
+            
+            createLightning(x1, y1, x2, y2) {
+                const segments = 10;
+                const points = [];
+                
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const x = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 20;
+                    const y = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 20;
+                    points.push({ x, y });
+                }
+                
+                this.effects.push({
+                    type: 'lightning',
+                    points: points,
+                    life: 10,
+                    width: 3
+                });
+            }
+            
+            update() {
+                // Update particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity;
+                    p.rotation += p.rotationSpeed;
+                    p.life--;
+                    
+                    if (p.life <= 0 || p.x < -50 || p.x > this.width + 50 || p.y < -50 || p.y > this.height + 50) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+                
+                // Update effects
+                for (let i = this.effects.length - 1; i >= 0; i--) {
+                    const e = this.effects[i];
+                    
+                    switch (e.type) {
+                        case 'fireball':
+                            e.x += e.vx;
+                            e.y += e.vy;
+                            
+                            // Check for collision with targets
+                            for (let j = this.targets.length - 1; j >= 0; j--) {
+                                const target = this.targets[j];
+                                const dist = Math.sqrt((e.x - target.x) ** 2 + (e.y - target.y) ** 2);
+                                
+                                if (dist < target.radius + 10) {
+                                    this.explodeAt(e.x, e.y, 'fire');
+                                    this.targets.splice(j, 1);
+                                    this.score += 100 * this.spellPower;
+                                    this.enemiesDestroyed++;
+                                    this.generateTargets();
+                                }
+                            }
+                            
+                            if (Math.sqrt((e.x - e.targetX) ** 2 + (e.y - e.targetY) ** 2) < 10 || 
+                                e.x < -50 || e.x > this.width + 50 || 
+                                e.y < -50 || e.y > this.height + 50) {
+                                this.explodeAt(e.x, e.y, 'fire');
+                                this.effects.splice(i, 1);
+                            }
+                            break;
+                            
+                        case 'lightning':
+                            e.life--;
+                            if (e.life <= 0) {
+                                this.effects.splice(i, 1);
+                            }
+                            break;
+                            
+                        case 'frost':
+                            e.radius += e.speed;
+                            if (e.radius >= e.maxRadius) {
+                                this.effects.splice(i, 1);
+                            }
+                            break;
+                            
+                        case 'earthquake':
+                            e.duration--;
+                            e.intensity *= 0.95;
+                            if (e.duration <= 0) {
+                                this.effects.splice(i, 1);
+                            }
+                            break;
+                            
+                        case 'tornado':
+                            e.rotation += 0.2;
+                            e.height += 5;
+                            if (e.height >= e.maxHeight) {
+                                this.effects.splice(i, 1);
+                            }
+                            break;
+                            
+                        case 'meteor':
+                            e.x += e.vx;
+                            e.y += e.vy;
+                            
+                            if (Math.sqrt((e.x - e.targetX) ** 2 + (e.y - e.targetY) ** 2) < 20 || 
+                                e.x > this.width + 100 || e.y > this.height + 100) {
+                                this.explodeAt(e.x, e.y, 'explosion');
+                                this.effects.splice(i, 1);
+                            }
+                            break;
+                    }
+                }
+                
+                // Update targets
+                for (let target of this.targets) {
+                    target.x += target.vx;
+                    target.y += target.vy;
+                    
+                    // Bounce off walls
+                    if (target.x <= target.radius || target.x >= this.width - target.radius) {
+                        target.vx *= -1;
+                    }
+                    if (target.y <= target.radius || target.y >= this.height - target.radius) {
+                        target.vy *= -1;
+                    }
+                    
+                    // Keep targets in bounds
+                    target.x = Math.max(target.radius, Math.min(this.width - target.radius, target.x));
+                    target.y = Math.max(target.radius, Math.min(this.height - target.radius, target.y));
+                }
+                
+                // Check spell effects
+                this.checkSpellCollisions();
+                
+                this.updateUI();
+            }
+            
+            checkSpellCollisions() {
+                for (let effect of this.effects) {
+                    switch (effect.type) {
+                        case 'lightning':
+                            this.checkLightningCollisions(effect);
+                            break;
+                        case 'frost':
+                            this.checkFrostCollisions(effect);
+                            break;
+                        case 'earthquake':
+                            this.checkEarthquakeCollisions(effect);
+                            break;
+                        case 'tornado':
+                            this.checkTornadoCollisions(effect);
+                            break;
+                    }
+                }
+            }
+            
+            checkLightningCollisions(lightning) {
+                for (let i = this.targets.length - 1; i >= 0; i--) {
+                    const target = this.targets[i];
+                    for (let point of lightning.points) {
+                        const dist = Math.sqrt((point.x - target.x) ** 2 + (point.y - target.y) ** 2);
+                        if (dist < target.radius + 20) {
+                            this.explodeAt(target.x, target.y, 'electric');
+                            this.targets.splice(i, 1);
+                            this.score += 150 * this.spellPower;
+                            this.enemiesDestroyed++;
+                            this.generateTargets();
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            checkFrostCollisions(frost) {
+                for (let i = this.targets.length - 1; i >= 0; i--) {
+                    const target = this.targets[i];
+                    const dist = Math.sqrt((target.x - frost.x) ** 2 + (target.y - frost.y) ** 2);
+                    
+                    if (dist < frost.radius + target.radius && dist > frost.radius - target.radius) {
+                        target.health--;
+                        if (target.health <= 0) {
+                            this.explodeAt(target.x, target.y, 'frost');
+                            this.targets.splice(i, 1);
+                            this.score += 120 * this.spellPower;
+                            this.enemiesDestroyed++;
+                            this.generateTargets();
+                        }
+                    }
+                }
+            }
+            
+            checkEarthquakeCollisions(earthquake) {
+                for (let i = this.targets.length - 1; i >= 0; i--) {
+                    const target = this.targets[i];
+                    const dist = Math.sqrt((target.x - earthquake.x) ** 2 + (target.y - earthquake.y) ** 2);
+                    
+                    if (dist < 100 + target.radius && Math.random() < 0.1) {
+                        target.vx += (Math.random() - 0.5) * earthquake.intensity;
+                        target.vy += (Math.random() - 0.5) * earthquake.intensity;
+                        
+                        if (Math.random() < 0.05) {
+                            this.explodeAt(target.x, target.y, 'earth');
+                            this.targets.splice(i, 1);
+                            this.score += 180 * this.spellPower;
+                            this.enemiesDestroyed++;
+                            this.generateTargets();
+                        }
+                    }
+                }
+            }
+            
+            checkTornadoCollisions(tornado) {
+                for (let i = this.targets.length - 1; i >= 0; i--) {
+                    const target = this.targets[i];
+                    const dist = Math.sqrt((target.x - tornado.x) ** 2 + (target.y - tornado.y) ** 2);
+                    
+                    if (dist < 80 + target.radius && Math.random() < 0.15) {
+                        const angle = Math.atan2(target.y - tornado.y, target.x - tornado.x);
+                        target.vx = Math.cos(angle + tornado.rotation) * 8;
+                        target.vy = Math.sin(angle + tornado.rotation) * 8;
+                        
+                        if (Math.random() < 0.08) {
+                            this.explodeAt(target.x, target.y, 'wind');
+                            this.targets.splice(i, 1);
+                            this.score += 200 * this.spellPower;
+                            this.enemiesDestroyed++;
+                            this.generateTargets();
+                        }
+                    }
+                }
+            }
+            
+            explodeAt(x, y, type) {
+                const particleCount = {
+                    fire: 50,
+                    electric: 40,
+                    frost: 30,
+                    earth: 60,
+                    wind: 35,
+                    explosion: 80
+                };
+                
+                const count = particleCount[type] || 30;
+                
+                for (let i = 0; i < count; i++) {
+                    const angle = (i / count) * Math.PI * 2;
+                    const speed = 2 + Math.random() * 8;
+                    this.createParticle(x, y, type, {
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 30 + Math.random() * 30,
+                        size: 3 + Math.random() * 6
+                    });
+                }
+            }
+            
+            render() {
+                // Clear canvas with dark background
+                this.ctx.fillStyle = '#0a001a';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Draw background stars
+                this.drawStars();
+                
+                // Draw spell effects
+                this.drawEffects();
+                
+                // Draw particles
+                this.drawParticles();
+                
+                // Draw targets
+                this.drawTargets();
+                
+                // Draw caster position indicator
+                this.drawCasterIndicator();
+            }
+            
+            drawStars() {
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.globalAlpha = 0.3;
+                for (let i = 0; i < 100; i++) {
+                    const x = (i * 123.45) % this.width;
+                    const y = (i * 67.89) % this.height;
+                    const size = (i % 3) + 1;
+                    this.ctx.fillRect(x, y, size, size);
+                }
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawEffects() {
+                for (let effect of this.effects) {
+                    switch (effect.type) {
+                        case 'fireball':
+                            this.drawFireball(effect);
+                            break;
+                        case 'lightning':
+                            this.drawLightning(effect);
+                            break;
+                        case 'frost':
+                            this.drawFrost(effect);
+                            break;
+                        case 'earthquake':
+                            this.drawEarthquake(effect);
+                            break;
+                        case 'tornado':
+                            this.drawTornado(effect);
+                            break;
+                        case 'meteor':
+                            this.drawMeteor(effect);
+                            break;
+                    }
+                }
+            }
+            
+            drawFireball(fireball) {
+                const gradient = this.ctx.createRadialGradient(
+                    fireball.x, fireball.y, 0,
+                    fireball.x, fireball.y, 20
+                );
+                gradient.addColorStop(0, '#ffff00');
+                gradient.addColorStop(0.3, '#ff8800');
+                gradient.addColorStop(0.6, '#ff4400');
+                gradient.addColorStop(1, 'transparent');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(fireball.x, fireball.y, 20, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            drawLightning(lightning) {
+                this.ctx.strokeStyle = `rgba(255, 255, 255, ${lightning.life / 10})`;
+                this.ctx.lineWidth = lightning.width;
+                this.ctx.lineCap = 'round';
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(lightning.points[0].x, lightning.points[0].y);
+                
+                for (let i = 1; i < lightning.points.length; i++) {
+                    this.ctx.lineTo(lightning.points[i].x, lightning.points[i].y);
+                }
+                
+                this.ctx.stroke();
+                
+                // Add glow effect
+                this.ctx.strokeStyle = `rgba(0, 150, 255, ${lightning.life / 20})`;
+                this.ctx.lineWidth = lightning.width + 2;
+                this.ctx.stroke();
+            }
+            
+            drawFrost(frost) {
+                this.ctx.strokeStyle = `rgba(100, 200, 255, ${1 - frost.radius / frost.maxRadius})`;
+                this.ctx.lineWidth = 3;
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.beginPath();
+                this.ctx.arc(frost.x, frost.y, frost.radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
+            
+            drawEarthquake(earthquake) {
+                const intensity = earthquake.intensity / 10;
+                this.ctx.strokeStyle = `rgba(255, 200, 100, ${earthquake.duration / 60})`;
+                this.ctx.lineWidth = 2;
+                
+                // Draw shockwaves
+                for (let i = 1; i <= 3; i++) {
+                    const radius = (i * 30) + (earthquake.duration % 30);
+                    this.ctx.beginPath();
+                    this.ctx.arc(earthquake.x, earthquake.y, radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawTornado(tornado) {
+                this.ctx.strokeStyle = 'rgba(200, 200, 255, 0.8)';
+                this.ctx.lineWidth = 3;
+                
+                // Draw tornado spiral
+                for (let i = 0; i < 5; i++) {
+                    const radius = (i + 1) * 20;
+                    const alpha = 1 - (i / 5);
+                    
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.beginPath();
+                    
+                    for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+                        const x = tornado.x + Math.cos(angle + tornado.rotation) * radius;
+                        const y = tornado.y + Math.sin(angle + tornado.rotation) * radius - i * 30;
+                        
+                        if (angle === 0) {
+                            this.ctx.moveTo(x, y);
+                        } else {
+                            this.ctx.lineTo(x, y);
+                        }
+                    }
+                    
+                    this.ctx.stroke();
+                }
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawMeteor(meteor) {
+                // Draw meteor core
+                this.ctx.fillStyle = '#ff4400';
+                this.ctx.beginPath();
+                this.ctx.arc(meteor.x, meteor.y, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw meteor trail
+                this.ctx.strokeStyle = '#ffaa00';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(meteor.x - 20, meteor.y - 20);
+                this.ctx.lineTo(meteor.x, meteor.y);
+                this.ctx.stroke();
+            }
+            
+            drawParticles() {
+                for (let particle of this.particles) {
+                    const alpha = particle.life / particle.maxLife;
+                    
+                    this.ctx.save();
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.translate(particle.x, particle.y);
+                    this.ctx.rotate(particle.rotation);
+                    
+                    // Draw particle based on type
+                    switch (particle.type) {
+                        case 'fire':
+                            const fireGradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, particle.size);
+                            fireGradient.addColorStop(0, `hsl(${particle.hue}, 100%, 70%)`);
+                            fireGradient.addColorStop(0.5, `hsl(${particle.hue}, 100%, 50%)`);
+                            fireGradient.addColorStop(1, 'transparent');
+                            this.ctx.fillStyle = fireGradient;
+                            this.ctx.beginPath();
+                            this.ctx.arc(0, 0, particle.size, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            break;
+                            
+                        case 'electric':
+                            this.ctx.fillStyle = `hsl(${particle.hue}, 100%, 70%)`;
+                            this.ctx.fillRect(-particle.size/2, -particle.size/2, particle.size, particle.size);
+                            break;
+                            
+                        case 'frost':
+                            this.ctx.fillStyle = `hsl(${particle.hue}, 100%, 80%)`;
+                            this.ctx.beginPath();
+                            for (let i = 0; i < 6; i++) {
+                                const angle = (i / 6) * Math.PI * 2;
+                                const x = Math.cos(angle) * particle.size;
+                                const y = Math.sin(angle) * particle.size;
+                                if (i === 0) this.ctx.moveTo(x, y);
+                                else this.ctx.lineTo(x, y);
+                            }
+                            this.ctx.closePath();
+                            this.ctx.fill();
+                            break;
+                            
+                        case 'earth':
+                            this.ctx.fillStyle = `hsl(${particle.hue}, 60%, 40%)`;
+                            this.ctx.fillRect(-particle.size/2, -particle.size/2, particle.size, particle.size);
+                            break;
+                            
+                        case 'wind':
+                            this.ctx.strokeStyle = `hsl(${particle.hue}, 80%, 70%)`;
+                            this.ctx.lineWidth = 2;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(-particle.size, 0);
+                            this.ctx.lineTo(particle.size, 0);
+                            this.ctx.stroke();
+                            break;
+                    }
+                    
+                    this.ctx.restore();
+                }
+            }
+            
+            drawTargets() {
+                for (let target of this.targets) {
+                    const healthPercent = target.health / target.maxHealth;
+                    
+                    // Draw target glow
+                    const glow = this.ctx.createRadialGradient(
+                        target.x, target.y, 0,
+                        target.x, target.y, target.radius * 2
+                    );
+                    glow.addColorStop(0, `hsla(${target.hue}, 100%, 60%, 0.3)`);
+                    glow.addColorStop(1, 'transparent');
+                    this.ctx.fillStyle = glow;
+                    this.ctx.beginPath();
+                    this.ctx.arc(target.x, target.y, target.radius * 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Draw target
+                    this.ctx.strokeStyle = `hsl(${target.hue}, 100%, 60%)`;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    
+                    // Draw health indicator
+                    this.ctx.fillStyle = '#ff0000';
+                    this.ctx.fillRect(target.x - target.radius, target.y - target.radius - 10, target.radius * 2, 4);
+                    this.ctx.fillStyle = '#00ff00';
+                    this.ctx.fillRect(target.x - target.radius, target.y - target.radius - 10, target.radius * 2 * healthPercent, 4);
+                }
+            }
+            
+            drawCasterIndicator() {
+                const x = this.width / 2;
+                const y = this.height - 100;
+                
+                // Draw magical circle
+                this.ctx.strokeStyle = '#4CAF50';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 30, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                // Draw inner circle
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 20, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                // Draw cross
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - 15, y);
+                this.ctx.lineTo(x + 15, y);
+                this.ctx.moveTo(x, y - 15);
+                this.ctx.lineTo(x, y + 15);
+                this.ctx.stroke();
+            }
+            
+            updateUI() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('spellPower').textContent = this.spellPower;
+                document.getElementById('combo').textContent = this.combo;
+            }
+            
+            updateManaBar() {
+                const percent = (this.mana / this.maxMana) * 100;
+                document.getElementById('manaFill').style.width = percent + '%';
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            start() {
+                this.gameLoop();
+            }
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            new ParticleEffectGame();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloth Simulation System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 20px; border-radius: 12px;
+            color: #fff; min-width: 280px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #controls h3 { color: #4fc3f7; margin-bottom: 15px; font-size: 18px; }
+        #controls label { display: block; margin: 10px 0 5px; color: #b0bec5; font-size: 13px; }
+        #controls input, #controls select {
+            width: 100%; padding: 8px; margin-bottom: 10px;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px; color: #fff; font-size: 13px;
+        }
+        #controls button {
+            width: 100%; padding: 10px; margin: 5px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none; border-radius: 6px; color: white; cursor: pointer;
+            font-weight: 500; transition: all 0.3s;
+        }
+        #controls button:hover { transform: translateY(-2px); }
+        #info {
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; line-height: 1.8;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        #physics-panel {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 11px; line-height: 1.6; min-width: 200px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; }
+        .slider-group { margin: 10px 0; }
+        .slider-group input[type="range"] { width: 100%; margin: 5px 0; }
+        .value-display { float: right; color: #4fc3f7; font-weight: bold; }
+        #wind-indicator {
+            position: absolute; bottom: 50%; left: 50%;
+            transform: translate(-50%, 50%);
+            width: 200px; height: 200px; pointer-events: none;
+        }
+        .wind-arrow {
+            position: absolute; width: 4px; height: 80px;
+            background: linear-gradient(to bottom, transparent, #00ffff);
+            transform-origin: bottom center; opacity: 0.7;
+        }
+        .wind-arrow::after {
+            content: ''; position: absolute; bottom: 0; left: -8px;
+            width: 20px; height: 20px; border-left: 10px solid transparent;
+            border-right: 10px solid transparent; border-top: 20px solid #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <h3>Cloth Physics Engine</h3>
+        
+        <label>Cloth Preset:</label>
+        <select id="cloth-preset">
+            <option value="curtain">Hanging Curtain</option>
+            <option value="flag">Flag</option>
+            <option value="tablecloth">Tablecloth</option>
+            <option value="towel">Towel</option>
+            <option value="sheet">Bed Sheet</option>
+            <option value="custom">Custom Size</option>
+        </select>
+        
+        <div class="slider-group">
+            <label>Width: <span class="value-display" id="width-value">20</span></label>
+            <input type="range" id="width-slider" min="10" max="50" value="20">
+        </div>
+        
+        <div class="slider-group">
+            <label>Height: <span class="value-display" id="height-value">30</span></label>
+            <input type="range" id="height-slider" min="10" max="50" value="30">
+        </div>
+        
+        <div class="slider-group">
+            <label>Cloth Thickness: <span class="value-display" id="thickness-value">0.1</span></label>
+            <input type="range" id="thickness-slider" min="0.05" max="0.5" step="0.05" value="0.1">
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-nodes" checked>
+            <label for="show-nodes">Show Physics Nodes</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-constraints" checked>
+            <label for="show-constraints">Show Constraints</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="gravity-enabled" checked>
+            <label for="gravity-enabled">Enable Gravity</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="wind-enabled">
+            <label for="wind-enabled">Enable Wind</label>
+        </div>
+        
+        <div class="slider-group">
+            <label>Wind Strength: <span class="value-display" id="wind-strength-value">0.5</span></label>
+            <input type="range" id="wind-strength" min="0" max="2" step="0.1" value="0.5">
+        </div>
+        
+        <div class="slider-group">
+            <label>Wind Direction: <span class="value-display" id="wind-direction-value">0°</span></label>
+            <input type="range" id="wind-direction" min="0" max="360" value="0">
+        </div>
+        
+        <div class="slider-group">
+            <label>Physics Steps: <span class="value-display" id="physics-steps-value">5</span></label>
+            <input type="range" id="physics-steps" min="1" max="10" value="5">
+        </div>
+        
+        <button id="reset-cloth">Reset Cloth</button>
+        <button id="pin-corners">Pin Corners</button>
+        <button id="pin-center">Pin Center</button>
+        <button id="unpin-all">Unpin All</button>
+        
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 11px; color: #888;">
+                Drag cloth with mouse to interact
+            </div>
+        </div>
+    </div>
+    
+    <div id="physics-panel">
+        <div><strong>Physics Stats</strong></div>
+        <div>Particles: <span id="particle-count">0</span></div>
+        <div>Constraints: <span id="constraint-count">0</span></div>
+        <div>Simulation Time: <span id="sim-time">0.00</span>s</div>
+        <div>Collision Checks: <span id="collision-count">0</span></div>
+        <div>Wind Force: <span id="wind-force">0.00</span>N</div>
+        <div>CPU Usage: <span id="cpu-usage">0</span>%</div>
+    </div>
+    
+    <div id="info">
+        <div><strong>Cloth Properties</strong></div>
+        <div>Material: <span id="material-name">Cotton</span></div>
+        <div>Mass: <span id="cloth-mass">0.5</span> kg</div>
+        <div>Stiffness: <span id="cloth-stiffness">0.8</span></div>
+        <div>Damping: <span id="cloth-damping">0.02</span></div>
+        <div>Total Area: <span id="cloth-area">0.0</span> m²</div>
+    </div>
+    
+    <div id="wind-indicator"></div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class ClothSimulation {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                // Physics engine
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                // Physics parameters
+                this.gravity = new Engine.Vector3(0, -9.81, 0);
+                this.windEnabled = false;
+                this.windForce = new Engine.Vector3(0, 0, 0);
+                this.physicsSteps = 5;
+                this.constraintIterations = 5;
+                
+                // Cloth data structures
+                this.particles = [];
+                this.constraints = [];
+                this.triangles = [];
+                this.pinnedParticles = new Set();
+                
+                // Rendering objects
+                this.clothMesh = null;
+                this.nodeMeshes = [];
+                this.constraintLines = [];
+                this.ground = null;
+                
+                // Interaction
+                this.isDragging = false;
+                this.draggedParticle = null;
+                this.dragOffset = new Engine.Vector3();
+                
+                // Performance tracking
+                this.startTime = performance.now();
+                this.frameCount = 0;
+                this.collisionChecks = 0;
+                this.cpuUsage = 0;
+                
+                this.setupLighting();
+                this.setupControls();
+                this.createGround();
+                this.createCloth();
+                this.setupWindIndicator();
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new Engine.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+                
+                // Main directional light
+                const directionalLight = new Engine.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Fill lights for better cloth visibility
+                const fillLight1 = new Engine.DirectionalLight(0x4488ff, 0.3);
+                fillLight1.position.set(-5, 5, -5);
+                this.scene.add(fillLight1);
+                
+                const fillLight2 = new Engine.DirectionalLight(0xff8844, 0.2);
+                fillLight2.position.set(5, -5, -5);
+                this.scene.add(fillLight2);
+                
+                // Point light for dramatic effect
+                const pointLight = new Engine.PointLight(0xffffff, 0.5, 50);
+                pointLight.position.set(0, 10, 10);
+                this.scene.add(pointLight);
+            }
+            
+            setupControls() {
+                // Cloth preset selection
+                document.getElementById('cloth-preset').addEventListener('change', (e) => {
+                    this.applyClothPreset(e.target.value);
+                });
+                
+                // Slider updates
+                const sliders = ['width', 'height', 'thickness', 'wind-strength', 'wind-direction', 'physics-steps'];
+                sliders.forEach(slider => {
+                    const element = document.getElementById(`${slider}-slider`);
+                    if (element) {
+                        element.addEventListener('input', () => {
+                            this.updateSliderValues();
+                            if (slider === 'physics-steps') {
+                                this.physicsSteps = parseInt(element.value);
+                            }
+                        });
+                    }
+                });
+                
+                // Checkbox updates
+                const checkboxes = ['show-nodes', 'show-constraints', 'gravity-enabled', 'wind-enabled'];
+                checkboxes.forEach(checkbox => {
+                    const element = document.getElementById(checkbox);
+                    if (element) {
+                        element.addEventListener('change', () => {
+                            if (checkbox === 'wind-enabled') {
+                                this.windEnabled = element.checked;
+                            } else if (checkbox === 'show-nodes') {
+                                this.toggleNodeVisibility(element.checked);
+                            } else if (checkbox === 'show-constraints') {
+                                this.toggleConstraintVisibility(element.checked);
+                            }
+                        });
+                    }
+                });
+                
+                // Button actions
+                document.getElementById('reset-cloth').addEventListener('click', () => this.resetCloth());
+                document.getElementById('pin-corners').addEventListener('click', () => this.pinCorners());
+                document.getElementById('pin-center').addEventListener('click', () => this.pinCenter());
+                document.getElementById('unpin-all').addEventListener('click', () => this.unpinAll());
+                
+                // Mouse interaction
+                this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const scale = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(scale);
+                });
+            }
+            
+            createGround() {
+                const geometry = new Engine.PlaneGeometry(50, 50);
+                const material = new Engine.MeshPhongMaterial({ 
+                    color: 0x2c3e50,
+                    shininess: 30,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                this.ground = new Engine.Mesh(geometry, material);
+                this.ground.rotation.x = -Math.PI / 2;
+                this.ground.position.y = -5;
+                this.ground.receiveShadow = true;
+                
+                // Add grid lines
+                const gridGeometry = new Engine.PlaneGeometry(50, 50, 10, 10);
+                const gridMaterial = new Engine.MeshBasicMaterial({
+                    color: 0x34495e,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const grid = new Engine.Mesh(gridGeometry, gridMaterial);
+                grid.rotation.x = -Math.PI / 2;
+                grid.position.y = -4.9;
+                
+                this.scene.add(this.ground);
+                this.scene.add(grid);
+            }
+            
+            createCloth() {
+                const width = parseInt(document.getElementById('width-slider').value);
+                const height = parseInt(document.getElementById('height-slider').value);
+                const spacing = 0.5;
+                
+                this.particles = [];
+                this.constraints = [];
+                this.triangles = [];
+                
+                // Create particles
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const particle = {
+                            position: new Engine.Vector3(
+                                (x - width / 2) * spacing,
+                                5,
+                                (y - height / 2) * spacing
+                            ),
+                            previousPosition: new Engine.Vector3(),
+                            velocity: new Engine.Vector3(),
+                            acceleration: new Engine.Vector3(),
+                            mass: 0.1,
+                            pinned: false,
+                            pinnedPosition: null,
+                            index: y * width + x,
+                            uv: new Engine.Vector2(x / (width - 1), y / (height - 1))
+                        };
+                        
+                        this.particles.push(particle);
+                    }
+                }
+                
+                // Create constraints (structural)
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const currentIndex = y * width + x;
+                        
+                        // Horizontal constraint
+                        if (x < width - 1) {
+                            this.createConstraint(currentIndex, currentIndex + 1, spacing);
+                        }
+                        
+                        // Vertical constraint
+                        if (y < height - 1) {
+                            this.createConstraint(currentIndex, currentIndex + width, spacing);
+                        }
+                        
+                        // Shear constraints
+                        if (x < width - 1 && y < height - 1) {
+                            this.createConstraint(currentIndex, currentIndex + width + 1, spacing * Math.sqrt(2));
+                        }
+                        
+                        if (x > 0 && y < height - 1) {
+                            this.createConstraint(currentIndex, currentIndex + width - 1, spacing * Math.sqrt(2));
+                        }
+                        
+                        // Bending constraints (every second particle)
+                        if (x < width - 2) {
+                            this.createConstraint(currentIndex, currentIndex + 2, spacing * 2, 0.3);
+                        }
+                        
+                        if (y < height - 2) {
+                            this.createConstraint(currentIndex, currentIndex + width * 2, spacing * 2, 0.3);
+                        }
+                    }
+                }
+                
+                // Create triangles for rendering
+                for (let y = 0; y < height - 1; y++) {
+                    for (let x = 0; x < width - 1; x++) {
+                        const p1 = y * width + x;
+                        const p2 = y * width + x + 1;
+                        const p3 = (y + 1) * width + x;
+                        const p4 = (y + 1) * width + x + 1;
+                        
+                        this.triangles.push([p1, p2, p3]);
+                        this.triangles.push([p2, p4, p3]);
+                    }
+                }
+                
+                this.createClothMesh();
+                this.createNodeMeshes();
+                this.createConstraintLines();
+                
+                this.updateUI();
+            }
+            
+            createConstraint(p1Index, p2Index, restLength, stiffness = 1.0) {
+                const constraint = {
+                    p1: p1Index,
+                    p2: p2Index,
+                    restLength: restLength,
+                    stiffness: stiffness
+                };
+                this.constraints.push(constraint);
+            }
+            
+            createClothMesh() {
+                const vertexCount = this.particles.length;
+                const positionArray = new Float32Array(vertexCount * 3);
+                const normalArray = new Float32Array(vertexCount * 3);
+                const uvArray = new Float32Array(vertexCount * 2);
+                
+                // Initialize arrays
+                this.particles.forEach((particle, i) => {
+                    positionArray[i * 3] = particle.position.x;
+                    positionArray[i * 3 + 1] = particle.position.y;
+                    positionArray[i * 3 + 2] = particle.position.z;
+                    
+                    uvArray[i * 2] = particle.uv.x;
+                    uvArray[i * 2 + 1] = particle.uv.y;
+                });
+                
+                const geometry = new Engine.BufferGeometry();
+                geometry.setAttribute('position', new Engine.BufferAttribute(positionArray, 3));
+                geometry.setAttribute('normal', new Engine.BufferAttribute(normalArray, 3));
+                geometry.setAttribute('uv', new Engine.BufferAttribute(uvArray, 2));
+                
+                // Create index buffer
+                const indexArray = [];
+                this.triangles.forEach(triangle => {
+                    indexArray.push(triangle[0], triangle[1], triangle[2]);
+                });
+                geometry.setIndex(indexArray);
+                
+                const material = new Engine.MeshPhongMaterial({
+                    color: 0xe74c3c,
+                    side: Engine.DoubleSide,
+                    shininess: 30,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                this.clothMesh = new Engine.Mesh(geometry, material);
+                this.clothMesh.castShadow = true;
+                this.clothMesh.receiveShadow = true;
+                
+                this.scene.add(this.clothMesh);
+            }
+            
+            createNodeMeshes() {
+                // Clear existing node meshes
+                this.nodeMeshes.forEach(mesh => this.scene.remove(mesh));
+                this.nodeMeshes = [];
+                
+                const nodeGeometry = new Engine.SphereGeometry(0.1, 8, 6);
+                const nodeMaterial = new Engine.MeshBasicMaterial({ 
+                    color: 0xffff00,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                this.particles.forEach(particle => {
+                    const mesh = new Engine.Mesh(nodeGeometry, nodeMaterial);
+                    mesh.position.copy(particle.position);
+                    this.nodeMeshes.push(mesh);
+                    this.scene.add(mesh);
+                });
+                
+                this.toggleNodeVisibility(document.getElementById('show-nodes').checked);
+            }
+            
+            createConstraintLines() {
+                // Clear existing constraint lines
+                this.constraintLines.forEach(line => this.scene.remove(line));
+                this.constraintLines = [];
+                
+                const material = new Engine.LineBasicMaterial({ 
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                this.constraints.forEach(constraint => {
+                    const points = [
+                        this.particles[constraint.p1].position,
+                        this.particles[constraint.p2].position
+                    ];
+                    
+                    const geometry = new Engine.BufferGeometry().setFromPoints(points);
+                    const line = new Engine.Line(geometry, material);
+                    this.constraintLines.push(line);
+                    this.scene.add(line);
+                });
+                
+                this.toggleConstraintVisibility(document.getElementById('show-constraints').checked);
+            }
+            
+            toggleNodeVisibility(visible) {
+                this.nodeMeshes.forEach(mesh => {
+                    mesh.visible = visible;
+                });
+            }
+            
+            toggleConstraintVisibility(visible) {
+                this.constraintLines.forEach(line => {
+                    line.visible = visible;
+                });
+            }
+            
+            applyClothPreset(preset) {
+                const presets = {
+                    curtain: { width: 20, height: 40, thickness: 0.1, pinned: 'top' },
+                    flag: { width: 30, height: 20, thickness: 0.05, pinned: 'left' },
+                    tablecloth: { width: 40, height: 40, thickness: 0.2, pinned: 'corners' },
+                    towel: { width: 25, height: 35, thickness: 0.15, pinned: 'top' },
+                    sheet: { width: 35, height: 45, thickness: 0.12, pinned: 'corners' }
+                };
+                
+                if (preset !== 'custom' && presets[preset]) {
+                    const config = presets[preset];
+                    
+                    document.getElementById('width-slider').value = config.width;
+                    document.getElementById('height-slider').value = config.height;
+                    document.getElementById('thickness-slider').value = config.thickness;
+                    
+                    this.updateSliderValues();
+                    
+                    // Reset and recreate cloth
+                    this.resetCloth();
+                    
+                    // Apply pinning based on preset
+                    setTimeout(() => {
+                        switch (config.pinned) {
+                            case 'top':
+                                this.pinTopRow();
+                                break;
+                            case 'left':
+                                this.pinLeftColumn();
+                                break;
+                            case 'corners':
+                                this.pinCorners();
+                                break;
+                        }
+                    }, 100);
+                }
+            }
+            
+            pinCorners() {
+                this.unpinAll();
+                const width = parseInt(document.getElementById('width-slider').value);
+                const height = parseInt(document.getElementById('height-slider').value);
+                
+                const corners = [0, width - 1, (height - 1) * width, height * width - 1];
+                corners.forEach(index => this.pinParticle(index));
+            }
+            
+            pinCenter() {
+                this.unpinAll();
+                const width = parseInt(document.getElementById('width-slider').value);
+                const height = parseInt(document.getElementById('height-slider').value);
+                
+                const centerX = Math.floor(width / 2);
+                const centerY = Math.floor(height / 2);
+                const centerIndex = centerY * width + centerX;
+                
+                this.pinParticle(centerIndex);
+            }
+            
+            pinTopRow() {
+                this.unpinAll();
+                const width = parseInt(document.getElementById('width-slider').value);
+                
+                for (let x = 0; x < width; x++) {
+                    this.pinParticle(x);
+                }
+            }
+            
+            pinLeftColumn() {
+                this.unpinAll();
+                const width = parseInt(document.getElementById('width-slider').value);
+                const height = parseInt(document.getElementById('height-slider').value);
+                
+                for (let y = 0; y < height; y++) {
+                    this.pinParticle(y * width);
+                }
+            }
+            
+            pinParticle(index) {
+                if (index >= 0 && index < this.particles.length) {
+                    this.particles[index].pinned = true;
+                    this.particles[index].pinnedPosition = this.particles[index].position.clone();
+                    this.pinnedParticles.add(index);
+                }
+            }
+            
+            unpinAll() {
+                this.pinnedParticles.forEach(index => {
+                    this.particles[index].pinned = false;
+                    this.particles[index].pinnedPosition = null;
+                });
+                this.pinnedParticles.clear();
+            }
+            
+            updateWind() {
+                if (!this.windEnabled) {
+                    this.windForce.set(0, 0, 0);
+                    return;
+                }
+                
+                const strength = parseFloat(document.getElementById('wind-strength').value);
+                const direction = parseFloat(document.getElementById('wind-direction').value) * Math.PI / 180;
+                
+                this.windForce.set(
+                    Math.cos(direction) * strength,
+                    0,
+                    Math.sin(direction) * strength
+                );
+                
+                this.updateWindIndicator(direction, strength);
+            }
+            
+            setupWindIndicator() {
+                const indicator = document.getElementById('wind-indicator');
+                for (let i = 0; i < 3; i++) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'wind-arrow';
+                    arrow.style.left = '50%';
+                    arrow.style.transform = `translateX(-50%) rotate(${i * 120}deg)`;
+                    arrow.style.animationDelay = `${i * 0.3}s`;
+                    indicator.appendChild(arrow);
+                }
+            }
+            
+            updateWindIndicator(direction, strength) {
+                const arrows = document.querySelectorAll('.wind-arrow');
+                arrows.forEach((arrow, index) => {
+                    const rotation = direction * 180 / Math.PI;
+                    arrow.style.transform = `translateX(-50%) rotate(${rotation}deg) scaleY(${strength})`;
+                    arrow.style.opacity = strength > 0 ? 0.7 : 0;
+                });
+            }
+            
+            onMouseDown(event) {
+                const mouse = this.getMousePosition(event);
+                const raycaster = new Engine.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                
+                // Check for intersection with cloth particles
+                const intersects = raycaster.intersectObjects(this.nodeMeshes);
+                if (intersects.length > 0) {
+                    this.isDragging = true;
+                    this.draggedParticle = intersects[0].object;
+                    const particleIndex = this.nodeMeshes.indexOf(this.draggedParticle);
+                    this.dragOffset.copy(this.draggedParticle.position).sub(raycaster.ray.origin);
+                }
+            }
+            
+            onMouseMove(event) {
+                if (this.isDragging && this.draggedParticle) {
+                    const mouse = this.getMousePosition(event);
+                    const raycaster = new Engine.Raycaster();
+                    raycaster.setFromCamera(mouse, this.camera);
+                    
+                    const newPosition = raycaster.ray.origin.clone().add(this.dragOffset);
+                    this.draggedParticle.position.copy(newPosition);
+                    
+                    const particleIndex = this.nodeMeshes.indexOf(this.draggedParticle);
+                    if (particleIndex >= 0) {
+                        this.particles[particleIndex].position.copy(newPosition);
+                        this.particles[particleIndex].velocity.set(0, 0, 0);
+                    }
+                }
+            }
+            
+            onMouseUp(event) {
+                this.isDragging = false;
+                this.draggedParticle = null;
+            }
+            
+            getMousePosition(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                    y: -((event.clientY - rect.top) / rect.height) * 2 + 1
+                };
+            }
+            
+            updatePhysics() {
+                const timeStep = 1 / 60;
+                const gravityEnabled = document.getElementById('gravity-enabled').checked;
+                
+                this.collisionChecks = 0;
+                
+                // Update wind
+                this.updateWind();
+                
+                for (let step = 0; step < this.physicsSteps; step++) {
+                    // Apply forces to particles
+                    this.particles.forEach(particle => {
+                        if (!particle.pinned) {
+                            // Reset acceleration
+                            particle.acceleration.set(0, 0, 0);
+                            
+                            // Apply gravity
+                            if (gravityEnabled) {
+                                particle.acceleration.add(this.gravity);
+                            }
+                            
+                            // Apply wind force
+                            if (this.windEnabled) {
+                                particle.acceleration.add(this.windForce);
+                            }
+                            
+                            // Apply Verlet integration
+                            particle.velocity.add(particle.acceleration.clone().multiplyScalar(timeStep));
+                            particle.velocity.multiplyScalar(0.98); // Damping
+                            
+                            const temp = particle.position.clone();
+                            particle.position.add(particle.velocity);
+                            particle.previousPosition.copy(temp);
+                            
+                            // Ground collision
+                            if (particle.position.y < -4.9) {
+                                particle.position.y = -4.9;
+                                particle.velocity.y *= -0.3; // Bounce
+                                particle.velocity.x *= 0.8; // Friction
+                            }
+                        } else {
+                            // Keep pinned particles in place
+                            particle.position.copy(particle.pinnedPosition);
+                            particle.velocity.set(0, 0, 0);
+                        }
+                    });
+                    
+                    // Satisfy constraints
+                    for (let iteration = 0; iteration < this.constraintIterations; iteration++) {
+                        this.constraints.forEach(constraint => {
+                            const p1 = this.particles[constraint.p1];
+                            const p2 = this.particles[constraint.p2];
+                            
+                            const delta = p2.position.clone().sub(p1.position);
+                            const distance = delta.length();
+                            
+                            if (distance > 0) {
+                                const difference = (distance - constraint.restLength) / distance;
+                                const correction = delta.clone().multiplyScalar(0.5 * difference * constraint.stiffness);
+                                
+                                if (!p1.pinned) {
+                                    p1.position.add(correction);
+                                }
+                                
+                                if (!p2.pinned) {
+                                    p2.position.sub(correction);
+                                }
+                            }
+                            
+                            this.collisionChecks++;
+                        });
+                    }
+                }
+                
+                // Update cloth mesh
+                this.updateClothMesh();
+                
+                // Update node meshes
+                this.nodeMeshes.forEach((mesh, index) => {
+                    mesh.position.copy(this.particles[index].position);
+                });
+                
+                // Update constraint lines
+                this.constraintLines.forEach((line, index) => {
+                    const constraint = this.constraints[index];
+                    const points = [
+                        this.particles[constraint.p1].position,
+                        this.particles[constraint.p2].position
+                    ];
+                    line.geometry.setFromPoints(points);
+                });
+            }
+            
+            updateClothMesh() {
+                const positions = this.clothMesh.geometry.attributes.position.array;
+                
+                this.particles.forEach((particle, i) => {
+                    positions[i * 3] = particle.position.x;
+                    positions[i * 3 + 1] = particle.position.y;
+                    positions[i * 3 + 2] = particle.position.z;
+                });
+                
+                this.clothMesh.geometry.attributes.position.needsUpdate = true;
+                
+                // Recalculate normals
+                this.clothMesh.geometry.computeVertexNormals();
+                this.clothMesh.geometry.attributes.normal.needsUpdate = true;
+            }
+            
+            updateUI() {
+                document.getElementById('particle-count').textContent = this.particles.length;
+                document.getElementById('constraint-count').textContent = this.constraints.length;
+                document.getElementById('sim-time').textContent = ((performance.now() - this.startTime) / 1000).toFixed(2);
+                document.getElementById('collision-count').textContent = this.collisionChecks;
+                document.getElementById('wind-force').textContent = this.windForce.length().toFixed(2);
+                
+                // Calculate cloth properties
+                const width = parseInt(document.getElementById('width-slider').value);
+                const height = parseInt(document.getElementById('height-slider').value);
+                const area = width * height * 0.25; // Approximate area in m²
+                
+                document.getElementById('cloth-mass').textContent = (area * 0.5).toFixed(1);
+                document.getElementById('cloth-stiffness').textContent = '0.8';
+                document.getElementById('cloth-damping').textContent = '0.02';
+                document.getElementById('cloth-area').textContent = area.toFixed(1);
+            }
+            
+            updateSliderValues() {
+                const sliders = [
+                    { id: 'width', display: 'width-value' },
+                    { id: 'height', display: 'height-value' },
+                    { id: 'thickness', display: 'thickness-value' },
+                    { id: 'wind-strength', display: 'wind-strength-value' },
+                    { id: 'wind-direction', display: 'wind-direction-value' },
+                    { id: 'physics-steps', display: 'physics-steps-value' }
+                ];
+                
+                sliders.forEach(slider => {
+                    const element = document.getElementById(`${slider.id}-slider`);
+                    const display = document.getElementById(slider.display);
+                    if (element && display) {
+                        if (slider.id === 'wind-direction') {
+                            display.textContent = element.value + '°';
+                        } else {
+                            display.textContent = element.value;
+                        }
+                    }
+                });
+            }
+            
+            resetCloth() {
+                // Remove old mesh
+                if (this.clothMesh) {
+                    this.scene.remove(this.clothMesh);
+                }
+                
+                // Remove node meshes
+                this.nodeMeshes.forEach(mesh => this.scene.remove(mesh));
+                this.nodeMeshes = [];
+                
+                // Remove constraint lines
+                this.constraintLines.forEach(line => this.scene.remove(line));
+                this.constraintLines = [];
+                
+                // Recreate cloth
+                this.createCloth();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const startTime = performance.now();
+                
+                this.updatePhysics();
+                this.updateUI();
+                this.renderer.render(this.scene, this.camera);
+                
+                // Track CPU usage
+                const endTime = performance.now();
+                const frameTime = endTime - startTime;
+                this.cpuUsage = Math.min(100, (frameTime / (1000 / 60)) * 100);
+                document.getElementById('cpu-usage').textContent = Math.round(this.cpuUsage);
+                
+                // Camera controls
+                if (!this.isDragging) {
+                    this.camera.position.x += (Math.sin(Date.now() * 0.001) * 5 - this.camera.position.x) * 0.02;
+                    this.camera.lookAt(0, 0, 0);
+                }
+            }
+        }
+        
+        // Initialize the simulation
+        window.addEventListener('load', () => {
+            new ClothSimulation();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

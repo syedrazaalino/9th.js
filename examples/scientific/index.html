@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Scientific Visualizations - Interactive Examples</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .visualization-card {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .visualization-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .visualization-card:hover::before {
+            opacity: 1;
+        }
+
+        .visualization-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: #3b82f6;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 20px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f1f5f9;
+            margin-bottom: 5px;
+        }
+
+        .card-subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .card-description {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .features-list {
+            margin-bottom: 20px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        .feature-icon {
+            width: 16px;
+            height: 16px;
+            background: #10b981;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+        }
+
+        .card-footer {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(71, 85, 105, 0.5);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(71, 85, 105, 0.8);
+            border-color: #3b82f6;
+        }
+
+        .tech-stack {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tech-badge {
+            padding: 4px 8px;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #60a5fa;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            text-align: center;
+            margin: 60px 0 40px 0;
+            color: #f1f5f9;
+        }
+
+        .info-section {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px 0;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .info-card {
+            text-align: center;
+        }
+
+        .info-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px auto;
+            font-size: 20px;
+            color: white;
+        }
+
+        .info-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #f1f5f9;
+            margin-bottom: 10px;
+        }
+
+        .info-text {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            margin-top: 60px;
+        }
+
+        .footer p {
+            color: #64748b;
+        }
+
+        @media (max-width: 768px) {
+            .category-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card-footer {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Scientific Visualizations</h1>
+        <p>Interactive 3D simulations and data visualizations covering molecular biology, astronomy, particle physics, medical imaging, fluid dynamics, climate science, geology, and nuclear physics</p>
+    </div>
+
+    <div class="container">
+        <div class="category-grid">
+            <!-- Molecular Models -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">🧬</div>
+                    <div>
+                        <div class="card-title">Molecular Models</div>
+                        <div class="card-subtitle">Protein & DNA Visualization</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Advanced molecular visualization with ball-stick models, space-filling representations, and protein secondary structures. Features data import capabilities for PDB/CIF files and interactive exploration of molecular geometries.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Ball & stick molecular models
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        DNA double helix visualization
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Protein alpha helix structures
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        PDB/CIF file import
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Interactive atom manipulation
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">3D Graphics</span>
+                    <span class="tech-badge">Molecular Biology</span>
+                    <span class="tech-badge">Data Import</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="molecular-models.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Astronomical Data -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">🌌</div>
+                    <div>
+                        <div class="card-title">Astronomical Data</div>
+                        <div class="card-subtitle">Planet & Solar System Visualization</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Immersive astronomical visualization featuring solar systems, exoplanets, binary stars, star clusters, and galaxies. Includes realistic orbital mechanics and multi-system comparisons.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Solar system simulation
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Exoplanet discovery data
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Binary star systems
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Star cluster animations
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Galaxy formation models
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">Astrophysics</span>
+                    <span class="tech-badge">Orbital Mechanics</span>
+                    <span class="tech-badge">Data Visualization</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="astronomical-data.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Particle Physics -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">⚛️</div>
+                    <div>
+                        <div class="card-title">Particle Physics</div>
+                        <div class="card-subtitle">Subatomic Particle Simulation</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Comprehensive particle physics simulation including standard model particles, collision experiments, quantum field visualization, and particle decay processes with realistic physics calculations.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Standard model particles
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Particle collider simulation
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Quantum field visualization
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Particle decay chains
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Force interaction modeling
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">Quantum Physics</span>
+                    <span class="tech-badge">Particle Physics</span>
+                    <span class="tech-badge">High Energy Physics</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="particle-physics.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Medical Imaging -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">🏥</div>
+                    <div>
+                        <div class="card-title">Medical Imaging</div>
+                        <div class="card-subtitle">3D Medical Scan Visualization</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Advanced medical imaging visualization supporting DICOM/NIfTI data with slice navigation, multi-planar reconstruction, and tissue classification using Hounsfield scale.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        DICOM/NIfTI file support
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Multi-planar reconstruction
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Hounsfield scale mapping
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Tissue classification
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Real-time slice navigation
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">Medical Imaging</span>
+                    <span class="tech-badge">Healthcare Technology</span>
+                    <span class="tech-badge">DICOM</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="medical-imaging.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Fluid Dynamics -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">🌊</div>
+                    <div>
+                        <div class="card-title">Fluid Dynamics</div>
+                        <div class="card-subtitle">Computational Fluid Dynamics</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Interactive CFD simulation featuring laminar/turbulent flows, Navier-Stokes equation solver, particle tracing, and real-time visualization of fluid behavior around obstacles.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Navier-Stokes solver
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Reynolds number analysis
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Particle tracing
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Turbulence modeling
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Boundary layer effects
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">CFD</span>
+                    <span class="tech-badge">Fluid Mechanics</span>
+                    <span class="tech-badge">Numerical Methods</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="fluid-dynamics.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Climate Data -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">🌍</div>
+                    <div>
+                        <div class="card-title">Climate Data</div>
+                        <div class="card-subtitle">Weather Pattern Visualization</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Comprehensive climate visualization featuring weather reanalysis, satellite data, atmospheric physics, and real-time meteorological parameter tracking with forecast capabilities.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Weather reanalysis data
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Temperature/humidity mapping
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Pressure system tracking
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Weather front visualization
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        7-day forecast integration
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">Meteorology</span>
+                    <span class="tech-badge">Climate Science</span>
+                    <span class="tech-badge">Atmospheric Physics</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="climate-data.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Geological -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">🏔️</div>
+                    <div>
+                        <div class="card-title">Geological Survey</div>
+                        <div class="card-subtitle">Terrain & Geological Data Visualization</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Advanced geological visualization featuring terrain modeling, stratigraphic columns, fault line analysis, mineral exploration, and resource assessment with cross-sectional views.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        3D terrain reconstruction
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Stratigraphic analysis
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Fault line detection
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Mineral deposit mapping
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Cross-sectional views
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">Geology</span>
+                    <span class="tech-badge">Earth Science</span>
+                    <span class="tech-badge">Surveying</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="geological.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+
+            <!-- Nuclear Simulation -->
+            <div class="visualization-card">
+                <div class="card-header">
+                    <div class="card-icon">⚛️</div>
+                    <div>
+                        <div class="card-title">Nuclear Simulation</div>
+                        <div class="card-subtitle">Atomic Structure & Nuclear Physics</div>
+                    </div>
+                </div>
+                
+                <div class="card-description">
+                    Complete nuclear physics simulation covering atomic structure, nuclear decay processes, fission/fusion reactions, reactor physics, and binding energy calculations.
+                </div>
+                
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Atomic orbital visualization
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Nuclear decay simulation
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Fission chain reactions
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Reactor physics modeling
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">✓</div>
+                        Binding energy analysis
+                    </div>
+                </div>
+                
+                <div class="tech-stack">
+                    <span class="tech-badge">Nuclear Physics</span>
+                    <span class="tech-badge">Atomic Structure</span>
+                    <span class="tech-badge">Quantum Mechanics</span>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="nuclear-simulation.html" class="btn btn-primary">Launch Visualization</a>
+                    <a href="#" class="btn btn-secondary">Documentation</a>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Technical Features</h2>
+        
+        <div class="info-section">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-icon">🔬</div>
+                    <div class="info-title">Real Scientific Data</div>
+                    <div class="info-text">
+                        All visualizations incorporate real scientific datasets, physical constants, and mathematical models to ensure accuracy and educational value.
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">📊</div>
+                    <div class="info-title">Data Import Capabilities</div>
+                    <div class="info-text">
+                        Support for importing scientific data files including PDB/CIF for molecules, DICOM/NIfTI for medical imaging, CSV for climate data, and JSON for custom datasets.
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">🎮</div>
+                    <div class="info-title">Interactive Exploration</div>
+                    <div class="info-text">
+                        Full 3D interaction with zoom, rotation, and manipulation controls. Real-time parameter adjustment and animation controls for all simulations.
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">🚀</div>
+                    <div class="info-title">Performance Optimized</div>
+                    <div class="info-text">
+                        Built with WebGL for smooth 60fps performance across all visualizations, with efficient rendering algorithms and adaptive quality settings.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Use Cases & Applications</h2>
+        
+        <div class="info-section">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-icon">🎓</div>
+                    <div class="info-title">Education & Research</div>
+                    <div class="info-text">
+                        Perfect for students, educators, and researchers to visualize complex scientific concepts, explore data interactively, and understand physical phenomena.
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">🏭</div>
+                    <div class="info-title">Industry Applications</div>
+                    <div class="info-text">
+                        Suitable for engineering teams, medical professionals, environmental scientists, and data analysts who need to visualize complex datasets and simulations.
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">📱</div>
+                    <div class="info-title">Cross-Platform</div>
+                    <div class="info-text">
+                        Runs in any modern web browser on desktop, tablet, and mobile devices. No installation required - just open and explore.
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">🔧</div>
+                    <div class="info-title">Customizable</div>
+                    <div class="info-text">
+                        Easily extensible framework with documented APIs for adding new visualizations, importing custom datasets, and modifying existing simulations.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 Scientific Visualization Collection | Built with WebGL, Three.js, and modern web technologies</p>
+        <p>For questions, contributions, or to report issues, please refer to the documentation links above.</p>
+    </div>
+
+    <script>
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.visualization-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px) scale(1.02)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+            
+            // Add subtle parallax effect to header
+            window.addEventListener('scroll', function() {
+                const scrolled = window.pageYOffset;
+                const header = document.querySelector('.header');
+                header.style.transform = `translateY(${scrolled * 0.5}px)`;
+            });
+        });
+    </script>
+</body>
+</html>

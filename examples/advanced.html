@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js - Advanced Example</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+        }
+        
+        #info h3 {
+            margin: 0 0 10px 0;
+            color: #4fc3f7;
+        }
+        
+        #info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        #controls {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #666;
+        }
+        
+        #controls p {
+            margin: 3px 0;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>Ninth.js Advanced Example</h3>
+        <p>Interactive 3D scene with multiple objects</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Camera: <span id="camera-type">Perspective</span></p>
+        <p>Objects: <span id="object-count">0</span></p>
+        
+        <div id="controls">
+            <p><strong>Controls:</strong></p>
+            <p>• Mouse drag: Rotate camera</p>
+            <p>• Mouse wheel: Zoom</p>
+            <p>• C: Toggle camera type</p>
+            <p>• R: Reset scene</p>
+        </div>
+    </div>
+    
+    <canvas id="advanced-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            OrthographicCamera,
+            BoxGeometry, 
+            SphereGeometry, 
+            PlaneGeometry,
+            BasicMaterial, 
+            PhongMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../src/index';
+
+        class AdvancedExample {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#1a1a1a');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.cubes = [];
+                this.usePerspective = true;
+
+                this.initializeCameras();
+                this.initializeScene();
+                this.initializeLights();
+                this.createObjects();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeCameras() {
+                this.perspectiveCamera = new PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.perspectiveCamera.setPosition(0, 3, 10);
+                this.perspectiveCamera.lookAt(0, 0, 0);
+
+                this.orthographicCamera = new OrthographicCamera(
+                    -10 * (this.canvas.width / this.canvas.height),
+                    10 * (this.canvas.width / this.canvas.height),
+                    10,
+                    -10,
+                    0.1,
+                    1000
+                );
+                this.orthographicCamera.setPosition(0, 5, 10);
+                this.orthographicCamera.lookAt(0, 0, 0);
+            }
+
+            initializeLights() {
+                const ambientLight = new AmbientLight(0.2, '#404040');
+                this.scene.add(ambientLight);
+
+                const directionalLight = new DirectionalLight(1.0, '#ffffff');
+                directionalLight.setDirection(-1, -2, -1);
+                this.scene.add(directionalLight);
+
+                const pointLight = new PointLight(0.5, '#ff6666');
+                pointLight.setPosition(0, 2, 0);
+                this.scene.add(pointLight);
+            }
+
+            initializeScene() {
+                const planeGeometry = new PlaneGeometry(20, 20);
+                const planeMaterial = new BasicMaterial({ color: '#333333' });
+                const plane = new Mesh(planeGeometry);
+                plane.setPosition(0, -2, 0);
+                plane.setRotation(-Math.PI / 2, 0, 0);
+                this.scene.add(plane);
+            }
+
+            createObjects() {
+                const colors = ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff'];
+                
+                for (let i = 0; i < 6; i++) {
+                    const geometry = new BoxGeometry(1, 1, 1);
+                    const material = new PhongMaterial({ 
+                        color: colors[i % colors.length],
+                        shininess: 30,
+                        specular: '#ffffff'
+                    });
+                    
+                    const cube = new Mesh(geometry);
+                    cube.setPosition(
+                        MathUtils.random(-5, 5),
+                        MathUtils.random(-1, 3),
+                        MathUtils.random(-5, 5)
+                    );
+                    
+                    this.cubes.push(cube);
+                    this.scene.add(cube);
+                }
+
+                const sphereGeometry = new SphereGeometry(0.5, 16, 12);
+                const sphereMaterial = new BasicMaterial({ color: '#ffffff' });
+                const sphere = new Mesh(sphereGeometry);
+                sphere.setPosition(2, 1, 2);
+                this.scene.add(sphere);
+
+                this.updateUI();
+            }
+
+            setupEventListeners() {
+                let isMouseDown = false;
+                let lastMouseX = 0;
+                let lastMouseY = 0;
+
+                this.canvas.addEventListener('mousedown', (event) => {
+                    isMouseDown = true;
+                    lastMouseX = event.clientX;
+                    lastMouseY = event.clientY;
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    isMouseDown = false;
+                });
+
+                this.canvas.addEventListener('mousemove', (event) => {
+                    if (!isMouseDown) return;
+
+                    const camera = this.usePerspective ? this.perspectiveCamera : this.orthographicCamera;
+                    const deltaX = event.clientX - lastMouseX;
+                    const deltaY = event.clientY - lastMouseY;
+
+                    const radius = Math.sqrt(
+                        camera.position.x ** 2 + 
+                        camera.position.y ** 2 + 
+                        camera.position.z ** 2
+                    );
+
+                    const angle = Math.atan2(camera.position.z, camera.position.x);
+                    const height = Math.atan2(camera.position.y, Math.sqrt(camera.position.x ** 2 + camera.position.z ** 2));
+
+                    const newAngle = angle - deltaX * 0.01;
+                    const newHeight = MathUtils.clamp(height - deltaY * 0.01, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
+
+                    camera.setPosition(
+                        radius * Math.cos(newAngle) * Math.cos(newHeight),
+                        radius * Math.sin(newHeight),
+                        radius * Math.sin(newAngle) * Math.cos(newHeight)
+                    );
+                    camera.lookAt(0, 0, 0);
+
+                    lastMouseX = event.clientX;
+                    lastMouseY = event.clientY;
+                });
+
+                this.canvas.addEventListener('wheel', (event) => {
+                    event.preventDefault();
+                    const camera = this.usePerspective ? this.perspectiveCamera : this.orthographicCamera;
+                    
+                    const direction = new Vec3(
+                        -camera.position.x,
+                        -camera.position.y,
+                        -camera.position.z
+                    ).normalize();
+                    
+                    const zoomFactor = event.deltaY > 0 ? 1.1 : 0.9;
+                    
+                    camera.setPosition(
+                        camera.position.x + direction.x * zoomFactor,
+                        camera.position.y + direction.y * zoomFactor,
+                        camera.position.z + direction.z * zoomFactor
+                    );
+                });
+
+                window.addEventListener('keydown', (event) => {
+                    switch (event.key.toLowerCase()) {
+                        case 'c':
+                            this.toggleCamera();
+                            break;
+                        case 'r':
+                            this.resetScene();
+                            break;
+                    }
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            toggleCamera() {
+                this.usePerspective = !this.usePerspective;
+                this.updateUI();
+            }
+
+            resetScene() {
+                this.cubes.forEach((cube, index) => {
+                    cube.setPosition(
+                        MathUtils.random(-5, 5),
+                        MathUtils.random(-1, 3),
+                        MathUtils.random(-5, 5)
+                    );
+                    cube.setRotation(0, 0, 0);
+                    cube.setScale(1, 1, 1);
+                });
+
+                this.perspectiveCamera.setPosition(0, 3, 10);
+                this.perspectiveCamera.lookAt(0, 0, 0);
+                
+                this.orthographicCamera.setPosition(0, 5, 10);
+                this.orthographicCamera.lookAt(0, 0, 0);
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.perspectiveCamera.aspect = this.canvas.width / this.canvas.height;
+                this.perspectiveCamera.updateProjectionMatrix();
+
+                const aspect = this.canvas.width / this.canvas.height;
+                const viewSize = 10;
+                this.orthographicCamera.left = -viewSize * aspect;
+                this.orthographicCamera.right = viewSize * aspect;
+                this.orthographicCamera.top = viewSize;
+                this.orthographicCamera.bottom = -viewSize;
+                this.orthographicCamera.updateProjectionMatrix();
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = '0';
+                document.getElementById('camera-type').textContent = this.usePerspective ? 'Perspective' : 'Orthographic';
+                document.getElementById('object-count').textContent = this.cubes.length.toString();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                const time = performance.now() * 0.001;
+
+                this.cubes.forEach((cube, index) => {
+                    const offset = index * 0.5;
+                    cube.setRotation(time + offset, time * 1.2 + offset, time * 0.8 + offset);
+                    
+                    const scale = 0.8 + 0.2 * Math.sin(time * 2 + offset);
+                    cube.setScale(scale, scale, scale);
+                });
+
+                this.performanceMonitor.update(performance.now());
+
+                const camera = this.usePerspective ? this.perspectiveCamera : this.orthographicCamera;
+                this.renderer.render(this.scene, camera);
+
+                // Update FPS
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+            };
+        }
+
+        // Initialize the example
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('advanced-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                new AdvancedExample(canvas);
+                console.log('Ninth.js advanced example loaded successfully');
+            } catch (error) {
+                console.error('Error loading Ninth.js example:', error);
+                document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

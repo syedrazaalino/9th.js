@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History Timeline - Interactive 3D Historical Journey</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #8e44ad 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .demo-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #e74c3c;
+        }
+        
+        .learning-objectives {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin: 12px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            background: #e74c3c;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+        }
+        
+        .control-group button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .control-group button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .control-group button.tertiary {
+            background: #9b59b6;
+        }
+        
+        .control-group button.tertiary:hover {
+            background: #8e44ad;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .timeline-info {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .event-details {
+            background: rgba(46, 204, 113, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #2ecc71;
+        }
+        
+        .historical-display {
+            background: rgba(241, 196, 15, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .timeline-controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .period-selector {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .period-button {
+            background: rgba(231, 76, 60, 0.3);
+            color: white;
+            border: 1px solid rgba(231, 76, 60, 0.5);
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+            width: 48%;
+            display: inline-block;
+        }
+        
+        .period-button:hover {
+            background: rgba(231, 76, 60, 0.5);
+        }
+        
+        .period-button.active {
+            background: #e74c3c;
+            border-color: #e74c3c;
+        }
+        
+        .search-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .search-box input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 8px;
+            border: none;
+            border-radius: 3px;
+        }
+        
+        .speed-controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .speed-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .era-marker {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 200px;
+        }
+        
+        .hologram-effect {
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            background-size: 20px 20px;
+            animation: hologram 2s linear infinite;
+        }
+        
+        @keyframes hologram {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 20px; }
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #e74c3c;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(231, 76, 60, 0.3) !important;
+            border: 1px solid #e74c3c;
+        }
+        
+        .filter-button {
+            background: rgba(52, 152, 219, 0.3);
+            color: white;
+            border: 1px solid rgba(52, 152, 219, 0.5);
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .filter-button:hover {
+            background: rgba(52, 152, 219, 0.5);
+        }
+        
+        .filter-button.active {
+            background: #3498db;
+            border-color: #3498db;
+        }
+        
+        .comparison-panel {
+            background: rgba(155, 89, 182, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #9b59b6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>History Timeline</h1>
+            
+            <div class="demo-section" onclick="selectDemo('ancient')">
+                <div class="demo-title">Ancient Civilizations</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore early human societies<br>
+                    • Understand agricultural revolution<br>
+                    • Discover ancient wonders
+                </div>
+                
+                <div class="period-selector">
+                    <div class="period-button" onclick="selectPeriod('prehistoric')">Prehistoric</div>
+                    <div class="period-button" onclick="selectPeriod('neolithic')">Neolithic</div>
+                    <div class="period-button" onclick="selectPeriod('bronze')">Bronze Age</div>
+                    <div class="period-button" onclick="selectPeriod('iron')">Iron Age</div>
+                </div>
+                
+                <div class="search-box">
+                    <label>Search Ancient Civilizations:</label>
+                    <input type="text" id="ancient-search" placeholder="e.g., Egypt, Greece, Rome" onkeyup="searchEvents('ancient')">
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="showCivilization('egypt')">Egyptian Empire</button>
+                    <button onclick="showCivilization('greece')">Ancient Greece</button>
+                    <button onclick="showCivilization('rome')">Roman Empire</button>
+                    <button onclick="showCivilization('mesopotamia')">Mesopotamia</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="explorePyramids()">Explore Pyramids</button>
+                    <button class="secondary" onclick="showColosseum()">Roman Colosseum</button>
+                    <button class="tertiary" onclick="compareCivilizations()">Compare Societies</button>
+                </div>
+                
+                <div class="timeline-controls">
+                    <div class="control-group">
+                        <label>Time Period (BCE):</label>
+                        <input type="range" id="ancient-time" min="-10000" max="0" value="-3000" step="100" onchange="updateAncientTime()">
+                        <span id="ancient-time-value">3000 BCE</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="historical-display" id="ancient-display">
+                        Timeline: 10,000 BCE - 500 CE
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('medieval')">
+                <div class="demo-title">Medieval Period</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Study feudalism<br>
+                    • Explore Crusades<br>
+                    • Learn about Black Death
+                </div>
+                
+                <div class="period-selector">
+                    <div class="period-button" onclick="selectPeriod('early-medieval')">Early Medieval</div>
+                    <div class="period-button" onclick="selectPeriod('high-medieval')">High Medieval</div>
+                    <div class="period-button" onclick="selectPeriod('late-medieval')">Late Medieval</div>
+                    <div class="period-button" onclick="selectPeriod('renaissance')">Renaissance</div>
+                </div>
+                
+                <div class="search-box">
+                    <label>Search Medieval Events:</label>
+                    <input type="text" id="medieval-search" placeholder="e.g., Crusades, plague" onkeyup="searchEvents('medieval')">
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="showCastle()">Medieval Castle</button>
+                    <button onclick="simulateCrusade()">Crusades Route</button>
+                    <button onclick="showPlague()">Black Death Impact</button>
+                    <button onclick="exploreCathedral()">Gothic Cathedral</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="feudalSystem()">Feudal System</button>
+                    <button class="secondary" onclick="knightsTournament()">Knights Tournament</button>
+                    <button class="tertiary" onclick="tradeRoutes()">Trade Networks</button>
+                </div>
+                
+                <div class="timeline-controls">
+                    <div class="control-group">
+                        <label>Medieval Time (CE):</label>
+                        <input type="range" id="medieval-time" min="500" max="1500" value="1000" step="50" onchange="updateMedievalTime()">
+                        <span id="medieval-time-value">1000 CE</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="historical-display" id="medieval-display">
+                        Timeline: 500 - 1500 CE
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('modern')">
+                <div class="demo-title">Modern Era</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore scientific revolution<br>
+                    • Study industrial changes<br>
+                    • Understand global conflicts
+                </div>
+                
+                <div class="period-selector">
+                    <div class="period-button" onclick="selectPeriod('renaissance')">Renaissance</div>
+                    <div class="period-button" onclick="selectPeriod('exploration')">Age of Exploration</div>
+                    <div class="period-button" onclick="selectPeriod('enlightenment')">Enlightenment</div>
+                    <div class="period-button" onclick="selectPeriod('industrial')">Industrial Revolution</div>
+                </div>
+                
+                <div class="search-box">
+                    <label>Search Modern Events:</label>
+                    <input type="text" id="modern-search" placeholder="e.g., revolution, discovery" onkeyup="searchEvents('modern')">
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="showDiscovery()">Age of Discovery</button>
+                    <button onclick="industrialRevolution()">Industrial Era</button>
+                    <button onclick="frenchRevolution()">French Revolution</button>
+                    <button onclick="showInventions()">Great Inventions</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="scientificMethod()">Scientific Method</button>
+                    <button class="secondary" onclick="colonialExpansion()">Colonial Expansion</button>
+                    <button class="tertiary" onclick="steamEngine()">Steam Engine Demo</button>
+                </div>
+                
+                <div class="timeline-controls">
+                    <div class="control-group">
+                        <label>Modern Time (CE):</label>
+                        <input type="range" id="modern-time" min="1500" max="1900" value="1750" step="25" onchange="updateModernTime()">
+                        <span id="modern-time-value">1750 CE</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="historical-display" id="modern-display">
+                        Timeline: 1500 - 1900 CE
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('contemporary')">
+                <div class="demo-title">Contemporary History</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Study world wars<br>
+                    • Explore Cold War<br>
+                    • Understand modern globalization
+                </div>
+                
+                <div class="period-selector">
+                    <div class="period-button" onclick="selectPeriod('ww1')">World War I</div>
+                    <div class="period-button" onclick="selectPeriod('interwar')">Interwar Period</div>
+                    <div class="period-button" onclick="selectPeriod('ww2')">World War II</div>
+                    <div class="period-button" onclick="selectPeriod('cold-war')">Cold War</div>
+                </div>
+                
+                <div class="search-box">
+                    <label>Search Contemporary Events:</label>
+                    <input type="text" id="contemporary-search" placeholder="e.g., war, space race" onkeyup="searchEvents('contemporary')">
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="showWW1()">World War I</button>
+                    <button onclick="showWW2()">World War II</button>
+                    <button onclick="spaceRace()">Space Race</button>
+                    <button onclick="digitalRevolution()">Digital Age</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="showAtomBomb()">Atomic Age</button>
+                    <button class="secondary" onclick="civilRights()">Civil Rights</button>
+                    <button class="tertiary" onclick="internetEvolution()">Internet Evolution</button>
+                </div>
+                
+                <div class="timeline-controls">
+                    <div class="control-group">
+                        <label>Contemporary Time (CE):</label>
+                        <input type="range" id="contemporary-time" min="1900" max="2024" value="1950" step="5" onchange="updateContemporaryTime()">
+                        <span id="contemporary-time-value">1950 CE</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="historical-display" id="contemporary-display">
+                        Timeline: 1900 - Present
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-section">
+                <div class="demo-title">Timeline Controls</div>
+                
+                <div class="speed-controls">
+                    <label>Timeline Speed:</label>
+                    <input type="range" id="timeline-speed" min="0.1" max="10" step="0.1" value="1" class="speed-slider" onchange="updateSpeed()">
+                    <span id="speed-value">1.0x</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="startTimeline()">▶ Play Timeline</button>
+                    <button onclick="pauseTimeline()">⏸ Pause</button>
+                    <button onclick="resetTimeline()">⏮ Reset</button>
+                </div>
+                
+                <div class="control-group">
+                    <button class="secondary" onclick="toggleFilters()">Filter Events</button>
+                    <button class="secondary" onclick="showComparison()">Compare Periods</button>
+                </div>
+                
+                <div class="filter-panel" id="filter-panel" style="display: none;">
+                    <div class="control-group">
+                        <label>Event Categories:</label>
+                        <div class="filter-button" onclick="toggleFilter('wars')">Wars</div>
+                        <div class="filter-button" onclick="toggleFilter('discoveries')">Discoveries</div>
+                        <div class="filter-button" onclick="toggleFilter('culture')">Culture</div>
+                        <div class="filter-button" onclick="toggleFilter('technology')">Technology</div>
+                    </div>
+                </div>
+                
+                <div class="comparison-panel" id="comparison-panel" style="display: none;">
+                    <h4>Period Comparison</h4>
+                    <div class="control-group">
+                        <label>Compare:</label>
+                        <select id="comparison-period">
+                            <option value="ancient">Ancient vs Medieval</option>
+                            <option value="medieval">Medieval vs Modern</option>
+                            <option value="modern">Modern vs Contemporary</option>
+                        </select>
+                        <button onclick="performComparison()">Compare</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a historical period to begin</h3>
+                <div id="demo-description">
+                    Journey through time and explore pivotal historical moments!
+                </div>
+                <div id="timeline-display"></div>
+                <div id="event-display"></div>
+            </div>
+            <div class="era-marker" id="era-marker">
+                <strong>Current Era:</strong> No selection<br>
+                <small>Use controls to navigate time</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Historical objects and data
+        let timelineObjects = {};
+        let ancientObjects = {};
+        let medievalObjects = {};
+        let modernObjects = {};
+        let contemporaryObjects = {};
+        
+        // Timeline variables
+        let currentYear = 0;
+        let timelineSpeed = 1.0;
+        let isPlaying = false;
+        let selectedPeriod = '';
+        
+        // Historical event data
+        const historicalEvents = {
+            ancient: [
+                { year: -3100, name: 'Unification of Egypt', description: 'First dynasty of ancient Egypt established', x: 10 },
+                { year: -776, name: 'First Olympic Games', description: 'Ancient Olympic Games begin in Greece', x: 25 },
+                { year: -753, name: 'Founding of Rome', description: 'Traditional date of Rome\'s founding', x: 30 },
+                { year: -490, name: 'Battle of Marathon', description: 'Greek victory over Persian forces', x: 35 },
+                { year: -44, name: 'Assassination of Caesar', description: 'Julius Caesar assassinated in Rome', x: 45 },
+                { year: 476, name: 'Fall of Western Roman Empire', description: 'End of ancient Roman Empire', x: 50 }
+            ],
+            medieval: [
+                { year: 732, name: 'Battle of Tours', description: 'Franks stop Muslim expansion into Europe', x: 55 },
+                { year: 1066, name: 'Norman Conquest', description: 'William the Conqueror invades England', x: 60 },
+                { year: 1095, name: 'First Crusade', description: 'Pope Urban II calls for holy war', x: 62 },
+                { year: 1347, name: 'Black Death begins', description: 'Plague devastates European population', x: 70 },
+                { year: 1453, name: 'Fall of Constantinople', description: 'Ottoman Empire captures Byzantine capital', x: 75 },
+                { year: 1492, name: 'End of Medieval Period', description: 'Columbus reaches the Americas', x: 80 }
+            ],
+            modern: [
+                { year: 1492, name: 'Columbus reaches Americas', description: 'Beginning of European colonization', x: 80 },
+                { year: 1517, name: 'Protestant Reformation', description: 'Martin Luther posts 95 Theses', x: 82 },
+                { year: 1687, name: 'Newton\'s Principia', description: 'Isaac Newton publishes scientific work', x: 85 },
+                { year: 1760, name: 'Industrial Revolution begins', description: 'Mechanization transforms society', x: 90 },
+                { year: 1776, name: 'American Revolution', description: 'Declaration of Independence', x: 92 },
+                { year: 1789, name: 'French Revolution', description: 'Storming of the Bastille', x: 95 }
+            ],
+            contemporary: [
+                { year: 1914, name: 'World War I begins', description: 'Global conflict starts in Europe', x: 100 },
+                { year: 1929, name: 'Great Depression', description: 'Economic crisis worldwide', x: 105 },
+                { year: 1939, name: 'World War II begins', description: 'Second global conflict starts', x: 110 },
+                { year: 1945, name: 'End of WWII', description: 'Atomic bombs dropped, war ends', x: 112 },
+                { year: 1957, name: 'Space Race begins', description: 'Sputnik launches into orbit', x: 115 },
+                { year: 1969, name: 'Moon Landing', description: 'Apollo 11 reaches the Moon', x: 117 },
+                { year: 1989, name: 'Fall of Berlin Wall', description: 'End of Cold War division', x: 125 },
+                { year: 1991, name: 'Internet popularized', description: 'World Wide Web becomes public', x: 130 },
+                { year: 2001, name: 'September 11', description: 'Terrorist attacks in the US', x: 140 },
+                { year: 2020, name: 'COVID-19 Pandemic', description: 'Global health crisis', x: 160 }
+            ]
+        };
+        
+        init();
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 0.1, 1000);
+            camera.position.set(50, 20, 50);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(50, 0, 0);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 50, 25);
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0xe74c3c, 0.6, 100);
+            pointLight.position.set(25, 25, 0);
+            scene.add(pointLight);
+            
+            // Create timeline environment
+            createTimelineEnvironment();
+            
+            // Start render loop
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createTimelineEnvironment() {
+            // Create main timeline axis
+            const axisGeometry = new THREE.CylinderGeometry(0.2, 0.2, 200);
+            const axisMaterial = new THREE.MeshPhongMaterial({ color: 0xe74c3c });
+            const timelineAxis = new THREE.Mesh(axisGeometry, axisMaterial);
+            timelineAxis.position.set(50, 0, 0);
+            timelineAxis.rotation.z = Math.PI / 2;
+            scene.add(timelineAxis);
+            timelineObjects.axis = timelineAxis;
+            
+            // Create time markers
+            createTimeMarkers();
+            
+            // Create ground plane
+            const groundGeometry = new THREE.PlaneGeometry(250, 100);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50, transparent: true, opacity: 0.3 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            scene.add(ground);
+            
+            // Create era zones
+            createEraZones();
+        }
+        
+        function createTimeMarkers() {
+            const markers = [
+                { year: -10000, name: 'Prehistoric', x: 0 },
+                { year: -3000, name: 'Bronze Age', x: 10 },
+                { year: -500, name: 'Classical', x: 30 },
+                { year: 500, name: 'Medieval', x: 50 },
+                { year: 1500, name: 'Renaissance', x: 80 },
+                { year: 1800, name: 'Industrial', x: 95 },
+                { year: 2000, name: 'Modern', x: 130 }
+            ];
+            
+            markers.forEach((marker, index) => {
+                // Create marker pillar
+                const pillarGeometry = new THREE.CylinderGeometry(1, 1, 15);
+                const pillarMaterial = new THREE.MeshPhongMaterial({ 
+                    color: index % 2 === 0 ? 0xe74c3c : 0x3498db 
+                });
+                const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
+                pillar.position.set(marker.x, 7.5, 0);
+                scene.add(pillar);
+                
+                // Create marker label
+                const label = createTextLabel(marker.name, marker.year.toString());
+                label.position.set(marker.x, 16, 0);
+                scene.add(label);
+            });
+        }
+        
+        function createEraZones() {
+            const zones = [
+                { start: 0, end: 10, color: 0x8B4513, name: 'Ancient' },
+                { start: 10, end: 30, color: 0x4B0082, name: 'Classical' },
+                { start: 30, end: 50, color: 0x2E8B57, name: 'Early Medieval' },
+                { start: 50, end: 80, color: 0x006400, name: 'Late Medieval' },
+                { start: 80, end: 95, color: 0xFFD700, name: 'Renaissance' },
+                { start: 95, end: 120, color: 0xFF4500, name: 'Early Modern' },
+                { start: 120, end: 160, color: 0xDC143C, name: 'Contemporary' }
+            ];
+            
+            zones.forEach(zone => {
+                const zoneGeometry = new THREE.PlaneGeometry(zone.end - zone.start, 30);
+                const zoneMaterial = new THREE.MeshBasicMaterial({ 
+                    color: zone.color, 
+                    transparent: true, 
+                    opacity: 0.1,
+                    side: THREE.DoubleSide
+                });
+                const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
+                zoneMesh.position.set((zone.start + zone.end) / 2, 15, -15);
+                zoneMesh.rotation.x = -Math.PI / 2;
+                scene.add(zoneMesh);
+                
+                // Add zone label
+                const zoneLabel = createTextLabel(zone.name, '');
+                zoneLabel.position.set((zone.start + zone.end) / 2, 3, -10);
+                scene.add(zoneLabel);
+            });
+        }
+        
+        function createTextLabel(title, subtitle) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 128;
+            
+            // Clear canvas
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set background
+            context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Set border
+            context.strokeStyle = '#e74c3c';
+            context.lineWidth = 3;
+            context.strokeRect(0, 0, canvas.width, canvas.height);
+            
+            // Add title
+            context.fillStyle = '#ffffff';
+            context.font = 'bold 24px Arial';
+            context.textAlign = 'center';
+            context.fillText(title, canvas.width / 2, 40);
+            
+            // Add subtitle
+            if (subtitle) {
+                context.font = '18px Arial';
+                context.fillText(subtitle, canvas.width / 2, 80);
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(8, 4, 1);
+            
+            return sprite;
+        }
+        
+        function selectDemo(period) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = period;
+            selectedPeriod = period;
+            
+            switch(period) {
+                case 'ancient':
+                    setupAncientTimeline();
+                    break;
+                case 'medieval':
+                    setupMedievalTimeline();
+                    break;
+                case 'modern':
+                    setupModernTimeline();
+                    break;
+                case 'contemporary':
+                    setupContemporaryTimeline();
+                    break;
+            }
+            
+            // Update era marker
+            const eraNames = {
+                ancient: 'Ancient Civilizations',
+                medieval: 'Medieval Period',
+                modern: 'Modern Era',
+                contemporary: 'Contemporary History'
+            };
+            
+            document.getElementById('era-marker').innerHTML = 
+                `<strong>Current Era:</strong> ${eraNames[period]}<br><small>Explore historical events and civilizations</small>`;
+        }
+        
+        function selectPeriod(periodSubtype) {
+            selectedPeriod = periodSubtype;
+            
+            // Update period button states
+            document.querySelectorAll('.period-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Load specific period data
+            loadPeriodEvents(periodSubtype);
+        }
+        
+        function setupAncientTimeline() {
+            updateInfoPanel('Ancient Civilizations', 
+                'Explore the foundations of human civilization.', 
+                '5000+ Years of Human Achievement', 'From first cities to classical empires');
+            
+            clearTimelineObjects();
+            loadPeriodEvents('ancient');
+        }
+        
+        function setupMedievalTimeline() {
+            updateInfoPanel('Medieval Period', 
+                'Journey through the Middle Ages and Renaissance.', 
+                'A Thousand Years of History', 'Feudalism, crusades, and cultural rebirth');
+            
+            clearTimelineObjects();
+            loadPeriodEvents('medieval');
+        }
+        
+        function setupModernTimeline() {
+            updateInfoPanel('Modern Era', 
+                'Witness the transformation of the world.', 
+                'Age of Revolution and Discovery', 'Scientific revolution to industrialization');
+            
+            clearTimelineObjects();
+            loadPeriodEvents('modern');
+        }
+        
+        function setupContemporaryTimeline() {
+            updateInfoPanel('Contemporary History', 
+                'Explore the modern world we live in today.', 
+                'From World Wars to Globalization', 'The 20th and 21st centuries');
+            
+            clearTimelineObjects();
+            loadPeriodEvents('contemporary');
+        }
+        
+        function loadPeriodEvents(period) {
+            const events = historicalEvents[period] || [];
+            
+            // Clear previous events
+            clearPeriodEvents();
+            
+            // Create event markers
+            events.forEach((event, index) => {
+                createHistoricalEvent(event, index);
+            });
+            
+            // Update timeline display
+            document.getElementById(`${period}-display`).textContent = 
+                `Events: ${events.length} major events loaded`;
+        }
+        
+        function createHistoricalEvent(event, index) {
+            // Create event marker
+            const markerGeometry = new THREE.CylinderGeometry(0.5, 0.5, 8);
+            const markerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xe74c3c,
+                emissive: 0xe74c3c,
+                emissiveIntensity: 0.2
+            });
+            const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+            marker.position.set(event.x, 4, 0);
+            marker.userData = { 
+                event: event, 
+                type: 'historical-event',
+                highlighted: false
+            };
+            scene.add(marker);
+            
+            // Create event label
+            const label = createEventLabel(event.name, event.year.toString());
+            label.position.set(event.x, 10, 0);
+            scene.add(label);
+            
+            // Add connecting line to timeline
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(event.x, 0, 0),
+                new THREE.Vector3(event.x, 4, 0)
+            ]);
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+            
+            // Store in appropriate object array
+            if (!timelineObjects.events) timelineObjects.events = [];
+            timelineObjects.events.push({ marker, label, line, event });
+        }
+        
+        function createEventLabel(title, year) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            // Clear canvas
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set background
+            context.fillStyle = 'rgba(231, 76, 60, 0.8)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add title
+            context.fillStyle = '#ffffff';
+            context.font = 'bold 16px Arial';
+            context.textAlign = 'center';
+            context.fillText(title, canvas.width / 2, 25);
+            
+            // Add year
+            context.font = '14px Arial';
+            context.fillText(year, canvas.width / 2, 45);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(6, 2, 1);
+            
+            return sprite;
+        }
+        
+        // Event-specific functions
+        
+        function showCivilization(civilization) {
+            clearTimelineObjects();
+            
+            const civData = {
+                egypt: {
+                    name: 'Ancient Egypt',
+                    buildings: ['Pyramids of Giza', 'Great Sphinx', 'Temple of Karnak'],
+                    x: 10,
+                    color: 0xFFD700
+                },
+                greece: {
+                    name: 'Ancient Greece',
+                    buildings: ['Parthenon', 'Olympic Stadium', 'Temple of Apollo'],
+                    x: 25,
+                    color: 0x4169E1
+                },
+                rome: {
+                    name: 'Roman Empire',
+                    buildings: ['Colosseum', 'Roman Forum', 'Hadrian\'s Wall'],
+                    x: 35,
+                    color: 0xDC143C
+                },
+                mesopotamia: {
+                    name: 'Mesopotamia',
+                    buildings: ['Hanging Gardens', 'Ziggurat of Ur', 'Ishtar Gate'],
+                    x: 15,
+                    color: 0x8B4513
+                }
+            };
+            
+            const civ = civData[civilization];
+            if (!civ) return;
+            
+            // Create civilization representation
+            const civGeometry = new THREE.BoxGeometry(8, 5, 8);
+            const civMaterial = new THREE.MeshPhongMaterial({ color: civ.color });
+            const civMesh = new THREE.Mesh(civGeometry, civMaterial);
+            civMesh.position.set(civ.x, 2.5, 0);
+            civMesh.castShadow = true;
+            scene.add(civMesh);
+            
+            // Create buildings
+            civ.buildings.forEach((building, index) => {
+                const buildingGeometry = new THREE.BoxGeometry(1, 3 + Math.random() * 2, 1);
+                const buildingMaterial = new THREE.MeshPhongMaterial({ color: 0xF5DEB3 });
+                const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+                building.position.set(
+                    civ.x - 3 + index * 2,
+                    1.5 + Math.random() * 2,
+                    (index % 2) * 3 - 1.5
+                );
+                scene.add(building);
+            });
+            
+            updateInfoPanel(civ.name, 
+                `Explore ${civ.name} achievements and architecture.`, 
+                'Historical Achievement', 
+                `Major Structures: ${civ.buildings.join(', ')}`);
+        }
+        
+        function explorePyramids() {
+            clearTimelineObjects();
+            
+            // Create pyramid complex
+            for (let i = 0; i < 3; i++) {
+                const size = 6 - i * 1.5;
+                const height = 8 - i * 2;
+                
+                const pyramidGeometry = new THREE.ConeGeometry(size, height, 4);
+                const pyramidMaterial = new THREE.MeshPhongMaterial({ color: 0xDAA520 });
+                const pyramid = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+                pyramid.position.set(10 + i * 12, height / 2, i * 8 - 8);
+                pyramid.rotation.y = Math.PI / 4;
+                pyramid.castShadow = true;
+                scene.add(pyramid);
+                
+                // Add sphinx
+                const sphinxGeometry = new THREE.BoxGeometry(4, 3, 8);
+                const sphinxMaterial = new THREE.MeshPhongMaterial({ color: 0xDEB887 });
+                const sphinx = new THREE.Mesh(sphinxGeometry, sphinxMaterial);
+                sphinx.position.set(10 + i * 12 - 8, 1.5, i * 8 - 8);
+                scene.add(sphinx);
+            }
+            
+            updateInfoPanel('Pyramids of Giza', 
+                'Ancient wonders of Egypt built over 4500 years ago.', 
+                'Egyptian Achievement', 
+                'Height: 146.5m (originally) | Built: ~2580-2510 BCE | Workforce: ~100,000 workers');
+        }
+        
+        function showColosseum() {
+            clearTimelineObjects();
+            
+            // Create Colosseum
+            const colosseumGeometry = new THREE.CylinderGeometry(8, 9, 6, 32, 1, true);
+            const colosseumMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xD2691E,
+                side: THREE.DoubleSide
+            });
+            const colosseum = new THREE.Mesh(colosseumGeometry, colosseumMaterial);
+            colosseum.position.set(35, 3, 0);
+            scene.add(colosseum);
+            
+            // Create arches
+            for (let i = 0; i < 20; i++) {
+                const archGeometry = new THREE.BoxGeometry(1, 2, 0.5);
+                const archMaterial = new THREE.MeshPhongMaterial({ color: 0xCD853F });
+                const arch = new THREE.Mesh(archGeometry, archMaterial);
+                
+                const angle = (i / 20) * Math.PI * 2;
+                arch.position.set(
+                    35 + Math.cos(angle) * 8,
+                    1,
+                    Math.sin(angle) * 8
+                );
+                arch.lookAt(new THREE.Vector3(35, 1, 0));
+                scene.add(arch);
+            }
+            
+            updateInfoPanel('Colosseum', 
+                'Symbol of Imperial Rome, built 70-80 CE.', 
+                'Roman Architecture', 
+                'Capacity: 50,000-80,000 spectators | Construction: 10 years | Purpose: Gladiatorial games');
+        }
+        
+        function showCastle() {
+            clearTimelineObjects();
+            
+            // Create medieval castle
+            const keepGeometry = new THREE.BoxGeometry(8, 12, 8);
+            const keepMaterial = new THREE.MeshPhongMaterial({ color: 0x696969 });
+            const keep = new THREE.Mesh(keepGeometry, keepMaterial);
+            keep.position.set(60, 6, 0);
+            keep.castShadow = true;
+            scene.add(keep);
+            
+            // Create towers
+            for (let i = 0; i < 4; i++) {
+                const towerGeometry = new THREE.CylinderGeometry(2, 2, 10);
+                const towerMaterial = new THREE.MeshPhongMaterial({ color: 0x696969 });
+                const tower = new THREE.Mesh(towerGeometry, towerMaterial);
+                const angle = i * Math.PI / 2;
+                tower.position.set(
+                    60 + Math.cos(angle) * 6,
+                    5,
+                    Math.sin(angle) * 6
+                );
+                scene.add(tower);
+                
+                // Add flags
+                const flagGeometry = new THREE.PlaneGeometry(2, 1);
+                const flagMaterial = new THREE.MeshBasicMaterial({ color: 0xDC143C });
+                const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+                flag.position.set(
+                    60 + Math.cos(angle) * 6,
+                    10,
+                    Math.sin(angle) * 6
+                );
+                scene.add(flag);
+            }
+            
+            // Create walls
+            for (let i = 0; i < 4; i++) {
+                const wallGeometry = new THREE.BoxGeometry(12, 6, 1);
+                const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x696969 });
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                const angle = i * Math.PI / 2;
+                wall.position.set(
+                    60 + Math.cos(angle) * 10,
+                    3,
+                    Math.sin(angle) * 10
+                );
+                wall.rotation.y = angle + Math.PI / 2;
+                scene.add(wall);
+            }
+            
+            updateInfoPanel('Medieval Castle', 
+                'Fortress representing medieval military architecture.', 
+                'Medieval Engineering', 
+                'Height: 30m+ | Walls: 5m thick | Construction: 10-20 years | Population: 200-2000 people');
+        }
+        
+        function showDiscovery() {
+            clearTimelineObjects();
+            
+            // Create ships
+            for (let i = 0; i < 3; i++) {
+                const shipGeometry = new THREE.BoxGeometry(6, 2, 12);
+                const shipMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+                const ship = new THREE.Mesh(shipGeometry, shipMaterial);
+                ship.position.set(80, 1, i * 10 - 10);
+                scene.add(ship);
+                
+                // Add sails
+                const sailGeometry = new THREE.PlaneGeometry(4, 6);
+                const sailMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+                const sail = new THREE.Mesh(sailGeometry, sailMaterial);
+                sail.position.set(80, 4, i * 10 - 10);
+                sail.rotation.z = Math.PI / 6;
+                scene.add(sail);
+            }
+            
+            // Create world map
+            const mapGeometry = new THREE.PlaneGeometry(40, 20);
+            const mapMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22, transparent: true, opacity: 0.7 });
+            const worldMap = new THREE.Mesh(mapGeometry, mapMaterial);
+            worldMap.position.set(50, 0.1, -15);
+            scene.add(worldMap);
+            
+            updateInfoPanel('Age of Discovery', 
+                'European exploration of the world (15th-17th centuries).', 
+                'Exploration Era', 
+                'Key Figures: Columbus, Magellan, da Gama | Motivation: Trade, spread of Christianity | Impact: Global colonization');
+        }
+        
+        function showWW1() {
+            clearTimelineObjects();
+            
+            // Create trench system
+            for (let i = 0; i < 3; i++) {
+                const trenchGeometry = new THREE.BoxGeometry(2, 3, 20);
+                const trenchMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                const trench = new THREE.Mesh(trenchGeometry, trenchMaterial);
+                trench.position.set(100, -1.5, i * 8 - 8);
+                scene.add(trench);
+                
+                // Add barbed wire
+                for (let j = 0; j < 10; j++) {
+                    const wireGeometry = new THREE.TorusGeometry(0.5, 0.05, 4, 8);
+                    const wireMaterial = new THREE.MeshBasicMaterial({ color: 0x696969 });
+                    const wire = new THREE.Mesh(wireGeometry, wireMaterial);
+                    wire.position.set(100 + j * 2 - 10, 2, i * 8 - 8);
+                    scene.add(wire);
+                }
+            }
+            
+            // Create tanks
+            for (let i = 0; i < 2; i++) {
+                const tankGeometry = new THREE.BoxGeometry(4, 2, 6);
+                const tankMaterial = new THREE.MeshPhongMaterial({ color: 0x556B2F });
+                const tank = new THREE.Mesh(tankGeometry, tankMaterial);
+                tank.position.set(95, 1, i * 6 - 3);
+                scene.add(tank);
+                
+                // Add tank turret
+                const turretGeometry = new THREE.CylinderGeometry(1.5, 1.5, 1);
+                const turretMaterial = new THREE.MeshPhongMaterial({ color: 0x556B2F });
+                const turret = new THREE.Mesh(turretGeometry, turretMaterial);
+                turret.position.set(95, 2, i * 6 - 3);
+                scene.add(turret);
+            }
+            
+            updateInfoPanel('World War I', 
+                'The Great War (1914-1918) that reshaped the world.', 
+                'Global Conflict', 
+                'Duration: 4 years | Casualties: 20 million+ | Technology: Tanks, planes, chemical weapons | Outcome: End of empires');
+        }
+        
+        function spaceRace() {
+            clearTimelineObjects();
+            
+            // Create rocket
+            const rocketGeometry = new THREE.CylinderGeometry(1, 2, 8);
+            const rocketMaterial = new THREE.MeshPhongMaterial({ color: 0xC0C0C0 });
+            const rocket = new THREE.Mesh(rocketGeometry, rocketMaterial);
+            rocket.position.set(115, 4, 0);
+            scene.add(rocket);
+            
+            // Add rocket stages
+            for (let i = 0; i < 3; i++) {
+                const stageGeometry = new THREE.CylinderGeometry(0.8, 1, 2);
+                const stageMaterial = new THREE.MeshPhongMaterial({ color: i === 0 ? 0xFF0000 : 0xFFFFFF });
+                const stage = new THREE.Mesh(stageGeometry, stageMaterial);
+                stage.position.set(115, 4 - (i + 1) * 2, 0);
+                scene.add(stage);
+            }
+            
+            // Create satellite
+            const satelliteGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const satelliteMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700 });
+            const satellite = new THREE.Mesh(satelliteGeometry, satelliteMaterial);
+            satellite.position.set(118, 6, 0);
+            scene.add(satellite);
+            
+            // Add solar panels
+            const panelGeometry = new THREE.PlaneGeometry(2, 0.5);
+            const panelMaterial = new THREE.MeshBasicMaterial({ color: 0x4169E1 });
+            const panel1 = new THREE.Mesh(panelGeometry, panelMaterial);
+            panel1.position.set(119, 6, 0);
+            scene.add(panel1);
+            
+            const panel2 = new THREE.Mesh(panelGeometry, panelMaterial);
+            panel2.position.set(117, 6, 0);
+            scene.add(panel2);
+            
+            updateInfoPanel('Space Race', 
+                'Cold War competition between USA and USSR (1957-1975).', 
+                'Space Exploration', 
+                'Sputnik: 1957 | Moon Landing: 1969 | Key Figures: Gagarin, Armstrong, Valentina Tereshkova | Legacy: GPS, satellites');
+        }
+        
+        function digitalRevolution() {
+            clearTimelineObjects();
+            
+            // Create computers through time
+            const computers = [
+                { year: '1946', color: 0x8B4513, x: 130, name: 'ENIAC' },
+                { year: '1975', color: 0x696969, x: 135, name: 'Altair 8800' },
+                { year: '1981', color: 0xC0C0C0, x: 140, name: 'IBM PC' },
+                { year: '2000', color: 0xFFFFFF, x: 150, name: 'Smartphone' }
+            ];
+            
+            computers.forEach((computer, index) => {
+                const computerGeometry = new THREE.BoxGeometry(3, 2, 4);
+                const computerMaterial = new THREE.MeshPhongMaterial({ color: computer.color });
+                const computerMesh = new THREE.Mesh(computerGeometry, computerMaterial);
+                computerMesh.position.set(computer.x, 1, index * 6 - 9);
+                scene.add(computerMesh);
+                
+                // Add evolution arrows
+                if (index < computers.length - 1) {
+                    const arrowGeometry = new THREE.ConeGeometry(0.5, 2);
+                    const arrowMaterial = new THREE.MeshPhongMaterial({ color: 0x00FF00 });
+                    const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+                    arrow.position.set((computer.x + computers[index + 1].x) / 2, 2, index * 6 - 9);
+                    arrow.rotation.z = Math.PI / 2;
+                    scene.add(arrow);
+                }
+            });
+            
+            updateInfoPanel('Digital Revolution', 
+                'Transformation from analog to digital technology.', 
+                'Technology Evolution', 
+                'Computers: Room-sized → Personal → Mobile | Internet: 1969 → Public 1991 | AI: 1956 → Today');
+        }
+        
+        // Timeline control functions
+        
+        function updateSpeed() {
+            timelineSpeed = parseFloat(document.getElementById('timeline-speed').value);
+            document.getElementById('speed-value').textContent = timelineSpeed.toFixed(1) + 'x';
+        }
+        
+        function updateAncientTime() {
+            const time = parseInt(document.getElementById('ancient-time').value);
+            document.getElementById('ancient-time-value').textContent = Math.abs(time) + ' BCE';
+            navigateToYear(time);
+        }
+        
+        function updateMedievalTime() {
+            const time = parseInt(document.getElementById('medieval-time').value);
+            document.getElementById('medieval-time-value').textContent = time + ' CE';
+            navigateToYear(time);
+        }
+        
+        function updateModernTime() {
+            const time = parseInt(document.getElementById('modern-time').value);
+            document.getElementById('modern-time-value').textContent = time + ' CE';
+            navigateToYear(time);
+        }
+        
+        function updateContemporaryTime() {
+            const time = parseInt(document.getElementById('contemporary-time').value);
+            document.getElementById('contemporary-time-value').textContent = time + ' CE';
+            navigateToYear(time);
+        }
+        
+        function navigateToYear(year) {
+            currentYear = year;
+            const targetX = ((year + 10000) / 200) * 50; // Map year to timeline position
+            
+            camera.position.x = targetX;
+            controls.target.set(targetX, 0, 0);
+            controls.update();
+            
+            // Show events for this year
+            showYearEvents(year);
+        }
+        
+        function startTimeline() {
+            isPlaying = true;
+            animateTimeline();
+        }
+        
+        function pauseTimeline() {
+            isPlaying = false;
+        }
+        
+        function resetTimeline() {
+            isPlaying = false;
+            currentYear = selectedPeriod === 'ancient' ? -3000 : 1000;
+            camera.position.set(50, 20, 50);
+            controls.target.set(50, 0, 0);
+            controls.update();
+        }
+        
+        function animateTimeline() {
+            if (!isPlaying) return;
+            
+            currentYear += timelineSpeed;
+            
+            if (currentYear > 2024) currentYear = -10000;
+            
+            navigateToYear(currentYear);
+            setTimeout(animateTimeline, 100);
+        }
+        
+        function showYearEvents(year) {
+            const nearbyEvents = [];
+            
+            Object.values(historicalEvents).flat().forEach(event => {
+                if (Math.abs(event.year - year) < 100) {
+                    nearbyEvents.push(event);
+                }
+            });
+            
+            if (nearbyEvents.length > 0) {
+                const eventInfo = nearbyEvents.slice(0, 3).map(event => 
+                    `${event.year < 0 ? Math.abs(event.year) + ' BCE' : event.year + ' CE'}: ${event.name}`
+                ).join('<br>');
+                
+                document.getElementById('event-display').innerHTML = `
+                    <div class="event-details">
+                        <strong>Events Around ${year < 0 ? Math.abs(year) + ' BCE' : year + ' CE'}:</strong><br>
+                        ${eventInfo}
+                    </div>
+                `;
+            }
+        }
+        
+        function searchEvents(period) {
+            const searchTerm = document.getElementById(`${period}-search`).value.toLowerCase();
+            
+            if (timelineObjects.events) {
+                timelineObjects.events.forEach(eventObj => {
+                    const event = eventObj.event;
+                    const isMatch = event.name.toLowerCase().includes(searchTerm) ||
+                                  event.description.toLowerCase().includes(searchTerm);
+                    
+                    eventObj.marker.material.emissive.setHex(isMatch ? 0x00ff00 : 0xe74c3c);
+                    eventObj.marker.scale.setScalar(isMatch ? 1.5 : 1);
+                });
+            }
+        }
+        
+        function toggleFilters() {
+            const panel = document.getElementById('filter-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function toggleFilter(category) {
+            // Implementation would filter events by category
+            const button = event.target;
+            button.classList.toggle('active');
+        }
+        
+        function showComparison() {
+            const panel = document.getElementById('comparison-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function performComparison() {
+            const comparison = document.getElementById('comparison-period').value;
+            
+            const comparisons = {
+                ancient: {
+                    title: 'Ancient vs Medieval',
+                    ancient: 'Urban centers, writing systems, legal codes',
+                    medieval: 'Feudalism, Christianity, decentralized power'
+                },
+                medieval: {
+                    title: 'Medieval vs Modern',
+                    medieval: 'Agricultural economy, limited technology',
+                    modern: 'Scientific method, global exploration'
+                },
+                modern: {
+                    title: 'Modern vs Contemporary',
+                    modern: 'Industrial revolution, nationalism',
+                    contemporary: 'World wars, nuclear age, globalization'
+                }
+            };
+            
+            const comp = comparisons[comparison];
+            updateInfoPanel(comp.title, 
+                'Comparative analysis of historical periods.', 
+                'Historical Comparison', 
+                `<strong>${Object.keys(comp)[1]}:</strong> ${comp.medieval || comp.ancient}<br><strong>${Object.keys(comp)[2]}:</strong> ${comp.modern || comp.contemporary}`);
+        }
+        
+        function clearTimelineObjects() {
+            // Remove all timeline objects
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && 
+                    object.type !== 'AmbientLight' && 
+                    object.type !== 'DirectionalLight' && 
+                    object.type !== 'PointLight' &&
+                    object.type !== 'Mesh' && 
+                    (object.material?.color?.getHex() !== 0x2c3e50 && object.material?.color?.getHex() !== 0x1a1a2e) &&
+                    object.userData?.type !== 'time-marker') {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+            
+            timelineObjects = {};
+            
+            // Recreate base timeline
+            createTimelineEnvironment();
+        }
+        
+        function clearPeriodEvents() {
+            if (timelineObjects.events) {
+                timelineObjects.events.forEach(eventObj => {
+                    scene.remove(eventObj.marker);
+                    scene.remove(eventObj.label);
+                    scene.remove(eventObj.line);
+                });
+                timelineObjects.events = [];
+            }
+        }
+        
+        function updateInfoPanel(title, description, formula, details) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('timeline-display').innerHTML = `
+                <div class="timeline-info">
+                    <strong>Period:</strong> ${formula}<br>
+                    ${details}
+                </div>
+            `;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            const time = Date.now() * 0.001;
+            
+            // Animate event markers
+            if (timelineObjects.events) {
+                timelineObjects.events.forEach((eventObj, index) => {
+                    // Gentle pulsing animation
+                    const pulse = 1 + Math.sin(time * 2 + index) * 0.1;
+                    eventObj.marker.scale.setScalar(pulse);
+                    
+                    // Rotate labels to face camera
+                    eventObj.label.lookAt(camera.position);
+                });
+            }
+            
+            // Animate civilization buildings
+            if (ancientObjects.buildings) {
+                ancientObjects.buildings.forEach((building, index) => {
+                    building.rotation.y += 0.01;
+                });
+            }
+            
+            // Animate floating elements
+            scene.traverse((object) => {
+                if (object.type === 'Sprite' && object.material.opacity < 1) {
+                    object.position.y += Math.sin(time + object.position.x * 0.1) * 0.01;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

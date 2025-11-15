@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecular Visualization System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0, 0, 0, 0.85); padding: 20px; border-radius: 12px;
+            color: #fff; min-width: 300px; font-size: 14px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        #controls h3 { margin-bottom: 15px; color: #4fc3f7; font-size: 18px; }
+        #controls label { display: block; margin: 10px 0 5px; color: #b0bec5; }
+        #controls input, #controls select {
+            width: 100%; padding: 8px; margin-bottom: 10px;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px; color: #fff; font-size: 13px;
+        }
+        #controls button {
+            width: 100%; padding: 10px; margin: 5px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none; border-radius: 6px; color: white; cursor: pointer;
+            font-weight: 500; transition: all 0.3s;
+        }
+        #controls button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        #info {
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.85); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; max-width: 300px; line-height: 1.6;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        #molecule-list {
+            max-height: 200px; overflow-y: auto; margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+            padding: 10px; background: rgba(255,255,255,0.05);
+        }
+        .molecule-item {
+            padding: 8px; margin: 5px 0; cursor: pointer; border-radius: 4px;
+            transition: background 0.3s; border: 1px solid transparent;
+        }
+        .molecule-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .molecule-item.active {
+            background: rgba(79, 195, 247, 0.3);
+            border-color: #4fc3f7;
+        }
+        .checkbox-group {
+            display: flex; align-items: center; gap: 8px; margin: 8px 0;
+        }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+        <h3>Molecular Visualization</h3>
+        
+        <label>Select Molecule:</label>
+        <select id="molecule-select">
+            <option value="water">Water (H₂O)</option>
+            <option value="methane">Methane (CH₄)</option>
+            <option value="ethanol">Ethanol (C₂H₆O)</option>
+            <option value="benzene">Benzene (C₆H₆)</option>
+            <option value="dna">DNA Double Helix</option>
+            <option value="protein">Protein (Simplified)</option>
+            <option value="fullerene">Fullerene (C₆₀)</option>
+            <option value="graphene">Graphene Sheet</option>
+        </select>
+        
+        <label>Visualization Mode:</label>
+        <select id="mode-select">
+            <option value="ball-stick">Ball and Stick</option>
+            <option value="space-fill">Space Filling</option>
+            <option value="wireframe">Wireframe</option>
+            <option value="cartoon">Cartoon Style</option>
+        </select>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-bonds" checked>
+            <label for="show-bonds">Show Bonds</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-labels" checked>
+            <label for="show-labels">Atom Labels</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-rotation">
+            <label for="show-rotation">Auto Rotate</label>
+        </div>
+        
+        <label>Atom Size Scale:</label>
+        <input type="range" id="atom-scale" min="0.5" max="3" step="0.1" value="1">
+        
+        <label>Bond Thickness:</label>
+        <input type="range" id="bond-thickness" min="0.1" max="1" step="0.1" value="0.3">
+        
+        <button id="animate-btn">Animate Molecule</button>
+        <button id="center-btn">Center Camera</button>
+        <button id="reset-btn">Reset View</button>
+        
+        <div id="molecule-info"></div>
+    </div>
+    
+    <div id="info">
+        <div><strong>Atoms:</strong> <span id="atom-count">0</span></div>
+        <div><strong>Bonds:</strong> <span id="bond-count">0</span></div>
+        <div><strong>Molecular Weight:</strong> <span id="mol-weight">0</span> g/mol</div>
+        <div><strong>Energy:</strong> <span id="energy">0</span> kJ/mol</div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class MolecularVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                this.setupLighting();
+                this.setupControls();
+                this.setupMaterials();
+                
+                this.currentMolecule = null;
+                this.moleculeData = this.initializeMolecules();
+                this.rotationSpeed = 0.005;
+                this.isAnimating = false;
+                
+                this.loadMolecule('water');
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new Engine.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+                
+                // Main directional light
+                const directionalLight = new Engine.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(10, 10, 10);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                // Rim light for better visualization
+                const rimLight = new Engine.DirectionalLight(0x4488ff, 0.5);
+                rimLight.position.set(-10, -10, -10);
+                this.scene.add(rimLight);
+                
+                // Point lights for dramatic effect
+                const pointLight1 = new Engine.PointLight(0xff4444, 0.5, 20);
+                pointLight1.position.set(5, 5, 5);
+                this.scene.add(pointLight1);
+                
+                const pointLight2 = new Engine.PointLight(0x4444ff, 0.5, 20);
+                pointLight2.position.set(-5, -5, 5);
+                this.scene.add(pointLight2);
+            }
+            
+            setupMaterials() {
+                this.atomMaterials = {
+                    H: new Engine.MeshPhongMaterial({ 
+                        color: 0xffffff, 
+                        shininess: 100,
+                        transparent: true,
+                        opacity: 0.9
+                    }),
+                    C: new Engine.MeshPhongMaterial({ 
+                        color: 0x404040, 
+                        shininess: 50,
+                        transparent: true,
+                        opacity: 0.9
+                    }),
+                    N: new Engine.MeshPhongMaterial({ 
+                        color: 0x3050f8, 
+                        shininess: 100,
+                        transparent: true,
+                        opacity: 0.9
+                    }),
+                    O: new Engine.MeshPhongMaterial({ 
+                        color: 0xff0d0d, 
+                        shininess: 100,
+                        transparent: true,
+                        opacity: 0.9
+                    }),
+                    S: new Engine.MeshPhongMaterial({ 
+                        color: 0xffff30, 
+                        shininess: 80,
+                        transparent: true,
+                        opacity: 0.9
+                    }),
+                    P: new Engine.MeshPhongMaterial({ 
+                        color: 0xff8000, 
+                        shininess: 80,
+                        transparent: true,
+                        opacity: 0.9
+                    })
+                };
+                
+                this.bondMaterial = new Engine.MeshPhongMaterial({ 
+                    color: 0xcccccc, 
+                    shininess: 30,
+                    transparent: true,
+                    opacity: 0.7
+                });
+            }
+            
+            setupControls() {
+                // Camera controls
+                this.isMouseDown = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.cameraRotation = { x: 0, y: 0 };
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isMouseDown = true;
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (!this.isMouseDown) return;
+                    
+                    const deltaX = e.clientX - this.mouseX;
+                    const deltaY = e.clientY - this.mouseY;
+                    
+                    this.cameraRotation.y += deltaX * 0.01;
+                    this.cameraRotation.x += deltaY * 0.01;
+                    
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+                
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const scale = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(scale);
+                });
+                
+                // UI controls
+                document.getElementById('molecule-select').addEventListener('change', (e) => {
+                    this.loadMolecule(e.target.value);
+                });
+                
+                document.getElementById('mode-select').addEventListener('change', (e) => {
+                    this.changeVisualizationMode(e.target.value);
+                });
+                
+                document.getElementById('animate-btn').addEventListener('click', () => {
+                    this.toggleAnimation();
+                });
+                
+                document.getElementById('center-btn').addEventListener('click', () => {
+                    this.centerCamera();
+                });
+                
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    this.resetView();
+                });
+            }
+            
+            initializeMolecules() {
+                return {
+                    water: {
+                        name: "Water",
+                        formula: "H₂O",
+                        atoms: [
+                            { element: 'O', position: [0, 0, 0], mass: 16 },
+                            { element: 'H', position: [0.9572, 0, 0], mass: 1 },
+                            { element: 'H', position: [-0.239, 0.927, 0], mass: 1 }
+                        ],
+                        bonds: [[0, 1], [0, 2]],
+                        energy: -285.8,
+                        geometry: "bent"
+                    },
+                    
+                    methane: {
+                        name: "Methane",
+                        formula: "CH₄",
+                        atoms: [
+                            { element: 'C', position: [0, 0, 0], mass: 12 },
+                            { element: 'H', position: [1, 1, 1], mass: 1 },
+                            { element: 'H', position: [-1, -1, 1], mass: 1 },
+                            { element: 'H', position: [-1, 1, -1], mass: 1 },
+                            { element: 'H', position: [1, -1, -1], mass: 1 }
+                        ],
+                        bonds: [[0, 1], [0, 2], [0, 3], [0, 4]],
+                        energy: -74.6,
+                        geometry: "tetrahedral"
+                    },
+                    
+                    ethanol: {
+                        name: "Ethanol",
+                        formula: "C₂H₆O",
+                        atoms: [
+                            { element: 'C', position: [0, 0, 0], mass: 12 },
+                            { element: 'C', position: [1.54, 0, 0], mass: 12 },
+                            { element: 'O', position: [2.79, 0, 0], mass: 16 },
+                            { element: 'H', position: [-0.63, 0.89, 0], mass: 1 },
+                            { element: 'H', position: [-0.63, -0.89, 0], mass: 1 },
+                            { element: 'H', position: [1.54, 0.63, 0.89], mass: 1 },
+                            { element: 'H', position: [1.54, 0.63, -0.89], mass: 1 },
+                            { element: 'H', position: [1.54, -1.26, 0], mass: 1 },
+                            { element: 'H', position: [3.42, 0, 0], mass: 1 }
+                        ],
+                        bonds: [[0, 1], [1, 2], [0, 3], [0, 4], [1, 5], [1, 6], [1, 7], [2, 8]],
+                        energy: -277.7,
+                        geometry: "chain"
+                    },
+                    
+                    benzene: {
+                        name: "Benzene",
+                        formula: "C₆H₆",
+                        atoms: [
+                            { element: 'C', position: [1.396, 0, 0], mass: 12 },
+                            { element: 'C', position: [0.698, 1.209, 0], mass: 12 },
+                            { element: 'C', position: [-0.698, 1.209, 0], mass: 12 },
+                            { element: 'C', position: [-1.396, 0, 0], mass: 12 },
+                            { element: 'C', position: [-0.698, -1.209, 0], mass: 12 },
+                            { element: 'C', position: [0.698, -1.209, 0], mass: 12 },
+                            { element: 'H', position: [2.479, 0, 0], mass: 1 },
+                            { element: 'H', position: [1.240, 2.147, 0], mass: 1 },
+                            { element: 'H', position: [-1.240, 2.147, 0], mass: 1 },
+                            { element: 'H', position: [-2.479, 0, 0], mass: 1 },
+                            { element: 'H', position: [-1.240, -2.147, 0], mass: 1 },
+                            { element: 'H', position: [1.240, -2.147, 0], mass: 1 }
+                        ],
+                        bonds: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 6], [1, 7], [2, 8], [3, 9], [4, 10], [5, 11]],
+                        energy: 49.0,
+                        geometry: "ring"
+                    },
+                    
+                    dna: {
+                        name: "DNA Double Helix",
+                        formula: "C₁₀₀H₁₀₀N₃₈O₄₃",
+                        atoms: this.generateDNAHelix(),
+                        bonds: this.generateDNAHBonds(),
+                        energy: 0,
+                        geometry: "helix"
+                    },
+                    
+                    protein: {
+                        name: "Protein (Alpha Helix)",
+                        formula: "Variable",
+                        atoms: this.generateProteinHelix(),
+                        bonds: this.generateProteinBonds(),
+                        energy: 0,
+                        geometry: "helix"
+                    },
+                    
+                    fullerene: {
+                        name: "Fullerene (C₆₀)",
+                        formula: "C₆₀",
+                        atoms: this.generateFullerene(),
+                        bonds: this.generateFullereneBonds(),
+                        energy: 0,
+                        geometry: "sphere"
+                    },
+                    
+                    graphene: {
+                        name: "Graphene Sheet",
+                        formula: "C₁₀₀",
+                        atoms: this.generateGraphene(),
+                        bonds: this.generateGrapheneBonds(),
+                        energy: 0,
+                        geometry: "sheet"
+                    }
+                };
+            }
+            
+            generateDNAHelix() {
+                const atoms = [];
+                const radius = 10;
+                const pitch = 3.4;
+                
+                for (let i = 0; i < 100; i++) {
+                    const angle = (i * 0.63) * Math.PI / 180;
+                    const height = (i / 10) * pitch;
+                    
+                    // Main backbone
+                    atoms.push({
+                        element: 'P',
+                        position: [
+                            Math.cos(angle) * radius,
+                            Math.sin(angle) * radius,
+                            height
+                        ],
+                        mass: 31
+                    });
+                    
+                    // Sugar
+                    atoms.push({
+                        element: 'C',
+                        position: [
+                            Math.cos(angle + 0.5) * (radius - 2),
+                            Math.sin(angle + 0.5) * (radius - 2),
+                            height + 0.5
+                        ],
+                        mass: 12
+                    });
+                    
+                    // Base
+                    atoms.push({
+                        element: 'N',
+                        position: [
+                            Math.cos(angle + 1) * (radius - 4),
+                            Math.sin(angle + 1) * (radius - 4),
+                            height + 1
+                        ],
+                        mass: 14
+                    });
+                }
+                
+                return atoms;
+            }
+            
+            generateDNAHBonds() {
+                const bonds = [];
+                // Simplified hydrogen bonding between complementary bases
+                for (let i = 0; i < 99; i += 3) {
+                    bonds.push([i, i + 50]);
+                }
+                return bonds;
+            }
+            
+            generateProteinHelix() {
+                const atoms = [];
+                const radius = 5;
+                const pitch = 1.5;
+                
+                for (let i = 0; i < 200; i++) {
+                    const angle = i * 0.3;
+                    const height = (i / 10) * pitch;
+                    
+                    atoms.push({
+                        element: ['C', 'N', 'O'][Math.floor(Math.random() * 3)],
+                        position: [
+                            Math.cos(angle) * radius + Math.random() * 2,
+                            Math.sin(angle) * radius + Math.random() * 2,
+                            height + Math.random() * 2
+                        ],
+                        mass: 12
+                    });
+                }
+                
+                return atoms;
+            }
+            
+            generateProteinBonds() {
+                const bonds = [];
+                for (let i = 0; i < 198; i++) {
+                    if (Math.random() > 0.7) {
+                        bonds.push([i, i + 1]);
+                    }
+                }
+                return bonds;
+            }
+            
+            generateFullerene() {
+                const atoms = [];
+                const radius = 8;
+                
+                for (let i = 0; i < 60; i++) {
+                    const theta = Math.acos(-1 + 2 * i / 60);
+                    const phi = Math.sqrt(60 * Math.PI) * theta;
+                    
+                    atoms.push({
+                        element: 'C',
+                        position: [
+                            radius * Math.sin(theta) * Math.cos(phi),
+                            radius * Math.sin(theta) * Math.sin(phi),
+                            radius * Math.cos(theta)
+                        ],
+                        mass: 12
+                    });
+                }
+                
+                return atoms;
+            }
+            
+            generateFullereneBonds() {
+                const bonds = [];
+                for (let i = 0; i < 60; i++) {
+                    for (let j = i + 1; j < 60; j++) {
+                        const distance = this.getDistance(
+                            this.moleculeData.fullerene.atoms[i].position,
+                            this.moleculeData.fullerene.atoms[j].position
+                        );
+                        
+                        if (distance < 2.5) {
+                            bonds.push([i, j]);
+                        }
+                    }
+                }
+                return bonds;
+            }
+            
+            generateGraphene() {
+                const atoms = [];
+                const size = 10;
+                const spacing = 1.42;
+                
+                for (let x = -size; x <= size; x++) {
+                    for (let y = -size; y <= size; y++) {
+                        if (Math.random() > 0.3) {
+                            atoms.push({
+                                element: 'C',
+                                position: [
+                                    x * spacing + (y % 2) * spacing / 2,
+                                    y * spacing * Math.sqrt(3) / 2,
+                                    (Math.random() - 0.5) * 0.1
+                                ],
+                                mass: 12
+                            });
+                        }
+                    }
+                }
+                
+                return atoms;
+            }
+            
+            generateGrapheneBonds() {
+                const bonds = [];
+                const atoms = this.moleculeData.graphene.atoms;
+                
+                for (let i = 0; i < atoms.length; i++) {
+                    for (let j = i + 1; j < atoms.length; j++) {
+                        const distance = this.getDistance(atoms[i].position, atoms[j].position);
+                        
+                        if (distance < 1.6) {
+                            bonds.push([i, j]);
+                        }
+                    }
+                }
+                return bonds;
+            }
+            
+            getDistance(pos1, pos2) {
+                return Math.sqrt(
+                    Math.pow(pos1[0] - pos2[0], 2) +
+                    Math.pow(pos1[1] - pos2[1], 2) +
+                    Math.pow(pos1[2] - pos2[2], 2)
+                );
+            }
+            
+            loadMolecule(moleculeName) {
+                // Remove previous molecule
+                if (this.currentMolecule) {
+                    this.currentMolecule.forEach(mesh => this.scene.remove(mesh));
+                }
+                
+                const molecule = this.moleculeData[moleculeName];
+                if (!molecule) return;
+                
+                this.currentMolecule = [];
+                const group = new Engine.Group();
+                
+                // Create atoms
+                molecule.atoms.forEach((atom, index) => {
+                    const radius = this.getAtomRadius(atom.element);
+                    const geometry = new Engine.SphereGeometry(radius, 16, 8);
+                    const material = this.atomMaterials[atom.element].clone();
+                    const mesh = new Engine.Mesh(geometry, material);
+                    
+                    mesh.position.set(atom.position[0], atom.position[1], atom.position[2]);
+                    
+                    // Add element label
+                    if (document.getElementById('show-labels').checked) {
+                        this.addElementLabel(mesh, atom.element);
+                    }
+                    
+                    group.add(mesh);
+                    this.currentMolecule.push(mesh);
+                });
+                
+                // Create bonds
+                if (document.getElementById('show-bonds').checked) {
+                    molecule.bonds.forEach(([atom1, atom2]) => {
+                        const pos1 = molecule.atoms[atom1].position;
+                        const pos2 = molecule.atoms[atom2].position;
+                        const bond = this.createBond(pos1, pos2);
+                        group.add(bond);
+                        this.currentMolecule.push(bond);
+                    });
+                }
+                
+                this.scene.add(group);
+                this.currentMolecule.push(group);
+                this.moleculeGroup = group;
+                
+                // Update UI
+                this.updateMoleculeInfo(molecule);
+            }
+            
+            getAtomRadius(element) {
+                const radii = {
+                    H: 0.31, C: 0.76, N: 0.71, O: 0.66, S: 1.05, P: 1.07
+                };
+                
+                const scale = parseFloat(document.getElementById('atom-scale').value);
+                return (radii[element] || 0.5) * scale;
+            }
+            
+            createBond(pos1, pos2) {
+                const direction = new Engine.Vector3(
+                    pos2[0] - pos1[0],
+                    pos2[1] - pos1[1],
+                    pos2[2] - pos1[2]
+                );
+                
+                const length = direction.length();
+                const thickness = parseFloat(document.getElementById('bond-thickness').value);
+                
+                const geometry = new Engine.CylinderGeometry(thickness * 0.1, thickness * 0.1, length, 8);
+                const material = this.bondMaterial.clone();
+                const mesh = new Engine.Mesh(geometry, material);
+                
+                // Position at midpoint
+                mesh.position.set(
+                    (pos1[0] + pos2[0]) / 2,
+                    (pos1[1] + pos2[1]) / 2,
+                    (pos1[2] + pos2[2]) / 2
+                );
+                
+                // Rotate to align with bond direction
+                const up = new Engine.Vector3(0, 1, 0);
+                const quaternion = new Engine.Quaternion();
+                quaternion.setFromUnitVectors(up, direction.normalize());
+                mesh.setRotationFromQuaternion(quaternion);
+                
+                return mesh;
+            }
+            
+            addElementLabel(parent, element) {
+                // Simple text representation using HTML canvas
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 64;
+                canvas.height = 32;
+                
+                context.font = '24px Arial';
+                context.fillStyle = 'white';
+                context.textAlign = 'center';
+                context.fillText(element, 32, 24);
+                
+                const texture = new Engine.CanvasTexture(canvas);
+                const spriteMaterial = new Engine.SpriteMaterial({ map: texture });
+                const sprite = new Engine.Sprite(spriteMaterial);
+                
+                sprite.position.set(0, 1, 0);
+                sprite.scale.set(0.5, 0.25, 1);
+                
+                parent.add(sprite);
+            }
+            
+            changeVisualizationMode(mode) {
+                if (!this.moleculeGroup) return;
+                
+                this.moleculeGroup.children.forEach((child, index) => {
+                    if (child instanceof Engine.SphereGeometry.constructor) {
+                        // This is an atom
+                        switch (mode) {
+                            case 'space-fill':
+                                child.material.opacity = 1.0;
+                                child.material.transparent = false;
+                                break;
+                            case 'wireframe':
+                                child.material.wireframe = true;
+                                child.material.opacity = 0.7;
+                                break;
+                            case 'cartoon':
+                                child.material.flatShading = true;
+                                child.material.shininess = 0;
+                                break;
+                            default:
+                                child.material.wireframe = false;
+                                child.material.shininess = 100;
+                        }
+                    }
+                });
+            }
+            
+            toggleAnimation() {
+                this.isAnimating = !this.isAnimating;
+                document.getElementById('animate-btn').textContent = 
+                    this.isAnimating ? 'Stop Animation' : 'Animate Molecule';
+            }
+            
+            centerCamera() {
+                const center = new Engine.Vector3();
+                if (this.moleculeGroup) {
+                    this.moleculeGroup.getWorldPosition(center);
+                    this.camera.lookAt(center);
+                }
+            }
+            
+            resetView() {
+                this.camera.position.set(0, 0, 30);
+                this.cameraRotation = { x: 0, y: 0 };
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            updateMoleculeInfo(molecule) {
+                const atomCount = molecule.atoms.length;
+                const bondCount = molecule.bonds.length;
+                const molWeight = molecule.atoms.reduce((sum, atom) => sum + atom.mass, 0);
+                
+                document.getElementById('atom-count').textContent = atomCount;
+                document.getElementById('bond-count').textContent = bondCount;
+                document.getElementById('mol-weight').textContent = molWeight.toFixed(1);
+                document.getElementById('energy').textContent = molecule.energy.toFixed(1);
+                
+                document.getElementById('molecule-info').innerHTML = `
+                    <h4 style="color: #4fc3f7; margin: 10px 0 5px;">${molecule.name}</h4>
+                    <div>Formula: ${molecule.formula}</div>
+                    <div>Geometry: ${molecule.geometry}</div>
+                `;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Camera rotation
+                if (document.getElementById('show-rotation').checked || this.isAnimating) {
+                    this.camera.rotation.y += this.rotationSpeed;
+                }
+                
+                // Mouse rotation
+                this.camera.rotation.x = this.cameraRotation.x;
+                this.camera.rotation.y += this.cameraRotation.y;
+                
+                // Animate molecule
+                if (this.isAnimating && this.moleculeGroup) {
+                    this.moleculeGroup.rotation.y += 0.02;
+                    this.moleculeGroup.rotation.x += 0.01;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the visualizer
+        window.addEventListener('load', () => {
+            new MolecularVisualizer();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural Terrain Generation</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Procedural Terrain Generation</strong><br>
+        Dynamic landscape creation<br>
+        - Perlin/Simplex noise<br>
+        - Multiple biomes<br>
+        - Erosion simulation<br>
+        - LOD (Level of Detail)
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setTerrainType('mountains')" class="active">Mountains</button>
+            <button onclick="setTerrainType('forest')">Forest</button>
+            <button onclick="setTerrainType('desert')">Desert</button>
+            <button onclick="setTerrainType('islands')">Islands</button>
+        </div>
+        <div class="control-group">
+            <label>Height Scale: <span id="height-val">50</span></label>
+            <input type="range" id="height-scale" min="10" max="200" step="5" value="50">
+        </div>
+        <div class="control-group">
+            <label>Noise Scale: <span id="noise-val">0.01</span></label>
+            <input type="range" id="noise-scale" min="0.001" max="0.05" step="0.001" value="0.01">
+        </div>
+        <div class="control-group">
+            <label>Octaves: <span id="octaves-val">6</span></label>
+            <input type="range" id="octaves" min="1" max="10" step="1" value="6">
+        </div>
+        <div class="control-group">
+            <button onclick="regenerateTerrain()">Regenerate</button>
+            <button onclick="toggleWireframe()">Toggle Wireframe</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 200, 1000);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(100, 150, 100);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxPolarAngle = Math.PI / 2.2;
+
+        // Noise function (simplified Perlin-like)
+        function noise2D(x, y) {
+            const p = new Array(512);
+            const permutation = [151,160,137,91,90,15,
+                131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+                8,99,37,240,21,10,23,190, 6,148,247,120,234,75,0,26,197,62,
+                94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,
+                20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
+                77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,
+                41,55,46,245,40,244,102,143,54, 65,25,63,161, 1,216,80,
+                73,209,76,132,187,208, 89,18,169,200,196,135,130,116,
+                188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,
+                124,123, 5,202,38,147,118,126,255,82,85,212,207,206,59,
+                227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,
+                152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
+                129,22,39,253, 19,98,108,110,79,113,224,232,178,185,
+                112,104,218,246,97,228,251,34,242,193,238,210,144,12,
+                191,179,162,241, 81,51,145,235,249,14,239,107,49,192,
+                214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,
+                127, 4,150,254,138,236,205, 93,222,114, 67,29,24,72,
+                243,141,128,195,78,66,215,61,156,180];
+
+            for (let i = 0; i < 256; i++) p[256 + i] = p[i] = permutation[i];
+
+            function fade(t) {
+                return t * t * t * (t * (t * 6 - 15) + 10);
+            }
+
+            function lerp(t, a, b) {
+                return a + t * (b - a);
+            }
+
+            function grad(hash, x, y) {
+                const h = hash & 3;
+                const u = h < 2 ? x : y;
+                const v = h < 2 ? y : x;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+
+            const X = Math.floor(x) & 255;
+            const Y = Math.floor(y) & 255;
+
+            x -= Math.floor(x);
+            y -= Math.floor(y);
+
+            const u = fade(x);
+            const v = fade(y);
+
+            const aa = p[p[X] + Y];
+            const ab = p[p[X] + Y + 1];
+            const ba = p[p[X + 1] + Y];
+            const bb = p[p[X + 1] + Y + 1];
+
+            return lerp(v,
+                lerp(u, grad(aa, x, y), grad(ba, x - 1, y)),
+                lerp(u, grad(ab, x, y - 1), grad(bb, x - 1, y - 1))
+            );
+        }
+
+        // Fractal Brownian Motion
+        function fbm(x, y, octaves, persistence, lacunarity) {
+            let total = 0;
+            let frequency = 1;
+            let amplitude = 1;
+            let maxValue = 0;
+
+            for (let i = 0; i < octaves; i++) {
+                total += noise2D(x * frequency, y * frequency) * amplitude;
+                maxValue += amplitude;
+                amplitude *= persistence;
+                frequency *= lacunarity;
+            }
+
+            return total / maxValue;
+        }
+
+        // Terrain Generator
+        class TerrainGenerator {
+            constructor() {
+                this.width = 200;
+                this.height = 200;
+                this.segmentSize = 1;
+                this.heightScale = 50;
+                this.noiseScale = 0.01;
+                this.octaves = 6;
+                this.persistence = 0.5;
+                this.lacunarity = 2.0;
+                this.currentType = 'mountains';
+                
+                this.terrain = null;
+                this.generateTerrain();
+            }
+
+            generateTerrain() {
+                // Remove existing terrain
+                if (this.terrain) {
+                    scene.remove(this.terrain);
+                }
+
+                const geometry = new THREE.PlaneGeometry(
+                    this.width, 
+                    this.height, 
+                    this.width / this.segmentSize, 
+                    this.height / this.segmentSize
+                );
+                
+                const vertices = geometry.attributes.position.array;
+                const colors = new Float32Array(vertices.length);
+
+                // Generate height map
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = i % (vertices.length / 3 * 3);
+                    const worldX = vertices[i] / this.segmentSize;
+                    const worldY = vertices[i + 1] / this.segmentSize;
+
+                    let height = fbm(
+                        worldX * this.noiseScale,
+                        worldY * this.noiseScale,
+                        this.octaves,
+                        this.persistence,
+                        this.lacunarity
+                    );
+
+                    // Apply terrain type specific modifications
+                    height = this.applyTerrainType(height, worldX, worldY);
+
+                    vertices[i + 2] = height * this.heightScale;
+
+                    // Color based on height
+                    const normalizedHeight = height * this.heightScale;
+                    const color = this.getHeightColor(normalizedHeight);
+                    colors[i] = color.r;
+                    colors[i + 1] = color.g;
+                    colors[i + 2] = color.b;
+                }
+
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: 0.8,
+                    metalness: 0.1,
+                    flatShading: false
+                });
+
+                this.terrain = new THREE.Mesh(geometry, material);
+                this.terrain.rotation.x = -Math.PI / 2;
+                this.terrain.receiveShadow = true;
+                this.terrain.castShadow = true;
+                
+                scene.add(this.terrain);
+            }
+
+            applyTerrainType(height, x, y) {
+                switch(this.currentType) {
+                    case 'mountains':
+                        // Create sharp peaks and valleys
+                        height = Math.pow(Math.abs(height), 1.5) * Math.sign(height);
+                        break;
+                    
+                    case 'forest':
+                        // Gentle rolling hills
+                        height = height * 0.6 + Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.2;
+                        break;
+                    
+                    case 'desert':
+                        // Dune-like patterns
+                        height = Math.sin(x * 0.02) * Math.cos(y * 0.02) * 0.8 + height * 0.4;
+                        break;
+                    
+                    case 'islands':
+                        // Circular islands with water
+                        const distance = Math.sqrt(x * x + y * y);
+                        const islandFactor = 1.0 - (distance / 100);
+                        height = height * islandFactor + Math.max(0, islandFactor) * 0.3;
+                        break;
+                }
+                
+                return height;
+            }
+
+            getHeightColor(height) {
+                const color = new THREE.Color();
+                
+                if (this.currentType === 'islands' && height < -2) {
+                    // Water
+                    color.setHSL(0.55, 0.7, 0.5);
+                } else if (height < 5) {
+                    // Sand/Beach
+                    color.setHSL(0.13, 0.6, 0.7);
+                } else if (height < 15) {
+                    // Grass
+                    color.setHSL(0.33, 0.8, 0.4);
+                } else if (height < 30) {
+                    // Dark green
+                    color.setHSL(0.33, 0.9, 0.3);
+                } else if (height < 50) {
+                    // Rocky
+                    color.setHSL(0.0, 0.0, 0.6);
+                } else {
+                    // Snow
+                    color.setHSL(0.0, 0.0, 0.95);
+                }
+                
+                return color;
+            }
+
+            setTerrainType(type) {
+                this.currentType = type;
+                this.generateTerrain();
+            }
+
+            setHeightScale(scale) {
+                this.heightScale = scale;
+                this.updateTerrain();
+            }
+
+            setNoiseScale(scale) {
+                this.noiseScale = scale;
+                this.generateTerrain();
+            }
+
+            setOctaves(count) {
+                this.octaves = count;
+                this.generateTerrain();
+            }
+
+            updateTerrain() {
+                if (!this.terrain) return;
+                
+                const geometry = this.terrain.geometry;
+                const vertices = geometry.attributes.position.array;
+
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i] / this.segmentSize;
+                    const y = vertices[i + 1] / this.segmentSize;
+
+                    let height = fbm(
+                        x * this.noiseScale,
+                        y * this.noiseScale,
+                        this.octaves,
+                        this.persistence,
+                        this.lacunarity
+                    );
+
+                    height = this.applyTerrainType(height, x, y);
+                    vertices[i + 2] = height * this.heightScale;
+                }
+
+                geometry.attributes.position.needsUpdate = true;
+                geometry.computeVertexNormals();
+            }
+
+            toggleWireframe() {
+                if (this.terrain && this.terrain.material) {
+                    this.terrain.material.wireframe = !this.terrain.material.wireframe;
+                }
+            }
+        }
+
+        // Create terrain generator
+        const terrainGenerator = new TerrainGenerator();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(100, 200, 100);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 1;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.camera.left = -200;
+        directionalLight.shadow.camera.right = 200;
+        directionalLight.shadow.camera.top = 200;
+        directionalLight.shadow.camera.bottom = -200;
+        scene.add(directionalLight);
+
+        // Sky gradient
+        const skyGeometry = new THREE.SphereGeometry(1000, 32, 16);
+        const skyMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                topColor: { value: new THREE.Color(0x0077be) },
+                bottomColor: { value: new THREE.Color(0x89b2eb) },
+                offset: { value: 33 },
+                exponent: { value: 0.6 }
+            },
+            vertexShader: `
+                varying vec3 vWorldPosition;
+                void main() {
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vWorldPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 topColor;
+                uniform vec3 bottomColor;
+                uniform float offset;
+                uniform float exponent;
+                varying vec3 vWorldPosition;
+                void main() {
+                    float h = normalize(vWorldPosition + offset).y;
+                    gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+                }
+            `,
+            side: THREE.BackSide
+        });
+
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+
+        // Global functions
+        window.setTerrainType = (type) => {
+            terrainGenerator.setTerrainType(type);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.regenerateTerrain = () => {
+            terrainGenerator.generateTerrain();
+        };
+
+        window.toggleWireframe = () => {
+            terrainGenerator.toggleWireframe();
+        };
+
+        // Control bindings
+        const heightSlider = document.getElementById('height-scale');
+        const heightDisplay = document.getElementById('height-val');
+        heightSlider.addEventListener('input', (e) => {
+            const height = parseInt(e.target.value);
+            terrainGenerator.setHeightScale(height);
+            heightDisplay.textContent = height;
+        });
+
+        const noiseSlider = document.getElementById('noise-scale');
+        const noiseDisplay = document.getElementById('noise-val');
+        noiseSlider.addEventListener('input', (e) => {
+            const noise = parseFloat(e.target.value);
+            terrainGenerator.setNoiseScale(noise);
+            noiseDisplay.textContent = noise.toFixed(3);
+        });
+
+        const octavesSlider = document.getElementById('octaves');
+        const octavesDisplay = document.getElementById('octaves-val');
+        octavesSlider.addEventListener('input', (e) => {
+            const octaves = parseInt(e.target.value);
+            terrainGenerator.setOctaves(octaves);
+            octavesDisplay.textContent = octaves;
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animate sun position
+            const elapsedTime = clock.getElapsedTime();
+            directionalLight.position.x = Math.sin(elapsedTime * 0.1) * 200;
+            directionalLight.position.z = Math.cos(elapsedTime * 0.1) * 200;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texture Compression Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .canvas-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .controls-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .demo-canvas {
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            height: 400px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .control-panel {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 5px 5px 0;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn.secondary {
+            background: #6c757d;
+        }
+        
+        .btn.secondary:hover {
+            background: #5a6268;
+        }
+        
+        .stats-panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        
+        .log-panel {
+            background: #1e1e1e;
+            color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        
+        .log-info { color: #4fc3f7; }
+        .log-warn { color: #ffb74d; }
+        .log-error { color: #f06292; }
+        .log-success { color: #81c784; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .format-info {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .format-title {
+            font-weight: bold;
+            color: #2e7d2e;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Texture Compression System</h1>
+            <p>Advanced GPU-accelerated texture optimization and compression</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-section">
+                <h2>WebGL Canvas</h2>
+                <div id="texture-demo" class="demo-canvas">
+                    Initializing WebGL context...
+                </div>
+                
+                <div class="stats-panel">
+                    <h3>📊 System Capabilities</h3>
+                    <div id="capabilities" class="stats-grid">
+                        <!-- Capabilities will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <h2>🎛️ Controls</h2>
+                
+                <div class="control-panel">
+                    <h3>Texture Operations</h3>
+                    
+                    <div class="control-group">
+                        <label>Compression Demo:</label>
+                        <button class="btn" onclick="runCompressionDemo()">Test Compression</button>
+                        <button class="btn" onclick="runAtlasDemo()">Create Atlas</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Memory Management:</label>
+                        <button class="btn secondary" onclick="optimizeMemory()">Optimize Memory</button>
+                        <button class="btn secondary" onclick="aggressiveOptimization()">Aggressive Mode</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Format Selection:</label>
+                        <button class="btn" onclick="testFormatSelection()">Test Formats</button>
+                        <button class="btn" onclick="showMemoryStats()">Show Stats</button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Progress:</label>
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <div id="progress-text">Ready</div>
+                    </div>
+                </div>
+                
+                <div class="format-info">
+                    <div class="format-title">💡 Current Format Support</div>
+                    <div id="format-support">
+                        <!-- Format support info will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="log-panel">
+            <h3>📝 System Log</h3>
+            <div id="log-output">
+                Initializing texture compression system...
+            </div>
+        </div>
+    </div>
+
+    <script src="../src/TextureCompression.js"></script>
+    <script src="texture-compression-demo.js"></script>
+    
+    <script>
+        let demo = null;
+        let logCount = 0;
+        
+        // Enhanced logging system
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const logClass = `log-${type}`;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${logClass}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+            
+            logCount++;
+            if (logCount > 50) {
+                logOutput.removeChild(logOutput.firstChild);
+                logCount--;
+            }
+        }
+        
+        function updateProgress(text, percentage = null) {
+            document.getElementById('progress-text').textContent = text;
+            if (percentage !== null) {
+                document.getElementById('progress-fill').style.width = `${percentage}%`;
+            }
+        }
+        
+        // Demo functions
+        async function runCompressionDemo() {
+            if (!demo) {
+                log('Demo not initialized', 'error');
+                return;
+            }
+            
+            try {
+                log('Starting texture compression demo...', 'info');
+                updateProgress('Compressing texture...', 25);
+                
+                // Create test image
+                const testImage = createTestImage(512, 512);
+                
+                updateProgress('Applying compression...', 50);
+                
+                // Compress texture
+                const result = await demo.loadAndCompressTexture(testImage, {
+                    textureType: 'diffuse',
+                    alpha: false,
+                    quality: 'high',
+                    generateMipmaps: true,
+                    anisotropicFiltering: true
+                });
+                
+                updateProgress('Finalizing...', 75);
+                
+                log(`Texture compressed successfully: ${result.format}`, 'success');
+                log(`Cache key: ${result.cacheKey}`, 'info');
+                
+                updateProgress('Completed', 100);
+                setTimeout(() => updateProgress('Ready'), 2000);
+                
+            } catch (error) {
+                log(`Compression demo failed: ${error.message}`, 'error');
+                updateProgress('Error', 0);
+            }
+        }
+        
+        async function runAtlasDemo() {
+            if (!demo) {
+                log('Demo not initialized', 'error');
+                return;
+            }
+            
+            try {
+                log('Creating texture atlas...', 'info');
+                updateProgress('Creating atlas...', 25);
+                
+                // Create multiple small textures
+                const textures = [];
+                for (let i = 0; i < 6; i++) {
+                    textures.push(createTestImage(128, 128, `pattern${i}`));
+                }
+                
+                updateProgress('Packing textures...', 50);
+                
+                const atlas = await demo.createTextureAtlas(textures, {
+                    maxWidth: 1024,
+                    maxHeight: 1024,
+                    padding: 4
+                });
+                
+                log(`Atlas created: ${atlas.dimensions.width}x${atlas.dimensions.height}`, 'success');
+                log(`Usage: ${(atlas.usage * 100).toFixed(1)}%`, 'info');
+                
+                updateProgress('Atlas complete', 100);
+                setTimeout(() => updateProgress('Ready'), 2000);
+                
+            } catch (error) {
+                log(`Atlas demo failed: ${error.message}`, 'error');
+                updateProgress('Error', 0);
+            }
+        }
+        
+        function optimizeMemory() {
+            if (!demo) {
+                log('Demo not initialized', 'error');
+                return;
+            }
+            
+            log('Optimizing memory usage...', 'info');
+            const result = demo.optimizeMemory(false);
+            
+            log(`Memory freed: ${(result.freed / 1024 / 1024).toFixed(2)} MB`, 'success');
+            log(`Usage: ${result.usagePercentage.toFixed(1)}%`, 'info');
+        }
+        
+        function aggressiveOptimization() {
+            if (!demo) {
+                log('Demo not initialized', 'error');
+                return;
+            }
+            
+            log('Running aggressive memory optimization...', 'warn');
+            const result = demo.optimizeMemory(true);
+            
+            log(`Memory freed: ${(result.freed / 1024 / 1024).toFixed(2)} MB`, 'success');
+            log(`Usage: ${result.usagePercentage.toFixed(1)}%`, 'info');
+        }
+        
+        function testFormatSelection() {
+            if (!demo) {
+                log('Demo not initialized', 'error');
+                return;
+            }
+            
+            log('Testing format selection...', 'info');
+            
+            const scenarios = [
+                { type: 'diffuse', alpha: false, quality: 'low' },
+                { type: 'normal', alpha: false, quality: 'high' },
+                { type: 'diffuse', alpha: true, quality: 'medium' }
+            ];
+            
+            scenarios.forEach(scenario => {
+                const format = demo.textureCompression.selectOptimalFormat(
+                    scenario.type, scenario.alpha, scenario.quality
+                );
+                log(`Format for ${scenario.type}: ${format.name}`, 'info');
+            });
+        }
+        
+        function showMemoryStats() {
+            if (!demo) {
+                log('Demo not initialized', 'error');
+                return;
+            }
+            
+            const stats = demo.getMemoryStats();
+            log(`Total textures: ${stats.totalTextures}`, 'info');
+            log(`Compressed: ${stats.compressedTextures}, Uncompressed: ${stats.uncompressedTextures}`, 'info');
+            log(`Memory usage: ${(stats.currentUsage / 1024 / 1024).toFixed(2)} MB / ${(stats.memoryBudget / 1024 / 1024).toFixed(0)} MB (${stats.usagePercentage.toFixed(1)}%)`, 'info');
+        }
+        
+        function createTestImage(width, height, type = 'checkerboard') {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            
+            switch (type) {
+                case 'checkerboard':
+                    const size = 32;
+                    for (let y = 0; y < height; y += size) {
+                        for (let x = 0; x < width; x += size) {
+                            const isEven = ((x / size) + (y / size)) % 2 === 0;
+                            ctx.fillStyle = isEven ? '#ffffff' : '#000000';
+                            ctx.fillRect(x, y, size, size);
+                        }
+                    }
+                    break;
+                case 'gradient':
+                    const gradient = ctx.createLinearGradient(0, 0, width, height);
+                    gradient.addColorStop(0, '#ff0000');
+                    gradient.addColorStop(0.5, '#00ff00');
+                    gradient.addColorStop(1, '#0000ff');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, width, height);
+                    break;
+                default:
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.fillRect(0, 0, width, height);
+            }
+            
+            return canvas;
+        }
+        
+        function populateCapabilities() {
+            const capabilitiesDiv = document.getElementById('capabilities');
+            const formatSupportDiv = document.getElementById('format-support');
+            
+            if (!demo) return;
+            
+            const caps = demo.textureCompression.capabilities;
+            const formats = demo.textureCompression.compressedFormats;
+            
+            // Display capabilities
+            capabilitiesDiv.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${caps.maxTextureSize}</div>
+                    <div class="stat-label">Max Texture Size</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${caps.maxAnisotropy || 1}x</div>
+                    <div class="stat-label">Max Anisotropy</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${caps.isWebGL2 ? 'Yes' : 'No'}</div>
+                    <div class="stat-label">WebGL2 Support</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${formats.available.length}</div>
+                    <div class="stat-label">Compressed Formats</div>
+                </div>
+            `;
+            
+            // Display format support
+            const formatList = formats.available.map(f => f.name).join(', ') || 'None available';
+            formatSupportDiv.innerHTML = `
+                <strong>Available:</strong> ${formatList}<br>
+                <strong>Total supported:</strong> ${formats.available.length} formats
+            `;
+        }
+        
+        // Initialize demo when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                log('Initializing texture compression demo...', 'info');
+                
+                // Wait a bit for everything to load
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                demo = new TextureCompressionDemo('texture-demo');
+                
+                log('Demo initialized successfully!', 'success');
+                log('Use the controls to test different features', 'info');
+                
+                populateCapabilities();
+                
+            } catch (error) {
+                log(`Failed to initialize demo: ${error.message}`, 'error');
+                document.getElementById('texture-demo').textContent = 'Demo initialization failed: ' + error.message;
+            }
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (demo) {
+                demo.dispose();
+            }
+        });
+    </script>
+</body>
+</html>

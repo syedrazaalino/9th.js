@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architectural Walkthrough</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #f5f5f5; font-family: 'Segoe UI', sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #arch-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(255,255,255,0.95); padding: 20px; border-radius: 12px;
+            color: #333; min-width: 280px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        #arch-controls h3 { color: #2c3e50; margin-bottom: 15px; text-align: center; }
+        #arch-controls button {
+            width: 100%; padding: 12px; margin: 8px 0;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none; border-radius: 8px; color: white; cursor: pointer;
+            font-weight: 600; transition: all 0.3s;
+        }
+        #tour-info {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(255,255,255,0.95); padding: 15px; border-radius: 12px;
+            color: #333; font-size: 14px; line-height: 1.6; max-width: 250px;
+        }
+        #info-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(0,0,0,0.8); color: white;
+            padding: 15px 25px; border-radius: 25px; font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="arch-controls">
+        <h3>🏛️ Architectural Tour</h3>
+        <button id="start-tour">🎬 Start Guided Tour</button>
+        <button id="living-room">🛋️ Living Room</button>
+        <button id="kitchen">🍳 Kitchen</button>
+        <button id="bedroom">🛏️ Bedroom</button>
+        <button id="bathroom">🚿 Bathroom</button>
+        <button id="office">💼 Office</button>
+        <button id="floor-plan">📐 Floor Plan</button>
+        <button id="measurements">📏 Show Measurements</button>
+    </div>
+    
+    <div id="tour-info">
+        <div><strong>Current Room:</strong> <span id="current-room">Lobby</span></div>
+        <div><strong>Area:</strong> <span id="room-area">25</span> m²</div>
+        <div><strong>Ceiling Height:</strong> <span id="ceiling-height">3.0</span> m</div>
+        <div><strong>Natural Light:</strong> <span id="natural-light">High</span></div>
+        <div><strong>Furnishings:</strong> <span id="furnishings">Modern</span></div>
+    </div>
+    
+    <div id="info-panel">
+        Welcome to the architectural walkthrough • Use mouse to look around
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class ArchitecturalWalkthrough {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                this.rooms = {};
+                this.currentRoom = 'lobby';
+                this.isInTour = false;
+                this.tourProgress = 0;
+                
+                this.setupLighting();
+                this.setupCamera();
+                this.setupControls();
+                this.createBuilding();
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                const ambientLight = new Engine.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const sunlight = new Engine.DirectionalLight(0xffffff, 1);
+                sunlight.position.set(50, 100, 50);
+                sunlight.castShadow = true;
+                this.scene.add(sunlight);
+                
+                // Room-specific lighting
+                this.roomLights = {};
+            }
+            
+            setupCamera() {
+                this.camera.position.set(0, 1.7, 5); // Eye level
+                this.camera.lookAt(0, 1.7, 0);
+                
+                this.isMouseDown = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.isMouseDown = true;
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (this.isMouseDown) {
+                        const deltaX = e.clientX - this.mouseX;
+                        const deltaY = e.clientY - this.mouseY;
+                        
+                        this.camera.rotation.y -= deltaX * 0.002;
+                        this.camera.rotation.x -= deltaY * 0.002;
+                        this.camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.camera.rotation.x));
+                        
+                        this.mouseX = e.clientX;
+                        this.mouseY = e.clientY;
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+            }
+            
+            setupControls() {
+                document.getElementById('start-tour').addEventListener('click', () => {
+                    this.startTour();
+                });
+                
+                document.getElementById('living-room').addEventListener('click', () => {
+                    this.goToRoom('living');
+                });
+                
+                document.getElementById('kitchen').addEventListener('click', () => {
+                    this.goToRoom('kitchen');
+                });
+                
+                document.getElementById('bedroom').addEventListener('click', () => {
+                    this.goToRoom('bedroom');
+                });
+                
+                document.getElementById('bathroom').addEventListener('click', () => {
+                    this.goToRoom('bathroom');
+                });
+                
+                document.getElementById('office').addEventListener('click', () => {
+                    this.goToRoom('office');
+                });
+                
+                document.getElementById('floor-plan').addEventListener('click', () => {
+                    this.showFloorPlan();
+                });
+                
+                document.getElementById('measurements').addEventListener('click', () => {
+                    this.toggleMeasurements();
+                });
+            }
+            
+            createBuilding() {
+                this.createFoundation();
+                this.createWalls();
+                this.createRooms();
+                this.createFurniture();
+                this.createMeasurements();
+            }
+            
+            createFoundation() {
+                const floorGeometry = new Engine.PlaneGeometry(20, 15);
+                const floorMaterial = new Engine.MeshLambertMaterial({ color: 0xdddddd });
+                const floor = new Engine.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+            }
+            
+            createWalls() {
+                const wallHeight = 3;
+                const wallThickness = 0.2;
+                const wallMaterial = new Engine.MeshLambertMaterial({ color: 0xf0f0f0 });
+                
+                // Exterior walls
+                const exteriorWalls = [
+                    { pos: [0, wallHeight/2, -7.5], size: [20, wallHeight, wallThickness] },
+                    { pos: [0, wallHeight/2, 7.5], size: [20, wallHeight, wallThickness] },
+                    { pos: [-10, wallHeight/2, 0], size: [wallThickness, wallHeight, 15] },
+                    { pos: [10, wallHeight/2, 0], size: [wallThickness, wallHeight, 15] }
+                ];
+                
+                exteriorWalls.forEach(wall => {
+                    const geometry = new Engine.BoxGeometry(...wall.size);
+                    const mesh = new Engine.Mesh(geometry, wallMaterial);
+                    mesh.position.set(...wall.pos);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    this.scene.add(mesh);
+                });
+                
+                // Interior walls
+                const interiorWalls = [
+                    { pos: [0, wallHeight/2, 0], size: [wallThickness, wallHeight, 15] },
+                    { pos: [-5, wallHeight/2, 0], size: [10, wallHeight, wallThickness] },
+                    { pos: [5, wallHeight/2, 0], size: [10, wallHeight, wallThickness] }
+                ];
+                
+                interiorWalls.forEach(wall => {
+                    const geometry = new Engine.BoxGeometry(...wall.size);
+                    const mesh = new Engine.Mesh(geometry, wallMaterial);
+                    mesh.position.set(...wall.pos);
+                    mesh.castShadow = true;
+                    this.scene.add(mesh);
+                });
+            }
+            
+            createRooms() {
+                this.rooms = {
+                    lobby: {
+                        position: new Engine.Vector3(-7.5, 1.7, 0),
+                        info: { area: 25, ceiling: 3.0, light: 'High', style: 'Modern' }
+                    },
+                    living: {
+                        position: new Engine.Vector3(-2.5, 1.7, -3),
+                        info: { area: 35, ceiling: 3.0, light: 'High', style: 'Contemporary' }
+                    },
+                    kitchen: {
+                        position: new Engine.Vector3(-2.5, 1.7, 3),
+                        info: { area: 20, ceiling: 3.0, light: 'High', style: 'Minimalist' }
+                    },
+                    bedroom: {
+                        position: new Engine.Vector3(7.5, 1.7, -3),
+                        info: { area: 30, ceiling: 3.0, light: 'Medium', style: 'Cozy' }
+                    },
+                    bathroom: {
+                        position: new Engine.Vector3(2.5, 1.7, 3),
+                        info: { area: 12, ceiling: 2.7, light: 'Medium', style: 'Spa' }
+                    },
+                    office: {
+                        position: new Engine.Vector3(7.5, 1.7, 3),
+                        info: { area: 18, ceiling: 3.0, light: 'High', style: 'Professional' }
+                    }
+                };
+            }
+            
+            createFurniture() {
+                // Living room furniture
+                this.createSofa(new Engine.Vector3(-2.5, 0.5, -4));
+                this.createCoffeeTable(new Engine.Vector3(-2.5, 0.3, -2));
+                this.createTVStand(new Engine.Vector3(-2.5, 1, -6.5));
+                
+                // Kitchen furniture
+                this.createKitchen(new Engine.Vector3(-2.5, 1, 4));
+                
+                // Bedroom furniture
+                this.createBed(new Engine.Vector3(7.5, 0.5, -4.5));
+                this.createWardrobe(new Engine.Vector3(9, 1.5, -3));
+                
+                // Office furniture
+                this.createDesk(new Engine.Vector3(7.5, 0.75, 4));
+                this.createChair(new Engine.Vector3(7.5, 0.4, 4.5));
+            }
+            
+            createSofa(position) {
+                const geometry = new Engine.BoxGeometry(3, 1, 1.5);
+                const material = new Engine.MeshLambertMaterial({ color: 0x8B4513 });
+                const sofa = new Engine.Mesh(geometry, material);
+                sofa.position.copy(position);
+                sofa.castShadow = true;
+                this.scene.add(sofa);
+            }
+            
+            createCoffeeTable(position) {
+                const geometry = new Engine.CylinderGeometry(0.8, 0.8, 0.1);
+                const material = new Engine.MeshLambertMaterial({ color: 0x654321 });
+                const table = new Engine.Mesh(geometry, material);
+                table.position.copy(position);
+                this.scene.add(table);
+            }
+            
+            createTVStand(position) {
+                const geometry = new Engine.BoxGeometry(2, 0.8, 0.4);
+                const material = new Engine.MeshLambertMaterial({ color: 0x333333 });
+                const stand = new Engine.Mesh(geometry, material);
+                stand.position.copy(position);
+                this.scene.add(stand);
+                
+                // TV screen
+                const tvGeometry = new Engine.PlaneGeometry(1.5, 0.8);
+                const tvMaterial = new Engine.MeshBasicMaterial({ color: 0x000000 });
+                const tv = new Engine.Mesh(tvGeometry, tvMaterial);
+                tv.position.copy(position);
+                tv.position.z += 0.21;
+                this.scene.add(tv);
+            }
+            
+            createKitchen(position) {
+                const geometry = new Engine.BoxGeometry(6, 2.5, 0.6);
+                const material = new Engine.MeshLambertMaterial({ color: 0xC0C0C0 });
+                const kitchen = new Engine.Mesh(geometry, material);
+                kitchen.position.copy(position);
+                kitchen.position.z += 4;
+                this.scene.add(kitchen);
+                
+                // Kitchen island
+                const islandGeometry = new Engine.BoxGeometry(2, 0.9, 1);
+                const islandMaterial = new Engine.MeshLambertMaterial({ color: 0x8B4513 });
+                const island = new Engine.Mesh(islandGeometry, islandMaterial);
+                island.position.copy(position);
+                island.position.z += 1;
+                this.scene.add(island);
+            }
+            
+            createBed(position) {
+                const geometry = new Engine.BoxGeometry(2, 0.6, 2.5);
+                const material = new Engine.MeshLambertMaterial({ color: 0xFFFFFF });
+                const bed = new Engine.Mesh(geometry, material);
+                bed.position.copy(position);
+                this.scene.add(bed);
+                
+                // Pillows
+                const pillowGeometry = new Engine.BoxGeometry(0.6, 0.2, 0.4);
+                const pillowMaterial = new Engine.MeshLambertMaterial({ color: 0xF5F5DC });
+                
+                for (let i = 0; i < 2; i++) {
+                    const pillow = new Engine.Mesh(pillowGeometry, pillowMaterial);
+                    pillow.position.copy(position);
+                    pillow.position.x += (i - 0.5) * 0.8;
+                    pillow.position.y += 0.4;
+                    pillow.position.z += 0.8;
+                    this.scene.add(pillow);
+                }
+            }
+            
+            createWardrobe(position) {
+                const geometry = new Engine.BoxGeometry(1.5, 3, 0.6);
+                const material = new Engine.MeshLambertMaterial({ color: 0x8B4513 });
+                const wardrobe = new Engine.Mesh(geometry, material);
+                wardrobe.position.copy(position);
+                wardrobe.castShadow = true;
+                this.scene.add(wardrobe);
+            }
+            
+            createDesk(position) {
+                const geometry = new Engine.BoxGeometry(2, 0.1, 1);
+                const material = new Engine.MeshLambertMaterial({ color: 0x8B4513 });
+                const desk = new Engine.Mesh(geometry, material);
+                desk.position.copy(position);
+                this.scene.add(desk);
+                
+                // Desk legs
+                const legGeometry = new Engine.CylinderGeometry(0.05, 0.05, 1);
+                const legMaterial = new Engine.MeshLambertMaterial({ color: 0x654321 });
+                
+                const offsets = [[-0.8, -0.4], [0.8, -0.4], [-0.8, 0.4], [0.8, 0.4]];
+                offsets.forEach(offset => {
+                    const leg = new Engine.Mesh(legGeometry, legMaterial);
+                    leg.position.copy(position);
+                    leg.position.x += offset[0];
+                    leg.position.y -= 0.55;
+                    leg.position.z += offset[1];
+                    this.scene.add(leg);
+                });
+            }
+            
+            createChair(position) {
+                const geometry = new Engine.BoxGeometry(0.6, 0.8, 0.6);
+                const material = new Engine.MeshLambertMaterial({ color: 0x4169E1 });
+                const chair = new Engine.Mesh(geometry, material);
+                chair.position.copy(position);
+                this.scene.add(chair);
+            }
+            
+            createMeasurements() {
+                this.measurements = [];
+                
+                // Room dimensions
+                const measurements = [
+                    { start: [0, 0, -7.5], end: [0, 0, 7.5], label: '15m' }, // Length
+                    { start: [-10, 0, 0], end: [10, 0, 0], label: '20m' }, // Width
+                    { start: [0, 0, 0], end: [0, 3, 0], label: '3m' } // Height
+                ];
+                
+                measurements.forEach(measurement => {
+                    const geometry = new Engine.BufferGeometry().setFromPoints([
+                        new Engine.Vector3(...measurement.start),
+                        new Engine.Vector3(...measurement.end)
+                    ]);
+                    
+                    const material = new Engine.LineBasicMaterial({ color: 0xff0000 });
+                    const line = new Engine.Line(geometry, material);
+                    this.measurements.push(line);
+                    this.scene.add(line);
+                    
+                    // Measurement text (simplified)
+                    const midPoint = new Engine.Vector3(
+                        (measurement.start[0] + measurement.end[0]) / 2,
+                        (measurement.start[1] + measurement.end[1]) / 2,
+                        (measurement.start[2] + measurement.end[2]) / 2
+                    );
+                    
+                    // Create measurement label
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 32;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'rgba(255,0,0,0.8)';
+                    ctx.fillRect(0, 0, 64, 32);
+                    ctx.fillStyle = 'white';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(measurement.label, 32, 20);
+                    
+                    const texture = new Engine.CanvasTexture(canvas);
+                    const spriteMaterial = new Engine.SpriteMaterial({ map: texture });
+                    const sprite = new Engine.Sprite(spriteMaterial);
+                    sprite.position.copy(midPoint);
+                    sprite.position.y += 0.5;
+                    sprite.scale.set(2, 1, 1);
+                    this.measurements.push(sprite);
+                    this.scene.add(sprite);
+                });
+                
+                this.toggleMeasurements();
+            }
+            
+            goToRoom(roomName) {
+                const room = this.rooms[roomName];
+                if (!room) return;
+                
+                this.currentRoom = roomName;
+                this.isInTour = false;
+                
+                // Smooth camera movement
+                const startPos = this.camera.position.clone();
+                const endPos = room.position.clone();
+                
+                let progress = 0;
+                const duration = 2000; // 2 seconds
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    progress = Math.min(1, elapsed / duration);
+                    
+                    this.camera.position.lerpVectors(startPos, endPos, progress);
+                    this.camera.lookAt(endPos.x, endPos.y, endPos.z - 1);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        this.updateRoomInfo(room);
+                    }
+                };
+                
+                animate();
+            }
+            
+            startTour() {
+                this.isInTour = true;
+                this.tourProgress = 0;
+                this.runTourStep();
+            }
+            
+            runTourStep() {
+                if (!this.isInTour) return;
+                
+                const tourSequence = ['lobby', 'living', 'kitchen', 'bedroom', 'bathroom', 'office'];
+                const roomName = tourSequence[this.tourProgress % tourSequence.length];
+                
+                this.goToRoom(roomName);
+                
+                setTimeout(() => {
+                    this.tourProgress++;
+                    if (this.tourProgress < tourSequence.length * 3) {
+                        setTimeout(() => this.runTourStep(), 1000);
+                    } else {
+                        this.isInTour = false;
+                    }
+                }, 3000);
+            }
+            
+            showFloorPlan() {
+                this.camera.position.set(0, 50, 0);
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            toggleMeasurements() {
+                const visible = this.measurements[0].visible;
+                this.measurements.forEach(measurement => {
+                    measurement.visible = !visible;
+                });
+            }
+            
+            updateRoomInfo(room) {
+                document.getElementById('current-room').textContent = room.info.area > 20 ? 'Main' : 'Secondary';
+                document.getElementById('room-area').textContent = room.info.area;
+                document.getElementById('ceiling-height').textContent = room.info.ceiling;
+                document.getElementById('natural-light').textContent = room.info.light;
+                document.getElementById('furnishings').textContent = room.info.style;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (!this.isMouseDown && !this.isInTour) {
+                    // Gentle camera rotation for viewing
+                    this.camera.rotation.y += 0.001;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            new ArchitecturalWalkthrough();
+        });
+        
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

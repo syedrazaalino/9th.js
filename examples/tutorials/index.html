@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Graphics Tutorials - Beginner's Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .tutorial-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tutorial-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .tutorial-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #f7b731, #5f27cd);
+        }
+        
+        .tutorial-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+        
+        .tutorial-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .tutorial-description {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        
+        .tutorial-topics {
+            margin-bottom: 20px;
+        }
+        
+        .tutorial-topics h4 {
+            color: #4ecdc4;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .tutorial-topics ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .tutorial-topics li {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em;
+            margin-bottom: 4px;
+            padding-left: 15px;
+            position: relative;
+        }
+        
+        .tutorial-topics li::before {
+            content: '▶';
+            position: absolute;
+            left: 0;
+            color: #4ecdc4;
+        }
+        
+        .tutorial-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .tutorial-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin-top: 40px;
+        }
+        
+        .progress-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .progress-text {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .progress-bar {
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-indicator">
+        <div class="progress-text">Tutorial Progress</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">0/15 Complete</div>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎮 3D Graphics Tutorials</h1>
+            <p>Learn 3D graphics programming with 15 comprehensive, hands-on tutorials</p>
+            <p>From basic setup to advanced effects - master WebGL and Three.js step by step</p>
+        </div>
+        
+        <div class="tutorial-grid">
+            <div class="tutorial-card">
+                <div class="tutorial-number">01</div>
+                <div class="tutorial-title">Hello World: Basic Setup</div>
+                <div class="tutorial-description">
+                    Start your 3D journey with the fundamental setup. Learn how to create a scene, 
+                    camera, renderer, and your first 3D object.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Scene, Camera, Renderer setup</li>
+                        <li>Creating your first 3D object</li>
+                        <li>Basic animation loop</li>
+                        <li>Understanding 3D coordinates</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('01-hello-world.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">02</div>
+                <div class="tutorial-title">Basic Shapes: 3D Primitives</div>
+                <div class="tutorial-description">
+                    Explore the building blocks of 3D graphics. Learn about different geometric 
+                    primitives and their properties.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Box, Sphere, Cone, Cylinder</li>
+                        <li>Plane, Torus geometries</li>
+                        <li>Geometry parameters</li>
+                        <li>Positioning in 3D space</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('02-basic-shapes.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">03</div>
+                <div class="tutorial-title">Scene, Camera, Renderer Deep Dive</div>
+                <div class="tutorial-description">
+                    Master the three pillars of 3D rendering. Understand camera types, 
+                    scene management, and renderer configuration.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Perspective vs Orthographic cameras</li>
+                        <li>Scene management</li>
+                        <li>Renderer optimization</li>
+                        <li>Coordinate systems</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('03-scene-camera-renderer.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">04</div>
+                <div class="tutorial-title">Materials: Appearance & Properties</div>
+                <div class="tutorial-description">
+                    Learn how to make objects look realistic. Explore different material types 
+                    and their surface properties.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Basic, Lambert, Phong materials</li>
+                        <li>PBR (Physically Based) materials</li>
+                        <li>Metalness and roughness</li>
+                        <li>Material properties and effects</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('04-basic-materials.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">05</div>
+                <div class="tutorial-title">Lighting Basics: Types & Effects</div>
+                <div class="tutorial-description">
+                    Illuminate your 3D world. Learn about different light types and how 
+                    they affect the appearance of objects.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Ambient, Directional, Point lights</li>
+                        <li>Spot and Hemisphere lights</li>
+                        <li>Shadow mapping</li>
+                        <li>Light properties and behaviors</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('05-lighting-basics.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">06</div>
+                <div class="tutorial-title">Texture Mapping: Images on Surfaces</div>
+                <div class="tutorial-description">
+                    Add detail and realism with textures. Learn how to apply images 
+                    to 3D surfaces and control their appearance.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>UV mapping coordinates</li>
+                        <li>Texture loading and wrapping</li>
+                        <li>Filtering and mipmaps</li>
+                        <li>Procedural textures</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('06-texture-mapping.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">07</div>
+                <div class="tutorial-title">Camera Controls: Orbital Navigation</div>
+                <div class="tutorial-description">
+                    Make your 3D scenes interactive. Learn to implement camera controls 
+                    for user navigation and exploration.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>OrbitControls implementation</li>
+                        <li>Mouse and keyboard input</li>
+                        <li>Smooth camera transitions</li>
+                        <li>User interaction patterns</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('07-camera-controls.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">08</div>
+                <div class="tutorial-title">Animation Fundamentals</div>
+                <div class="tutorial-description">
+                    Bring your scenes to life. Learn various animation techniques 
+                    and timing functions for smooth motion.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Transform animations</li>
+                        <li>Easing functions</li>
+                        <li>Complex animation systems</li>
+                        <li>Frame-independent timing</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('08-animation-fundamentals.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">09</div>
+                <div class="tutorial-title">3D Transforms: Position, Rotation, Scale</div>
+                <div class="tutorial-description">
+                    Master spatial transformations. Learn how objects move, rotate, 
+                    and scale in 3D space with hierarchical relationships.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Position, rotation, scale</li>
+                        <li>Parent-child relationships</li>
+                        <li>Transform hierarchies</li>
+                        <li>Coordinate spaces</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('09-3d-transforms.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">10</div>
+                <div class="tutorial-title">Geometry Importing: Loading 3D Models</div>
+                <div class="tutorial-description">
+                    Work with complex 3D models. Learn to load external 3D files 
+                    and integrate them into your scenes.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>OBJ, GLTF, FBX formats</li>
+                        <li>Loading external models</li>
+                        <li>Texture handling</li>
+                        <li>Model optimization</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('10-geometry-importing.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">11</div>
+                <div class="tutorial-title">User Interaction: Mouse & Keyboard</div>
+                <div class="tutorial-description">
+                    Create interactive experiences. Learn raycasting, object selection, 
+                    drag-and-drop, and real-time user feedback.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Mouse click detection</li>
+                        <li>Raycasting for selection</li>
+                        <li>Keyboard input handling</li>
+                        <li>Real-time interaction feedback</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('11-user-interaction.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">12</div>
+                <div class="tutorial-title">Basic Shaders: Custom Rendering</div>
+                <div class="tutorial-description">
+                    Write custom GPU programs. Learn vertex and fragment shaders 
+                    for unlimited visual effects and control.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Vertex and fragment shaders</li>
+                        <li>GLSL programming basics</li>
+                        <li>Uniforms and varyings</li>
+                        <li>Custom visual effects</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('12-basic-shaders.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">13</div>
+                <div class="tutorial-title">Particle Intro: Simple Particle Systems</div>
+                <div class="tutorial-description">
+                    Create dynamic effects with particles. Learn to build particle 
+                    systems for fire, rain, smoke, and other effects.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Particle system architecture</li>
+                        <li>Physics integration</li>
+                        <li>Emission patterns</li>
+                        <li>Lifetime and fading</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('13-particle-intro.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">14</div>
+                <div class="tutorial-title">Audio Visualization: Sync 3D with Sound</div>
+                <div class="tutorial-description">
+                    Connect sight and sound. Learn to analyze audio data and create 
+                    synchronized visual effects that respond to music.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>Web Audio API integration</li>
+                        <li>Frequency analysis (FFT)</li>
+                        <li>Beat detection</li>
+                        <li>Real-time audio-visual sync</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('14-audio-visualization.html')">Start Tutorial →</button>
+            </div>
+            
+            <div class="tutorial-card">
+                <div class="tutorial-number">15</div>
+                <div class="tutorial-title">UI Controls: dat.GUI Interface</div>
+                <div class="tutorial-description">
+                    Build professional interfaces. Learn to create interactive parameter 
+                    controls for real-time scene manipulation.
+                </div>
+                <div class="tutorial-topics">
+                    <h4>What you'll learn:</h4>
+                    <ul>
+                        <li>dat.GUI implementation</li>
+                        <li>Real-time parameter controls</li>
+                        <li>Settings management</li>
+                        <li>Professional UI patterns</li>
+                    </ul>
+                </div>
+                <button class="tutorial-button" onclick="openTutorial('15-ui-controls.html')">Start Tutorial →</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <h3>🎓 Tutorial Complete!</h3>
+            <p>Congratulations on completing the 3D Graphics Tutorial Series!</p>
+            <p>You now have the knowledge to create interactive 3D experiences, games, visualizations, and more.</p>
+            <p><strong>Next Steps:</strong> Build your own projects, experiment with the concepts, and explore advanced topics like WebGL optimization, advanced shaders, and performance profiling.</p>
+        </div>
+    </div>
+    
+    <script>
+        function openTutorial(filename) {
+            window.open(filename, '_blank');
+            updateProgress();
+        }
+        
+        function updateProgress() {
+            const completed = localStorage.getItem('tutorials_completed') || '[]';
+            const completedArray = JSON.parse(completed);
+            const progress = completedArray.length;
+            const percentage = (progress / 15) * 100;
+            
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `${progress}/15 Complete`;
+        }
+        
+        // Track tutorial completion
+        document.querySelectorAll('.tutorial-button').forEach((button, index) => {
+            button.addEventListener('click', function() {
+                const completed = JSON.parse(localStorage.getItem('tutorials_completed') || '[]');
+                if (!completed.includes(index + 1)) {
+                    completed.push(index + 1);
+                    localStorage.setItem('tutorials_completed', JSON.stringify(completed));
+                }
+                updateProgress();
+            });
+        });
+        
+        // Initialize progress on load
+        updateProgress();
+    </script>
+</body>
+</html>

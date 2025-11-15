@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>08 - Animation Fundamentals: Bringing Scenes to Life</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #fff;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #fff;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls button.active {
+            background: #fff;
+            color: #ff6b6b;
+            border-color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎬 Tutorial 08: Animation Fundamentals</h1>
+        <div class="step">
+            <strong>Goal:</strong> Master animation techniques and timing
+        </div>
+        <div class="step">
+            <strong>Animation Types:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li>Rotation animations</li>
+                <li>Position/Location changes</li>
+                <li>Scale transformations</li>
+                <li>Color transitions</li>
+                <li>Timing and easing functions</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>Demo Controls:</strong><br>
+            <button id="toggle-rotation" onclick="toggleRotation()">Rotation</button>
+            <button id="toggle-translation" onclick="toggleTranslation()">Translation</button>
+            <button id="toggle-scale" onclick="toggleScale()">Scale</button>
+            <button id="toggle-color" onclick="toggleColor()">Color</button><br>
+            <button id="pause-all" onclick="pauseAll()">Pause All</button>
+            <button id="reset-animations" onclick="resetAnimations()">Reset</button>
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 08: ANIMATION FUNDAMENTALS
+         * ==========================================
+         * 
+         * Animation brings 3D scenes to life through:
+         * - Transform animations (position, rotation, scale)
+         * - Material property changes (color, opacity)
+         * - Complex behaviors using time-based functions
+         * - Easing functions for smooth motion
+         * - Frame-independent timing
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let animatedObjects = [];
+        let animationSettings = {
+            rotation: true,
+            translation: true,
+            scale: true,
+            color: true,
+            paused: false
+        };
+        
+        // ==========================================
+        // EASING FUNCTIONS
+        // ==========================================
+        const Easing = {
+            linear: t => t,
+            easeInOut: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+            easeInOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
+            easeInOutQuart: t => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2,
+            bounce: t => {
+                const n1 = 7.5625;
+                const d1 = 2.75;
+                if (t < 1 / d1) return n1 * t * t;
+                if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+                if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+                return n1 * (t -= 2.625 / d1) * t + 0.984375;
+            }
+        };
+        
+        // ==========================================
+        // ANIMATION OBJECT CLASS
+        // ==========================================
+        class AnimatedObject {
+            constructor(mesh, animationType, config = {}) {
+                this.mesh = mesh;
+                this.animationType = animationType;
+                this.config = {
+                    duration: config.duration || 2000,
+                    delay: config.delay || 0,
+                    easing: config.easing || 'easeInOut',
+                    repeat: config.repeat !== undefined ? config.repeat : true,
+                    ...config
+                };
+                this.startTime = 0;
+                this.isActive = true;
+                this.originalState = {
+                    position: mesh.position.clone(),
+                    rotation: mesh.rotation.clone(),
+                    scale: mesh.scale.clone(),
+                    color: mesh.material.color.clone()
+                };
+            }
+            
+            update(currentTime) {
+                if (!this.isActive) return;
+                
+                const elapsed = currentTime - this.startTime - this.config.delay;
+                if (elapsed < 0) return;
+                
+                let progress = elapsed / this.config.duration;
+                if (progress >= 1) {
+                    if (this.config.repeat) {
+                        this.startTime = currentTime;
+                        progress = 0;
+                    } else {
+                        this.isActive = false;
+                        progress = 1;
+                    }
+                }
+                
+                const easedProgress = Easing[this.config.easing](progress);
+                
+                switch (this.animationType) {
+                    case 'rotation':
+                        this.animateRotation(easedProgress);
+                        break;
+                    case 'translation':
+                        this.animateTranslation(easedProgress);
+                        break;
+                    case 'scale':
+                        this.animateScale(easedProgress);
+                        break;
+                    case 'color':
+                        this.animateColor(easedProgress);
+                        break;
+                }
+            }
+            
+            animateRotation(progress) {
+                const cycles = this.config.cycles || 2;
+                const angle = progress * Math.PI * 2 * cycles;
+                this.mesh.rotation.x = this.originalState.rotation.x + angle;
+                this.mesh.rotation.y = this.originalState.rotation.y + angle * 0.5;
+            }
+            
+            animateTranslation(progress) {
+                const amplitude = this.config.amplitude || 3;
+                this.mesh.position.x = this.originalState.position.x + Math.sin(progress * Math.PI * 2) * amplitude;
+                this.mesh.position.y = this.originalState.position.y + Math.cos(progress * Math.PI * 2) * amplitude * 0.5;
+            }
+            
+            animateScale(progress) {
+                const maxScale = this.config.maxScale || 2;
+                const minScale = this.config.minScale || 0.5;
+                const scale = minScale + (maxScale - minScale) * Math.sin(progress * Math.PI);
+                this.mesh.scale.set(scale, scale, scale);
+            }
+            
+            animateColor(progress) {
+                const color1 = this.config.color1 || new THREE.Color(0xff0000);
+                const color2 = this.config.color2 || new THREE.Color(0x0000ff);
+                this.mesh.material.color.lerpColors(color1, color2, Math.sin(progress * Math.PI * 2) * 0.5 + 0.5);
+            }
+            
+            pause() {
+                this.isActive = false;
+            }
+            
+            resume() {
+                this.isActive = true;
+            }
+            
+            reset() {
+                this.mesh.position.copy(this.originalState.position);
+                this.mesh.rotation.copy(this.originalState.rotation);
+                this.mesh.scale.copy(this.originalState.scale);
+                this.mesh.material.color.copy(this.originalState.color);
+                this.startTime = Date.now();
+                this.isActive = true;
+            }
+        }
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x2c3e50);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 8, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+        }
+        
+        // ==========================================
+        // CREATE ANIMATED OBJECTS
+        // ==========================================
+        function createAnimatedObjects() {
+            // Object 1: Rotating cube
+            const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+            const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(-6, 2, 0);
+            cube.castShadow = true;
+            scene.add(cube);
+            
+            const rotationAnimation = new AnimatedObject(cube, 'rotation', {
+                duration: 3000,
+                easing: 'easeInOut',
+                cycles: 1
+            });
+            animatedObjects.push(rotationAnimation);
+            
+            // Object 2: Moving sphere
+            const sphereGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x4ecdc4 });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(0, 0, 0);
+            sphere.castShadow = true;
+            scene.add(sphere);
+            
+            const translationAnimation = new AnimatedObject(sphere, 'translation', {
+                duration: 4000,
+                easing: 'easeInOutSine',
+                amplitude: 4
+            });
+            animatedObjects.push(translationAnimation);
+            
+            // Object 3: Pulsing cone
+            const coneGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+            const coneMaterial = new THREE.MeshStandardMaterial({ color: 0x45b7d1 });
+            const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+            cone.position.set(6, 1, 0);
+            cone.castShadow = true;
+            scene.add(cone);
+            
+            const scaleAnimation = new AnimatedObject(cone, 'scale', {
+                duration: 2000,
+                easing: 'bounce',
+                minScale: 0.7,
+                maxScale: 1.5
+            });
+            animatedObjects.push(scaleAnimation);
+            
+            // Object 4: Color-changing torus
+            const torusGeometry = new THREE.TorusGeometry(1.2, 0.4, 8, 16);
+            const torusMaterial = new THREE.MeshStandardMaterial({ color: 0xf7b731 });
+            const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+            torus.position.set(-3, -2, -3);
+            torus.castShadow = true;
+            scene.add(torus);
+            
+            const colorAnimation = new AnimatedObject(torus, 'color', {
+                duration: 3000,
+                easing: 'easeInOutQuart',
+                color1: new THREE.Color(0xff6b6b),
+                color2: new THREE.Color(0x4ecdc4)
+            });
+            animatedObjects.push(colorAnimation);
+            
+            // Object 5: Complex animation combining multiple types
+            const knotGeometry = new THREE.TorusKnotGeometry(0.8, 0.3, 100, 16);
+            const knotMaterial = new THREE.MeshStandardMaterial({ color: 0x5f27cd });
+            const knot = new THREE.Mesh(knotGeometry, knotMaterial);
+            knot.position.set(3, -2, -3);
+            knot.castShadow = true;
+            scene.add(knot);
+            
+            // Store original position for manual combination animation
+            knot.userData.originalPosition = knot.position.clone();
+            
+            // Add complex combined animation
+            const complexAnimation = {
+                mesh: knot,
+                update: function(time) {
+                    const progress = (time % 5000) / 5000;
+                    const eased = Easing.easeInOut(progress);
+                    
+                    // Combined rotation and translation
+                    knot.rotation.x = eased * Math.PI * 2;
+                    knot.rotation.y = eased * Math.PI * 4;
+                    
+                    const radius = 2;
+                    knot.position.x = knot.userData.originalPosition.x + Math.cos(eased * Math.PI * 2) * radius;
+                    knot.position.y = knot.userData.originalPosition.y + Math.sin(eased * Math.PI * 2) * radius;
+                    
+                    // Color transition
+                    const color = new THREE.Color().setHSL(eased, 0.7, 0.6);
+                    knot.material.color.copy(color);
+                }
+            };
+            animatedObjects.push(complexAnimation);
+            
+            // Add ground
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -4;
+            ground.receiveShadow = true;
+            scene.add(ground);
+        }
+        
+        // ==========================================
+        // CONTROL FUNCTIONS
+        // ==========================================
+        function toggleRotation() {
+            animationSettings.rotation = !animationSettings.rotation;
+            document.getElementById('toggle-rotation').classList.toggle('active');
+        }
+        
+        function toggleTranslation() {
+            animationSettings.translation = !animationSettings.translation;
+            document.getElementById('toggle-translation').classList.toggle('active');
+        }
+        
+        function toggleScale() {
+            animationSettings.scale = !animationSettings.scale;
+            document.getElementById('toggle-scale').classList.toggle('active');
+        }
+        
+        function toggleColor() {
+            animationSettings.color = !animationSettings.color;
+            document.getElementById('toggle-color').classList.toggle('active');
+        }
+        
+        function pauseAll() {
+            animationSettings.paused = !animationSettings.paused;
+            const button = document.getElementById('pause-all');
+            
+            if (animationSettings.paused) {
+                button.textContent = 'Resume All';
+                animatedObjects.forEach(obj => obj.pause && obj.pause());
+            } else {
+                button.textContent = 'Pause All';
+                animatedObjects.forEach(obj => obj.resume && obj.resume());
+            }
+        }
+        
+        function resetAnimations() {
+            animatedObjects.forEach(obj => {
+                if (obj.reset) obj.reset();
+            });
+            animationSettings.paused = false;
+            document.getElementById('pause-all').textContent = 'Pause All';
+        }
+        
+        // ==========================================
+        // MAIN ANIMATION LOOP
+        // ==========================================
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const currentTime = Date.now();
+            
+            // Update all animations
+            if (!animationSettings.paused) {
+                animatedObjects.forEach(obj => {
+                    if (obj.animationType) {
+                        // Check if this animation type is enabled
+                        if (animationSettings[obj.animationType]) {
+                            obj.update(currentTime);
+                        }
+                    } else if (obj.update) {
+                        // Complex animation object
+                        obj.update(currentTime);
+                    }
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🎬 Starting Animation Fundamentals Demo...');
+            
+            setupScene();
+            createAnimatedObjects();
+            
+            window.addEventListener('resize', handleResize);
+            animate();
+            
+            console.log('✅ Animation demo initialized!');
+            console.log('💡 Try toggling different animation types to see isolated effects!');
+        }
+        
+        // Make functions globally available
+        window.toggleRotation = toggleRotation;
+        window.toggleTranslation = toggleTranslation;
+        window.toggleScale = toggleScale;
+        window.toggleColor = toggleColor;
+        window.pauseAll = pauseAll;
+        window.resetAnimations = resetAnimations;
+        
+        init();
+    </script>
+</body>
+</html>

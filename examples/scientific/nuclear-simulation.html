@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Nuclear Physics Simulation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: radial-gradient(ellipse at center, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 13px;
+        }
+
+        .control-group select,
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #7c3aed;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #6d28d9;
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+
+        .nuclear-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .reactor-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .decay-chain-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .nuclear-data {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .data-item {
+            text-align: center;
+            padding: 12px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+        }
+
+        .data-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #a855f7;
+        }
+
+        .data-label {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .isotope-chart {
+            width: 100%;
+            height: 60px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .isotope-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #a855f7;
+            opacity: 0.8;
+        }
+
+        .stability-line {
+            position: absolute;
+            bottom: 50%;
+            width: 100%;
+            height: 1px;
+            background: #10b981;
+            opacity: 0.6;
+        }
+
+        .fission-products {
+            font-size: 11px;
+            line-height: 1.3;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 10px;
+        }
+
+        .product-item {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .energy-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(71, 85, 105, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #a855f7, #ec4899);
+            transition: width 0.3s;
+        }
+
+        .decay-series {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+
+        .nucleus {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #a855f7;
+            display: inline-block;
+            margin: 0 4px;
+        }
+
+        .neutron {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #60a5fa;
+            display: inline-block;
+            margin: 0 2px;
+        }
+
+        .proton {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            display: inline-block;
+            margin: 0 2px;
+        }
+
+        .value-display {
+            color: #a855f7;
+            font-weight: bold;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+
+        .radiation-particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: #fbbf24;
+            border-radius: 50%;
+            animation: radiationBlink 0.5s infinite;
+            z-index: 90;
+        }
+
+        @keyframes radiationBlink {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        .criticality-alert {
+            position: absolute;
+            top: 50%;
+            right: 30px;
+            background: #dc2626;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 110;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Initializing nuclear physics simulation...</div>
+        
+        <div class="controls">
+            <h3>Nuclear Physics Controls</h3>
+            
+            <div class="control-group">
+                <label for="simulationType">Simulation Type:</label>
+                <select id="simulationType">
+                    <option value="atomic">Atomic Structure</option>
+                    <option value="nuclear">Nuclear Structure</option>
+                    <option value="decay">Radioactive Decay</option>
+                    <option value="fission">Nuclear Fission</option>
+                    <option value="fusion">Nuclear Fusion</option>
+                    <option value="reactor">Reactor Physics</option>
+                    <option value="chain">Decay Chain</option>
+                    <option value="binding">Binding Energy</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="isotope">Isotope:</label>
+                <select id="isotope">
+                    <option value="H-1">Hydrogen-1 (¹H)</option>
+                    <option value="H-2">Hydrogen-2 (²H)</option>
+                    <option value="C-12">Carbon-12 (¹²C)</option>
+                    <option value="C-14">Carbon-14 (¹⁴C)</option>
+                    <option value="U-235">Uranium-235 (²³⁵U)</option>
+                    <option value="U-238">Uranium-238 (²³⁸U)</option>
+                    <option value="Pu-239">Plutonium-239 (²³⁹Pu)</option>
+                    <option value="Cs-137">Cesium-137 (¹³⁷Cs)</option>
+                    <option value="I-131">Iodine-131 (¹³¹I)</option>
+                    <option value="Sr-90">Strontium-90 (⁹⁰Sr)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="energy">Energy Level:</label>
+                <div class="slider-group">
+                    <input type="range" id="energy" min="0.1" max="100" step="0.1" value="1.0">
+                    <div class="value-display">1.0 MeV</div>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showOrbitals" checked>
+                <label for="showOrbitals">Show Electron Orbitals</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showNucleons" checked>
+                <label for="showNucleons">Show Nucleons</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showEnergyLevels">
+                <label for="showEnergyLevels">Show Energy Levels</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showRadiation">
+                <label for="showRadiation">Show Radiation</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="animateDecay">
+                <label for="animateDecay">Animate Decay</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="startFission">Start Fission</button>
+                <button id="resetSimulation">Reset</button>
+                <button id="calculateDecay">Calculate</button>
+            </div>
+        </div>
+        
+        <div class="nuclear-info">
+            <h3>Nuclear Properties</h3>
+            <div class="nuclear-data">
+                <div class="data-item">
+                    <div class="data-value" id="protons">92</div>
+                    <div class="data-label">Protons (Z)</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-value" id="neutrons">143</div>
+                    <div class="data-label">Neutrons (N)</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-value" id="massNumber">235</div>
+                    <div class="data-label">Mass Number (A)</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-value" id="bindingEnergy">1783.9</div>
+                    <div class="data-label">Binding Energy (MeV)</div>
+                </div>
+            </div>
+            
+            <div class="isotope-chart">
+                <div class="stability-line"></div>
+                <!-- Isotope stability chart will be populated here -->
+                <div id="isotopePlot" style="height: 100%; position: relative;"></div>
+            </div>
+            
+            <div id="nuclearDetails">
+                <h4>Current Isotope</h4>
+                <p><strong>Name:</strong> <span id="isotopeName">Uranium-235</span></p>
+                <p><strong>Symbol:</strong> <span id="isotopeSymbol">²³⁵U</span></p>
+                <p><strong>Half-life:</strong> <span id="halfLife">703.8 million years</span></p>
+                <p><strong>Decay Mode:</strong> <span id="decayMode">Alpha</span></p>
+                <p><strong>Abundance:</strong> <span id="abundance">0.72%</span></p>
+                <p><strong>Density:</strong> <span id="density">19.1 g/cm³</span></p>
+            </div>
+        </div>
+        
+        <div class="reactor-panel">
+            <h3>Reactor Physics</h3>
+            <div class="energy-bar">
+                <div class="energy-fill" id="powerLevel" style="width: 50%"></div>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8;">
+                Reactor Power: <span id="reactorPower">50%</span>
+            </p>
+            
+            <div class="nuclear-data" style="margin-top: 15px;">
+                <div class="data-item">
+                    <div class="data-value" id="keff">1.24</div>
+                    <div class="data-label">k-effective</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-value" id="reactivity">+0.24</div>
+                    <div class="data-label">Reactivity (ρ)</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-value" id="neutronFlux">1.2×10¹⁴</div>
+                    <div class="data-label">Neutron Flux</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-value" id="tempCoeff">-5.2</div>
+                    <div class="data-label">Temp Coeff (pcm/°C)</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; font-size: 11px;">
+                <p><strong>Reactor Parameters:</strong></p>
+                <ul style="margin-left: 15px; margin-top: 5px;">
+                    <li>Fuel: ³⁵U enriched to 4.5%</li>
+                    <li>Moderator: H₂O</li>
+                    <li>Coolant: Pressurized water</li>
+                    <li>Control Rods: Boron carbide</li>
+                    <li>Criticality: Supercritical</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="decay-chain-panel">
+            <h3>Decay Chain Analysis</h3>
+            
+            <div class="decay-series">
+                <span class="nucleus" style="background: #a855f7;"></span>
+                <span>→</span>
+                <span class="neutron"></span>
+                <span>→</span>
+                <span class="nucleus" style="background: #ec4899;"></span>
+                <span>→</span>
+                <span class="proton"></span>
+                <span>→</span>
+                <span class="nucleus" style="background: #10b981;"></span>
+            </div>
+            
+            <div class="fission-products" id="fissionProducts">
+                <div class="product-item">
+                    <strong>Fission Products:</strong><br>
+                    ¹³⁷Cs (Half-life: 30.2 years)<br>
+                    Yield: 6.2% | Energy: 0.662 MeV
+                </div>
+                <div class="product-item">
+                    ⁹⁰Sr (Half-life: 28.8 years)<br>
+                    Yield: 5.8% | Energy: 0.546 MeV
+                </div>
+                <div class="product-item">
+                    ¹³¹I (Half-life: 8.0 days)<br>
+                    Yield: 2.8% | Energy: 0.364 MeV
+                </div>
+                <div class="product-item">
+                    ¹⁴⁴Ce (Half-life: 285 days)<br>
+                    Yield: 5.4% | Energy: 0.134 MeV
+                </div>
+                <div class="product-item">
+                    ¹⁰⁶Ru (Half-life: 372 days)<br>
+                    Yield: 0.4% | Energy: 0.512 MeV
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; font-size: 11px;">
+                <p><strong>Decay Types:</strong></p>
+                <ul style="margin-left: 15px; margin-top: 5px;">
+                    <li>α-decay: Heavy nuclei</li>
+                    <li>β⁻-decay: Neutron-rich</li>
+                    <li>β⁺-decay: Proton-rich</li>
+                    <li>γ-decay: Excited states</li>
+                    <li>Fission: Heavy nuclei split</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="criticality-alert" id="criticalityAlert" style="display: none;">
+            Criticality Alert: k > 1.0
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class NuclearPhysicsSimulator {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.nucleus = null;
+                this.electrons = [];
+                this.neutrons = [];
+                this.protons = [];
+                this.decayChain = [];
+                this.fissionProducts = [];
+                this.radiationParticles = [];
+                this.currentIsotope = null;
+                this.simulationType = 'atomic';
+                this.energyLevel = 1.0;
+                this.animationId = null;
+                
+                // Isotope data
+                this.isotopes = {
+                    'H-1': { Z: 1, N: 0, A: 1, name: 'Hydrogen-1', symbol: '¹H', halfLife: 'Stable', decayMode: 'None', abundance: '99.98%', density: 0.00009 },
+                    'H-2': { Z: 1, N: 1, A: 2, name: 'Hydrogen-2', symbol: '²H', halfLife: 'Stable', decayMode: 'None', abundance: '0.02%', density: 0.00018 },
+                    'C-12': { Z: 6, N: 6, A: 12, name: 'Carbon-12', symbol: '¹²C', halfLife: 'Stable', decayMode: 'None', abundance: '98.9%', density: 2.25 },
+                    'C-14': { Z: 6, N: 8, A: 14, name: 'Carbon-14', symbol: '¹⁴C', halfLife: '5730 years', decayMode: 'β⁻', abundance: 'Trace', density: 2.25 },
+                    'U-235': { Z: 92, N: 143, A: 235, name: 'Uranium-235', symbol: '²³⁵U', halfLife: '703.8 million years', decayMode: 'α', abundance: '0.72%', density: 19.1 },
+                    'U-238': { Z: 92, N: 146, A: 238, name: 'Uranium-238', symbol: '²³⁸U', halfLife: '4.468 billion years', decayMode: 'α', abundance: '99.27%', density: 19.1 },
+                    'Pu-239': { Z: 94, N: 145, A: 239, name: 'Plutonium-239', symbol: '²³⁹Pu', halfLife: '24,100 years', decayMode: 'α', abundance: 'Artificial', density: 19.8 },
+                    'Cs-137': { Z: 55, N: 82, A: 137, name: 'Cesium-137', symbol: '¹³⁷Cs', halfLife: '30.2 years', decayMode: 'β⁻', abundance: 'Fission product', density: 1.93 },
+                    'I-131': { Z: 53, N: 78, A: 131, name: 'Iodine-131', symbol: '¹³¹I', halfLife: '8.0 days', decayMode: 'β⁻', abundance: 'Fission product', density: 4.93 },
+                    'Sr-90': { Z: 38, N: 52, A: 90, name: 'Strontium-90', symbol: '⁹⁰Sr', halfLife: '28.8 years', decayMode: 'β⁻', abundance: 'Fission product', density: 2.64 }
+                };
+                
+                // Nuclear constants
+                this.constants = {
+                    atomicMassUnit: 931.494, // MeV/c²
+                    protonMass: 938.272, // MeV/c²
+                    neutronMass: 939.565, // MeV/c²
+                    electronMass: 0.511, // MeV/c²
+                    fineStructure: 1/137.036,
+                    planckConstant: 4.136e-15, // eV⋅s
+                    speedOfLight: 299792458 // m/s
+                };
+                
+                // Fission fragments for U-235
+                this.fissionFragments = [
+                    { A: 137, Z: 55, yield: 6.2, halfLife: '30.2 years', name: 'Cesium-137' },
+                    { A: 90, Z: 38, yield: 5.8, halfLife: '28.8 years', name: 'Strontium-90' },
+                    { A: 131, Z: 53, yield: 2.8, halfLife: '8.0 days', name: 'Iodine-131' },
+                    { A: 144, Z: 58, yield: 5.4, halfLife: '285 days', name: 'Cerium-144' },
+                    { A: 106, Z: 44, yield: 0.4, halfLife: '372 days', name: 'Ruthenium-106' }
+                ];
+                
+                this.init();
+                this.setupEventListeners();
+                this.createAtomicStructure();
+                this.updateIsotopeInfo();
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                this.scene.background = new Color(0x000000);
+                
+                // Camera
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 0, 20);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setClearColor(0x000000, 1);
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+                
+                const pointLight = new PointLight(0xffffff, 0.8);
+                pointLight.position.set(10, 10, 10);
+                this.scene.add(pointLight);
+                
+                // Controls
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    this.scene.rotation.x = rotationX;
+                    this.scene.rotation.y = rotationY;
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    this.camera.position.z += delta;
+                    this.camera.position.z = Math.max(5, Math.min(50, this.camera.position.z));
+                });
+                
+                canvas.addEventListener('click', (e) => {
+                    this.handleNuclearInteraction(e);
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('simulationType').addEventListener('change', (e) => {
+                    this.changeSimulationType(e.target.value);
+                });
+                
+                document.getElementById('isotope').addEventListener('change', (e) => {
+                    this.changeIsotope(e.target.value);
+                });
+                
+                document.getElementById('energy').addEventListener('input', (e) => {
+                    this.energyLevel = parseFloat(e.target.value);
+                    e.target.nextElementSibling.textContent = `${this.energyLevel.toFixed(1)} MeV`;
+                    this.updateEnergyVisualization();
+                });
+                
+                document.getElementById('showOrbitals').addEventListener('change', (e) => {
+                    this.toggleElectronOrbitals(e.target.checked);
+                });
+                
+                document.getElementById('showNucleons').addEventListener('change', (e) => {
+                    this.toggleNucleons(e.target.checked);
+                });
+                
+                document.getElementById('showEnergyLevels').addEventListener('change', (e) => {
+                    this.toggleEnergyLevels(e.target.checked);
+                });
+                
+                document.getElementById('showRadiation').addEventListener('change', (e) => {
+                    this.toggleRadiation(e.target.checked);
+                });
+                
+                document.getElementById('animateDecay').addEventListener('change', (e) => {
+                    this.toggleDecayAnimation(e.target.checked);
+                });
+                
+                document.getElementById('startFission').addEventListener('click', () => {
+                    this.startFission();
+                });
+                
+                document.getElementById('resetSimulation').addEventListener('click', () => {
+                    this.resetSimulation();
+                });
+                
+                document.getElementById('calculateDecay').addEventListener('click', () => {
+                    this.calculateDecayChain();
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            createAtomicStructure() {
+                this.clearSimulation();
+                
+                const isotope = this.isotopes['U-235'];
+                this.currentIsotope = isotope;
+                
+                // Create nucleus
+                this.createNucleus(isotope);
+                
+                // Create electron orbitals
+                this.createElectronOrbitals(isotope.Z);
+                
+                // Update display
+                this.updateIsotopeInfo();
+            }
+            
+            createNucleus(isotope) {
+                const nucleusGroup = new Group();
+                
+                // Create protons (red)
+                for (let i = 0; i < isotope.Z; i++) {
+                    const geometry = new SphereGeometry(0.15, 8, 8);
+                    const material = new MeshPhongMaterial({ 
+                        color: 0xff4444,
+                        emissive: 0x660000,
+                        emissiveIntensity: 0.3
+                    });
+                    const proton = new Mesh(geometry, material);
+                    
+                    // Arrange in shell structure
+                    const shellRadius = 1.5;
+                    const angle = (i / isotope.Z) * Math.PI * 2;
+                    proton.position.set(
+                        Math.cos(angle) * shellRadius,
+                        Math.sin(angle) * shellRadius,
+                        (Math.random() - 0.5) * 0.5
+                    );
+                    
+                    nucleusGroup.add(proton);
+                    this.protons.push(proton);
+                }
+                
+                // Create neutrons (blue)
+                for (let i = 0; i < isotope.N; i++) {
+                    const geometry = new SphereGeometry(0.15, 8, 8);
+                    const material = new MeshPhongMaterial({ 
+                        color: 0x4488ff,
+                        emissive: 0x000066,
+                        emissiveIntensity: 0.3
+                    });
+                    const neutron = new Mesh(geometry, material);
+                    
+                    // Arrange in shell structure
+                    const shellRadius = 1.2;
+                    const angle = (i / isotope.N) * Math.PI * 2 + Math.PI / 8;
+                    neutron.position.set(
+                        Math.cos(angle) * shellRadius,
+                        Math.sin(angle) * shellRadius,
+                        (Math.random() - 0.5) * 0.5
+                    );
+                    
+                    nucleusGroup.add(neutron);
+                    this.neutrons.push(neutron);
+                }
+                
+                // Add nucleus glow
+                const glowGeometry = new SphereGeometry(2, 32, 32);
+                const glowMaterial = new MeshBasicMaterial({
+                    color: 0xa855f7,
+                    transparent: true,
+                    opacity: 0.1
+                });
+                const glow = new Mesh(glowGeometry, glowMaterial);
+                nucleusGroup.add(glow);
+                
+                this.nucleus = nucleusGroup;
+                this.scene.add(nucleusGroup);
+            }
+            
+            createElectronOrbitals(atomicNumber) {
+                const orbitalShells = [
+                    { n: 1, l: 0, capacity: 2, radius: 2 },
+                    { n: 2, l: 0, capacity: 2, radius: 3 },
+                    { n: 2, l: 1, capacity: 6, radius: 3.5 },
+                    { n: 3, l: 0, capacity: 2, radius: 4.5 },
+                    { n: 3, l: 1, capacity: 6, radius: 5 },
+                    { n: 3, l: 2, capacity: 10, radius: 5.5 },
+                    { n: 4, l: 0, capacity: 2, radius: 6.5 }
+                ];
+                
+                let electronsToPlace = atomicNumber;
+                
+                orbitalShells.forEach(shell => {
+                    const electronsInShell = Math.min(electronsToPlace, shell.capacity);
+                    electronsToPlace -= electronsInShell;
+                    
+                    for (let i = 0; i < electronsInShell; i++) {
+                        this.createElectron(shell.radius, i, electronsInShell, shell.l);
+                    }
+                    
+                    if (electronsInShell > 0) {
+                        this.createOrbitalRing(shell.radius, shell.l);
+                    }
+                });
+            }
+            
+            createElectron(radius, index, total, azimuthal) {
+                const geometry = new SphereGeometry(0.08, 8, 8);
+                const material = new MeshBasicMaterial({ 
+                    color: 0x60a5fa,
+                    emissive: 0x60a5fa,
+                    emissiveIntensity: 0.5
+                });
+                const electron = new Mesh(geometry, material);
+                
+                const angle = (index / total) * Math.PI * 2;
+                const zOffset = azimuthal > 0 ? (azimuthal * 0.3) : 0;
+                
+                electron.position.set(
+                    Math.cos(angle) * radius,
+                    Math.sin(angle) * radius,
+                    zOffset * Math.sin(azimuthal * angle)
+                );
+                
+                electron.userData = {
+                    orbitRadius: radius,
+                    angle: angle,
+                    azimuthal: azimuthal,
+                    speed: 0.02 + Math.random() * 0.01
+                };
+                
+                this.electrons.push(electron);
+                this.scene.add(electron);
+            }
+            
+            createOrbitalRing(radius, azimuthal) {
+                const segments = 32;
+                const points = [];
+                
+                for (let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    points.push(new Vector3(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        azimuthal * 0.3 * Math.sin(azimuthal * angle)
+                    ));
+                }
+                
+                const geometry = new BufferGeometry().setFromPoints(points);
+                const material = new LineBasicMaterial({ 
+                    color: 0x60a5fa, 
+                    transparent: true, 
+                    opacity: 0.3 
+                });
+                
+                const ring = new Line(geometry, material);
+                this.scene.add(ring);
+            }
+            
+            changeSimulationType(type) {
+                this.simulationType = type;
+                console.log('Changed simulation type to:', type);
+                
+                switch (type) {
+                    case 'atomic':
+                        this.showAtomicStructure();
+                        break;
+                    case 'nuclear':
+                        this.showNuclearStructure();
+                        break;
+                    case 'decay':
+                        this.showDecayProcess();
+                        break;
+                    case 'fission':
+                        this.showNuclearFission();
+                        break;
+                    case 'fusion':
+                        this.showNuclearFusion();
+                        break;
+                    case 'reactor':
+                        this.showReactorPhysics();
+                        break;
+                    case 'chain':
+                        this.showDecayChain();
+                        break;
+                    case 'binding':
+                        this.showBindingEnergy();
+                        break;
+                }
+            }
+            
+            changeIsotope(isotopeKey) {
+                const isotope = this.isotopes[isotopeKey];
+                this.currentIsotope = isotope;
+                
+                this.createAtomicStructure();
+                this.updateIsotopeInfo();
+                this.updateNuclearData();
+            }
+            
+            updateIsotopeInfo() {
+                if (!this.currentIsotope) return;
+                
+                document.getElementById('isotopeName').textContent = this.currentIsotope.name;
+                document.getElementById('isotopeSymbol').textContent = this.currentIsotope.symbol;
+                document.getElementById('halfLife').textContent = this.currentIsotope.halfLife;
+                document.getElementById('decayMode').textContent = this.currentIsotope.decayMode;
+                document.getElementById('abundance').textContent = this.currentIsotope.abundance;
+                document.getElementById('density').textContent = this.currentIsotope.density + ' g/cm³';
+                
+                this.updateIsotopeChart();
+            }
+            
+            updateNuclearData() {
+                if (!this.currentIsotope) return;
+                
+                document.getElementById('protons').textContent = this.currentIsotope.Z;
+                document.getElementById('neutrons').textContent = this.currentIsotope.N;
+                document.getElementById('massNumber').textContent = this.currentIsotope.A;
+                
+                // Calculate binding energy
+                const bindingEnergy = this.calculateBindingEnergy(
+                    this.currentIsotope.Z,
+                    this.currentIsotope.N,
+                    this.currentIsotope.A
+                );
+                document.getElementById('bindingEnergy').textContent = bindingEnergy.toFixed(1);
+            }
+            
+            calculateBindingEnergy(Z, N, A) {
+                // Semi-empirical mass formula (Weizsäcker formula)
+                const a_v = 15.75; // Volume term
+                const a_s = 17.8;  // Surface term
+                const a_c = 0.711; // Coulomb term
+                const a_a = 23.7;  // Asymmetry term
+                const a_p = 12.0;  // Pairing term
+                
+                const volume = a_v * A;
+                const surface = a_s * Math.pow(A, 2/3);
+                const coulomb = a_c * Z * (Z - 1) / Math.pow(A, 1/3);
+                const asymmetry = a_a * Math.pow(A - 2 * Z, 2) / A;
+                let pairing = 0;
+                
+                if (Z % 2 === 0 && N % 2 === 0) {
+                    pairing = a_p / Math.sqrt(A);
+                } else if (Z % 2 === 1 && N % 2 === 1) {
+                    pairing = -a_p / Math.sqrt(A);
+                }
+                
+                return volume - surface - coulomb - asymmetry + pairing;
+            }
+            
+            updateIsotopeChart() {
+                const plotContainer = document.getElementById('isotopePlot');
+                if (!plotContainer) return;
+                
+                plotContainer.innerHTML = '';
+                
+                // Plot isotopes on N-Z chart
+                Object.keys(this.isotopes).forEach(key => {
+                    const isotope = this.isotopes[key];
+                    const dot = document.createElement('div');
+                    dot.className = 'isotope-dot';
+                    dot.style.left = `${(isotope.N / 150) * 90}%`;
+                    dot.style.bottom = `${(isotope.Z / 100) * 90}%`;
+                    dot.title = `${isotope.name} (${isotope.symbol})`;
+                    plotContainer.appendChild(dot);
+                });
+            }
+            
+            startFission() {
+                if (this.currentIsotope && this.currentIsotope.A > 200) {
+                    this.simulateFission();
+                }
+            }
+            
+            simulateFission() {
+                console.log('Starting nuclear fission simulation...');
+                
+                // Simulate fission process
+                this.createFissionFragments();
+                this.createFreeNeutrons();
+                this.createRadiation();
+                
+                // Update reactor parameters
+                this.updateReactorPhysics();
+            }
+            
+            createFissionFragments() {
+                this.fissionProducts.forEach(fragment => {
+                    this.scene.remove(fragment);
+                });
+                this.fissionProducts = [];
+                
+                // Create fission fragments
+                this.fissionFragments.forEach(fragment => {
+                    const geometry = new SphereGeometry(0.3, 8, 8);
+                    const material = new MeshBasicMaterial({ 
+                        color: 0xec4899,
+                        emissive: 0xec4899,
+                        emissiveIntensity: 0.8
+                    });
+                    const product = new Mesh(geometry, material);
+                    
+                    // Random position and velocity
+                    product.position.set(
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 10
+                    );
+                    
+                    product.userData = {
+                        velocity: new Vector3(
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.1
+                        ),
+                        fragment: fragment
+                    };
+                    
+                    this.scene.add(product);
+                    this.fissionProducts.push(product);
+                });
+            }
+            
+            createFreeNeutrons() {
+                // Create neutrons released during fission
+                for (let i = 0; i < 3; i++) {
+                    const geometry = new SphereGeometry(0.1, 8, 8);
+                    const material = new MeshBasicMaterial({ 
+                        color: 0x60a5fa,
+                        emissive: 0x60a5fa,
+                        emissiveIntensity: 1
+                    });
+                    const neutron = new Mesh(geometry, material);
+                    
+                    neutron.position.copy(this.nucleus.position);
+                    
+                    // Neutrons fly off in random directions
+                    const direction = new Vector3(
+                        (Math.random() - 0.5),
+                        (Math.random() - 0.5),
+                        (Math.random() - 0.5)
+                    ).normalize();
+                    
+                    neutron.userData = {
+                        velocity: direction.multiplyScalar(0.2),
+                        type: 'neutron'
+                    };
+                    
+                    this.scene.add(neutron);
+                }
+            }
+            
+            createRadiation() {
+                // Create gamma rays and beta particles
+                for (let i = 0; i < 5; i++) {
+                    this.createRadiationParticle();
+                }
+            }
+            
+            createRadiationParticle() {
+                const geometry = new SphereGeometry(0.05, 4, 4);
+                const material = new MeshBasicMaterial({ 
+                    color: 0xfbbf24,
+                    emissive: 0xfbbf24,
+                    emissiveIntensity: 1
+                });
+                const particle = new Mesh(geometry, material);
+                
+                const direction = new Vector3(
+                    (Math.random() - 0.5),
+                    (Math.random() - 0.5),
+                    (Math.random() - 0.5)
+                ).normalize();
+                
+                particle.userData = {
+                    velocity: direction.multiplyScalar(0.3),
+                    lifetime: 100 + Math.random() * 100,
+                    type: 'radiation'
+                };
+                
+                this.scene.add(particle);
+                this.radiationParticles.push(particle);
+            }
+            
+            updateReactorPhysics() {
+                // Simulate reactor parameters
+                const kEffective = 1.0 + (Math.random() - 0.5) * 0.1;
+                const reactivity = kEffective - 1.0;
+                const neutronFlux = 1.2e14 + (Math.random() - 0.5) * 1e13;
+                const tempCoeff = -5.2 + (Math.random() - 0.5) * 1;
+                
+                document.getElementById('keff').textContent = kEffective.toFixed(2);
+                document.getElementById('reactivity').textContent = reactivity.toFixed(3);
+                document.getElementById('neutronFlux').textContent = (neutronFlux / 1e14).toFixed(1) + '×10¹⁴';
+                document.getElementById('tempCoeff').textContent = tempCoeff.toFixed(1);
+                
+                // Update power level
+                const powerPercent = Math.min(100, Math.max(0, (kEffective - 0.8) * 500));
+                document.getElementById('powerLevel').style.width = powerPercent + '%';
+                document.getElementById('reactorPower').textContent = powerPercent.toFixed(0) + '%';
+                
+                // Show criticality alert if k > 1.0
+                const alertElement = document.getElementById('criticalityAlert');
+                alertElement.style.display = kEffective > 1.0 ? 'block' : 'none';
+            }
+            
+            calculateDecayChain() {
+                if (!this.currentIsotope) return;
+                
+                console.log('Calculating decay chain for:', this.currentIsotope.name);
+                
+                // Simplified decay chain calculation
+                this.decayChain = this.generateDecayChain(this.currentIsotope);
+                
+                // Update decay products display
+                const productsContainer = document.getElementById('fissionProducts');
+                productsContainer.innerHTML = '';
+                
+                this.fissionFragments.forEach(fragment => {
+                    const productDiv = document.createElement('div');
+                    productDiv.className = 'product-item';
+                    productDiv.innerHTML = `
+                        <strong>${fragment.name}</strong><br>
+                        Half-life: ${fragment.halfLife}<br>
+                        Yield: ${fragment.yield}% | Energy: ${(200 + Math.random() * 800).toFixed(0)} MeV
+                    `;
+                    productsContainer.appendChild(productDiv);
+                });
+            }
+            
+            generateDecayChain(isotope) {
+                const chain = [isotope];
+                let current = isotope;
+                
+                // Simple decay chain simulation
+                for (let i = 0; i < 5; i++) {
+                    if (current.decayMode === 'α') {
+                        // Alpha decay: A-4, Z-2
+                        const nextIsotope = {
+                            ...current,
+                            A: current.A - 4,
+                            Z: current.Z - 2,
+                            N: current.N - 2,
+                            decayMode: 'β⁻'
+                        };
+                        chain.push(nextIsotope);
+                        current = nextIsotope;
+                    } else if (current.decayMode === 'β⁻') {
+                        // Beta minus decay: Z+1
+                        const nextIsotope = {
+                            ...current,
+                            Z: current.Z + 1,
+                            N: current.N - 1,
+                            decayMode: Math.random() > 0.5 ? 'β⁻' : 'Stable'
+                        };
+                        chain.push(nextIsotope);
+                        current = nextIsotope;
+                    } else {
+                        break; // Stable
+                    }
+                }
+                
+                return chain;
+            }
+            
+            clearSimulation() {
+                // Remove all existing objects
+                [this.nucleus, ...this.electrons, ...this.neutrons, ...this.protons, 
+                 ...this.fissionProducts, ...this.radiationParticles].forEach(obj => {
+                    if (obj) this.scene.remove(obj);
+                });
+                
+                this.electrons = [];
+                this.neutrons = [];
+                this.protons = [];
+                this.fissionProducts = [];
+                this.radiationParticles = [];
+                this.decayChain = [];
+            }
+            
+            resetSimulation() {
+                this.clearSimulation();
+                this.createAtomicStructure();
+                
+                // Reset reactor parameters
+                document.getElementById('powerLevel').style.width = '50%';
+                document.getElementById('reactorPower').textContent = '50%';
+                document.getElementById('keff').textContent = '1.00';
+                document.getElementById('reactivity').textContent = '0.000';
+                document.getElementById('criticalityAlert').style.display = 'none';
+            }
+            
+            toggleElectronOrbitals(show) {
+                this.electrons.forEach(electron => {
+                    electron.visible = show;
+                });
+                
+                // Hide orbital rings
+                this.scene.children.forEach(child => {
+                    if (child instanceof Line && child.material.color.getHex() === 0x60a5fa) {
+                        child.visible = show;
+                    }
+                });
+            }
+            
+            toggleNucleons(show) {
+                [...this.protons, ...this.neutrons].forEach(nucleon => {
+                    nucleon.visible = show;
+                });
+            }
+            
+            toggleEnergyLevels(show) {
+                console.log('Toggle energy levels:', show);
+            }
+            
+            toggleRadiation(show) {
+                this.radiationParticles.forEach(particle => {
+                    particle.visible = show;
+                });
+            }
+            
+            toggleDecayAnimation(show) {
+                console.log('Toggle decay animation:', show);
+            }
+            
+            updateEnergyVisualization() {
+                // Visualize energy level changes
+                if (this.nucleus) {
+                    const scale = 1 + this.energyLevel * 0.01;
+                    this.nucleus.scale.setScalar(scale);
+                }
+            }
+            
+            showAtomicStructure() {
+                this.toggleElectronOrbitals(true);
+                this.toggleNucleons(true);
+                this.camera.position.set(0, 0, 20);
+            }
+            
+            showNuclearStructure() {
+                this.toggleElectronOrbitals(false);
+                this.toggleNucleons(true);
+                this.camera.position.set(0, 0, 10);
+            }
+            
+            showDecayProcess() {
+                this.calculateDecayChain();
+                this.toggleDecayAnimation(true);
+            }
+            
+            showNuclearFission() {
+                this.startFission();
+            }
+            
+            showNuclearFusion() {
+                console.log('Nuclear fusion simulation');
+            }
+            
+            showReactorPhysics() {
+                this.updateReactorPhysics();
+            }
+            
+            showDecayChain() {
+                this.calculateDecayChain();
+            }
+            
+            showBindingEnergy() {
+                this.updateNuclearData();
+            }
+            
+            handleNuclearInteraction(event) {
+                // Handle clicks on nuclear components
+                const mouse = new Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                console.log('Nuclear interaction at:', mouse);
+            }
+            
+            updateParticles() {
+                // Update electron orbits
+                this.electrons.forEach(electron => {
+                    const data = electron.userData;
+                    data.angle += data.speed;
+                    
+                    const x = Math.cos(data.angle) * data.orbitRadius;
+                    const y = Math.sin(data.angle) * data.orbitRadius;
+                    const z = data.azimuthal * 0.3 * Math.sin(data.azimuthal * data.angle);
+                    
+                    electron.position.set(x, y, z);
+                });
+                
+                // Update fission products
+                this.fissionProducts.forEach(product => {
+                    const velocity = product.userData.velocity;
+                    product.position.add(velocity);
+                    
+                    // Remove if too far away
+                    if (product.position.length() > 50) {
+                        this.scene.remove(product);
+                        this.fissionProducts = this.fissionProducts.filter(p => p !== product);
+                    }
+                });
+                
+                // Update radiation particles
+                this.radiationParticles.forEach(particle => {
+                    const velocity = particle.userData.velocity;
+                    particle.position.add(velocity);
+                    
+                    particle.userData.lifetime--;
+                    
+                    // Fade out and remove
+                    if (particle.userData.lifetime <= 0) {
+                        particle.material.opacity *= 0.95;
+                        if (particle.material.opacity < 0.1) {
+                            this.scene.remove(particle);
+                            this.radiationParticles = this.radiationParticles.filter(p => p !== particle);
+                        }
+                    }
+                });
+            }
+            
+            animate() {
+                this.animationId = requestAnimationFrame(() => this.animate());
+                
+                this.updateParticles();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the simulator when the page loads
+        window.addEventListener('load', () => {
+            new NuclearPhysicsSimulator();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>13 - Particle Intro: Simple Particle Systems</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #e1bee7;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #e1bee7;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls button.active {
+            background: #9c27b0;
+            border-color: #9c27b0;
+        }
+        
+        .particle-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            max-width: 200px;
+        }
+        
+        input[type="range"] {
+            width: 100px;
+            margin: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>✨ Tutorial 13: Particle Systems</h1>
+        <div class="step">
+            <strong>Goal:</strong> Create and animate particle systems
+        </div>
+        <div class="step">
+            <strong>Particle Concepts:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li>Point sprites or geometry</li>
+                <li>Particle properties (position, velocity, life)</li>
+                <li>Emission patterns</li>
+                <li>Lifetime and fading</li>
+                <li>Physics integration</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>Particle Effects:</strong><br>
+            <button id="firework-btn" onclick="createFirework()">Firework</button><br>
+            <button id="rain-btn" onclick="createRain()">Rain</button><br>
+            <button id="sparkle-btn" onclick="createSparkle()">Sparkle</button><br>
+            <button id="smoke-btn" onclick="createSmoke()">Smoke</button><br>
+            <button id="clear-btn" onclick="clearParticles()">Clear All</button><br>
+            <label>Particle Count: <input type="range" id="particle-count" min="100" max="1000" value="500"></label>
+        </div>
+    </div>
+    
+    <div class="particle-info">
+        <strong>Active Systems:</strong> <span id="system-count">0</span><br>
+        <strong>Total Particles:</strong> <span id="particle-total">0</span><br>
+        <strong>Active Particles:</strong> <span id="active-particles">0</span><br>
+        <strong>FPS:</strong> <span id="fps">60</span>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 13: PARTICLE SYSTEMS
+         * ==========================================
+         * 
+         * Particle systems create realistic effects:
+         * 
+         * 1. FIREWORKS:
+         *    - Particles explode from center
+         *    - Random velocities and colors
+         *    - Gravity and fade over time
+         * 
+         * 2. RAIN:
+         *    - Particles fall from top
+         *    - Linear velocity
+         *    - Continuous emission
+         * 
+         * 3. SPARKLE:
+         *    - Random positions and velocities
+         *    - Short lifespan
+         *    - Bright colors
+         * 
+         * 4. SMOKE:
+         *    - Slow rising particles
+         *    - Opacity fades over time
+         *    - Large particle size
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let particleSystems = [];
+        let animationId;
+        let particleCount = 500;
+        let frameCount = 0;
+        let lastTime = 0;
+        
+        // ==========================================
+        // PARTICLE SYSTEM CLASS
+        // ==========================================
+        class ParticleSystem {
+            constructor(config = {}) {
+                this.config = {
+                    particleCount: config.particleCount || 1000,
+                    position: config.position || new THREE.Vector3(0, 0, 0),
+                    velocity: config.velocity || new THREE.Vector3(0, 1, 0),
+                    color: config.color || 0xffffff,
+                    size: config.size || 0.1,
+                    life: config.life || 2.0,
+                    gravity: config.gravity || new THREE.Vector3(0, -9.8, 0),
+                    spread: config.spread || 1.0,
+                    emissionRate: config.emissionRate || 100,
+                    ...config
+                };
+                
+                this.particles = [];
+                this.activeParticles = 0;
+                this.emissionTimer = 0;
+                
+                this.createGeometry();
+                this.createMaterial();
+            }
+            
+            createGeometry() {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(this.config.particleCount * 3);
+                const colors = new Float32Array(this.config.particleCount * 3);
+                const sizes = new Float32Array(this.config.particleCount);
+                const lifetimes = new Float32Array(this.config.particleCount);
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
+                
+                this.geometry = geometry;
+            }
+            
+            createMaterial() {
+                this.material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 }
+                    },
+                    vertexShader: `
+                        attribute float size;
+                        attribute float lifetime;
+                        varying float vLifetime;
+                        varying vec3 vColor;
+                        
+                        void main() {
+                            vLifetime = lifetime;
+                            vColor = color;
+                            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                            gl_PointSize = size * (300.0 / -mvPosition.z);
+                            gl_Position = projectionMatrix * mvPosition;
+                        }
+                    `,
+                    fragmentShader: `
+                        varying float vLifetime;
+                        varying vec3 vColor;
+                        
+                        void main() {
+                            vec2 center = gl_PointCoord - vec2(0.5);
+                            float dist = length(center);
+                            
+                            if (dist > 0.5) discard;
+                            
+                            float alpha = (1.0 - dist * 2.0) * vLifetime;
+                            gl_FragColor = vec4(vColor, alpha);
+                        }
+                    `,
+                    transparent: true,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                    vertexColors: true
+                });
+                
+                this.points = new THREE.Points(this.geometry, this.material);
+            }
+            
+            emitParticle() {
+                if (this.particles.length >= this.config.particleCount) return;
+                
+                const particle = {
+                    position: this.config.position.clone(),
+                    velocity: this.config.velocity.clone().add(
+                        new THREE.Vector3(
+                            (Math.random() - 0.5) * this.config.spread,
+                            (Math.random() - 0.5) * this.config.spread,
+                            (Math.random() - 0.5) * this.config.spread
+                        )
+                    ),
+                    life: this.config.life,
+                    maxLife: this.config.life,
+                    color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6),
+                    size: this.config.size * (0.5 + Math.random() * 1.5)
+                };
+                
+                this.particles.push(particle);
+                this.activeParticles++;
+            }
+            
+            update(deltaTime) {
+                // Emit new particles
+                this.emissionTimer += deltaTime * this.config.emissionRate;
+                while (this.emissionTimer >= 1.0) {
+                    this.emitParticle();
+                    this.emissionTimer -= 1.0;
+                }
+                
+                // Update particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const particle = this.particles[i];
+                    
+                    // Update physics
+                    particle.velocity.add(this.config.gravity.clone().multiplyScalar(deltaTime));
+                    particle.position.add(particle.velocity.clone().multiplyScalar(deltaTime));
+                    
+                    // Update life
+                    particle.life -= deltaTime;
+                    
+                    // Remove dead particles
+                    if (particle.life <= 0) {
+                        this.particles.splice(i, 1);
+                        this.activeParticles--;
+                    }
+                }
+                
+                // Update geometry
+                this.updateGeometry();
+                
+                // Update material uniforms
+                this.material.uniforms.time.value += deltaTime;
+            }
+            
+            updateGeometry() {
+                const positions = this.geometry.attributes.position.array;
+                const colors = this.geometry.attributes.color.array;
+                const sizes = this.geometry.attributes.size.array;
+                const lifetimes = this.geometry.attributes.lifetime.array;
+                
+                let i = 0;
+                for (const particle of this.particles) {
+                    positions[i * 3] = particle.position.x;
+                    positions[i * 3 + 1] = particle.position.y;
+                    positions[i * 3 + 2] = particle.position.z;
+                    
+                    colors[i * 3] = particle.color.r;
+                    colors[i * 3 + 1] = particle.color.g;
+                    colors[i * 3 + 2] = particle.color.b;
+                    
+                    sizes[i] = particle.size;
+                    lifetimes[i] = particle.life / particle.maxLife;
+                    
+                    i++;
+                }
+                
+                this.geometry.attributes.position.needsUpdate = true;
+                this.geometry.attributes.color.needsUpdate = true;
+                this.geometry.attributes.size.needsUpdate = true;
+                this.geometry.attributes.lifetime.needsUpdate = true;
+            }
+            
+            addToScene(scene) {
+                scene.add(this.points);
+            }
+            
+            removeFromScene(scene) {
+                scene.remove(this.points);
+            }
+        }
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 10);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lights for reference objects
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            // Add a reference object
+            const referenceSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(1, 32, 32),
+                new THREE.MeshStandardMaterial({ color: 0x666666, wireframe: true })
+            );
+            scene.add(referenceSphere);
+        }
+        
+        // ==========================================
+        // PARTICLE SYSTEM CREATION FUNCTIONS
+        // ==========================================
+        function createFirework() {
+            const firework = new ParticleSystem({
+                position: new THREE.Vector3(0, -5, 0),
+                velocity: new THREE.Vector3(0, 15, 0),
+                particleCount: particleCount,
+                color: 0xff6b6b,
+                size: 0.2,
+                life: 3.0,
+                gravity: new THREE.Vector3(0, -5, 0),
+                spread: 8.0,
+                emissionRate: particleCount / 2
+            });
+            
+            firework.addToScene(scene);
+            particleSystems.push(firework);
+            
+            // Auto-remove after explosion
+            setTimeout(() => {
+                firework.removeFromScene(scene);
+                particleSystems = particleSystems.filter(p => p !== firework);
+            }, 4000);
+        }
+        
+        function createRain() {
+            const rain = new ParticleSystem({
+                position: new THREE.Vector3(0, 10, 0),
+                velocity: new THREE.Vector3(0, -20, 0),
+                particleCount: particleCount,
+                color: 0x4fc3f7,
+                size: 0.05,
+                life: 1.0,
+                gravity: new THREE.Vector3(0, 0, 0),
+                spread: 15.0,
+                emissionRate: particleCount / 2
+            });
+            
+            rain.addToScene(scene);
+            particleSystems.push(rain);
+        }
+        
+        function createSparkle() {
+            const sparkle = new ParticleSystem({
+                position: new THREE.Vector3(
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10
+                ),
+                particleCount: particleCount / 2,
+                color: 0xffff00,
+                size: 0.15,
+                life: 0.5,
+                gravity: new THREE.Vector3(0, -2, 0),
+                spread: 2.0,
+                emissionRate: particleCount / 4
+            });
+            
+            sparkle.addToScene(scene);
+            particleSystems.push(sparkle);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                sparkle.removeFromScene(scene);
+                particleSystems = particleSystems.filter(p => p !== sparkle);
+            }, 3000);
+        }
+        
+        function createSmoke() {
+            const smoke = new ParticleSystem({
+                position: new THREE.Vector3(0, -5, 0),
+                velocity: new THREE.Vector3(0, 2, 0),
+                particleCount: particleCount / 2,
+                color: 0x888888,
+                size: 0.5,
+                life: 4.0,
+                gravity: new THREE.Vector3(0, 0.5, 0),
+                spread: 3.0,
+                emissionRate: particleCount / 8
+            });
+            
+            smoke.addToScene(scene);
+            particleSystems.push(smoke);
+        }
+        
+        function clearParticles() {
+            particleSystems.forEach(system => {
+                system.removeFromScene(scene);
+            });
+            particleSystems = [];
+        }
+        
+        // ==========================================
+        // UPDATE PARTICLE INFORMATION DISPLAY
+        // ==========================================
+        function updateParticleInfo() {
+            const totalParticles = particleSystems.reduce((sum, system) => sum + system.activeParticles, 0);
+            const activeSystems = particleSystems.length;
+            
+            document.getElementById('system-count').textContent = activeSystems;
+            document.getElementById('particle-total').textContent = totalParticles;
+            document.getElementById('active-particles').textContent = totalParticles;
+        }
+        
+        // ==========================================
+        // FPS CALCULATION
+        // ==========================================
+        function updateFPS(currentTime) {
+            frameCount++;
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate(currentTime = 0) {
+            animationId = requestAnimationFrame(animate);
+            
+            const deltaTime = 0.016; // ~60fps
+            
+            // Update all particle systems
+            particleSystems.forEach(system => {
+                system.update(deltaTime);
+            });
+            
+            updateParticleInfo();
+            updateFPS(currentTime);
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('✨ Starting Particle Systems Demo...');
+            
+            setupScene();
+            
+            // Setup particle count slider
+            document.getElementById('particle-count').addEventListener('input', function() {
+                particleCount = parseInt(this.value);
+            });
+            
+            window.addEventListener('resize', handleResize);
+            animate();
+            
+            console.log('✅ Particle demo initialized!');
+            console.log('💡 Try creating different particle effects to see the variety!');
+        }
+        
+        // Make functions globally available
+        window.createFirework = createFirework;
+        window.createRain = createRain;
+        window.createSparkle = createSparkle;
+        window.createSmoke = createSmoke;
+        window.clearParticles = clearParticles;
+        
+        init();
+    </script>
+</body>
+</html>

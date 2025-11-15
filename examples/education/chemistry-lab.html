@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemistry Lab - Molecular Bonding Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .demo-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .demo-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4fc3f7;
+        }
+        
+        .learning-objectives {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .control-group {
+            margin: 12px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-group input, .control-group select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .control-group button {
+            background: #4fc3f7;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-group button:hover {
+            background: #29b6f6;
+            transform: translateY(-1px);
+        }
+        
+        .control-group button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .control-group button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 280px;
+            max-width: 350px;
+        }
+        
+        .molecule-info {
+            background: rgba(79, 195, 247, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #4fc3f7;
+        }
+        
+        .bond-info {
+            background: rgba(255, 152, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .energy-display {
+            background: rgba(76, 175, 80, 0.3);
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 16px;
+        }
+        
+        .reaction-progress {
+            background: rgba(255, 255, 255, 0.1);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4fc3f7, #29b6f6);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4fc3f7;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .active-demo {
+            background: rgba(79, 195, 247, 0.3) !important;
+            border: 1px solid #4fc3f7;
+        }
+        
+        .element-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .element-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .element-button.selected {
+            background: #4fc3f7;
+            border-color: #4fc3f7;
+        }
+        
+        .periodic-table {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Chemistry Lab</h1>
+            
+            <div class="demo-section" onclick="selectDemo('molecules')">
+                <div class="demo-title">Build Molecules</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand molecular structure<br>
+                    • Explore chemical bonds<br>
+                    • Learn about molecular geometry
+                </div>
+                
+                <div class="control-group">
+                    <label>Select Elements:</label>
+                    <div class="periodic-table">
+                        <div class="element-button" onclick="selectElement('H', this)">H</div>
+                        <div class="element-button" onclick="selectElement('C', this)">C</div>
+                        <div class="element-button" onclick="selectElement('O', this)">O</div>
+                        <div class="element-button" onclick="selectElement('N', this)">N</div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Bond Type:</label>
+                    <select id="bond-type" onchange="updateBondType()">
+                        <option value="single">Single Bond</option>
+                        <option value="double">Double Bond</option>
+                        <option value="triple">Triple Bond</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="addAtom()">Add Atom</button>
+                    <button onclick="createBond()">Create Bond</button>
+                    <button onclick="clearMolecule()">Clear Molecule</button>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="buildCommonMolecule('water')">Build H₂O</button>
+                    <button onclick="buildCommonMolecule('methane')">Build CH₄</button>
+                    <button onclick="buildCommonMolecule('benzene')">Build C₆H₆</button>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('reactions')">
+                <div class="demo-title">Chemical Reactions</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Visualize chemical reactions<br>
+                    • Understand reaction mechanisms<br>
+                    • Explore energy changes
+                </div>
+                
+                <div class="control-group">
+                    <label>Reaction Type:</label>
+                    <select id="reaction-type" onchange="setupReaction()">
+                        <option value="synthesis">Synthesis (A + B → AB)</option>
+                        <option value="decomposition">Decomposition (AB → A + B)</option>
+                        <option value="combustion">Combustion</option>
+                        <option value="acid-base">Acid-Base</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <div class="reaction-progress">
+                        <div class="progress-bar" id="reaction-progress"></div>
+                    </div>
+                    <div id="reaction-status">Ready to start reaction</div>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="startReaction()">Start Reaction</button>
+                    <button onclick="resetReaction()">Reset Reaction</button>
+                    <button onclick="pauseReaction()">Pause/Resume</button>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('periodictable')">
+                <div class="demo-title">Interactive Periodic Table</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Explore element properties<br>
+                    • Understand periodic trends<br>
+                    • Learn electron configurations
+                </div>
+                
+                <div class="control-group">
+                    <label>Search Element:</label>
+                    <input type="text" id="element-search" placeholder="Enter element symbol or name" onchange="searchElement()">
+                </div>
+                
+                <div class="control-group">
+                    <div id="element-info">
+                        Select an element to view properties
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Show Properties:</label>
+                    <select id="property-filter" onchange="updatePeriodicTable()">
+                        <option value="all">All Elements</option>
+                        <option value="metals">Metals</option>
+                        <option value="nonmetals">Nonmetals</option>
+                        <option value="noble-gases">Noble Gases</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="demo-section" onclick="selectDemo('thermochemistry')">
+                <div class="demo-title">Thermochemistry</div>
+                <div class="learning-objectives">
+                    <strong>Learning Objectives:</strong><br>
+                    • Understand energy changes<br>
+                    • Explore exothermic/endothermic<br>
+                    • Calculate enthalpy changes
+                </div>
+                
+                <div class="control-group">
+                    <label>Temperature (°C):</label>
+                    <input type="range" id="temperature" min="-100" max="200" value="25" onchange="updateThermochemistry()">
+                    <span id="temperature-value">25</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Pressure (atm):</label>
+                    <input type="range" id="pressure" min="0.1" max="10" step="0.1" value="1" onchange="updateThermochemistry()">
+                    <span id="pressure-value">1.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <button onclick="simulateReaction()">Simulate Reaction</button>
+                    <button onclick="calculateEnergy()">Calculate ΔH</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="canvas-container" id="canvas-container"></div>
+            <div class="info-panel" id="info-panel">
+                <h3 id="demo-title">Select a demo to begin</h3>
+                <div id="demo-description">
+                    Explore the world of chemistry through interactive simulations!
+                </div>
+                <div id="molecule-display"></div>
+                <div id="energy-display"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let currentDemo = null;
+        let animationId;
+        
+        // Chemistry simulation objects
+        let moleculeObjects = {};
+        let reactionObjects = {};
+        let periodicTableObjects = [];
+        let thermoObjects = {};
+        
+        // Element data
+        const elements = {
+            'H': { name: 'Hydrogen', color: 0xffffff, radius: 0.5, valence: 1, mass: 1.008 },
+            'C': { name: 'Carbon', color: 0x444444, radius: 0.7, valence: 4, mass: 12.011 },
+            'O': { name: 'Oxygen', color: 0xff0000, radius: 0.6, valence: 2, mass: 15.999 },
+            'N': { name: 'Nitrogen', color: 0x0000ff, radius: 0.65, valence: 3, mass: 14.007 },
+            'S': { name: 'Sulfur', color: 0xffff00, radius: 0.8, valence: 2, mass: 32.065 },
+            'Cl': { name: 'Chlorine', color: 0x00ff00, radius: 0.75, valence: 1, mass: 35.453 }
+        };
+        
+        init();
+        
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 320) / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 15);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0x4fc3f7, 0.6, 50);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+            
+            // Create lab environment
+            createLabEnvironment();
+            
+            // Start render loop
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createLabEnvironment() {
+            // Create lab bench
+            const benchGeometry = new THREE.BoxGeometry(20, 0.5, 10);
+            const benchMaterial = new THREE.MeshPhongMaterial({ color: 0x8d6e63 });
+            const bench = new THREE.Mesh(benchGeometry, benchMaterial);
+            bench.position.y = -3;
+            bench.receiveShadow = true;
+            scene.add(bench);
+            
+            // Create lab walls
+            const wallGeometry = new THREE.PlaneGeometry(20, 10);
+            const wallMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5, side: THREE.DoubleSide });
+            const backWall = new THREE.Mesh(wallGeometry, wallMaterial);
+            backWall.position.set(0, 0, -5);
+            scene.add(backWall);
+            
+            // Create fume hood glass
+            const glassGeometry = new THREE.PlaneGeometry(15, 8);
+            const glassMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x87ceeb, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+            glass.position.set(0, 1, -2);
+            scene.add(glass);
+        }
+        
+        function selectDemo(demoName) {
+            // Remove active class from all demos
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active-demo');
+            });
+            
+            // Add active class to selected demo
+            event.currentTarget.classList.add('active-demo');
+            
+            currentDemo = demoName;
+            
+            switch(demoName) {
+                case 'molecules':
+                    setupMoleculeBuilder();
+                    break;
+                case 'reactions':
+                    setupReactionSimulation();
+                    break;
+                case 'periodictable':
+                    setupPeriodicTable();
+                    break;
+                case 'thermochemistry':
+                    setupThermochemistry();
+                    break;
+            }
+        }
+        
+        function setupMoleculeBuilder() {
+            updateInfoPanel('Molecule Builder', 
+                'Build molecules by adding atoms and creating bonds.', 
+                'Covalent Bonding', 'Select elements to build molecules');
+            
+            clearScene();
+            createLabEnvironment();
+            moleculeObjects.atoms = [];
+            moleculeObjects.bonds = [];
+        }
+        
+        function setupReactionSimulation() {
+            updateInfoPanel('Chemical Reactions', 
+                'Visualize chemical reactions and their mechanisms.', 
+                'Reactants → Products', 'Select reaction type to begin');
+            
+            clearScene();
+            createLabEnvironment();
+            setupReaction();
+        }
+        
+        function setupPeriodicTable() {
+            updateInfoPanel('Interactive Periodic Table', 
+                'Explore element properties and periodic trends.', 
+                'Periodic Law', 'Elements arranged by atomic number');
+            
+            clearScene();
+            createPeriodicTable();
+        }
+        
+        function setupThermochemistry() {
+            updateInfoPanel('Thermochemistry', 
+                'Study energy changes in chemical processes.', 
+                'ΔH = H_products - H_reactants', 'Temperature: 25°C, Pressure: 1.0 atm');
+            
+            clearScene();
+            createLabEnvironment();
+        }
+        
+        let selectedElement = null;
+        
+        function selectElement(symbol, button) {
+            // Remove previous selection
+            document.querySelectorAll('.element-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Select new element
+            selectedElement = symbol;
+            button.classList.add('selected');
+        }
+        
+        function addAtom() {
+            if (!selectedElement || currentDemo !== 'molecules') return;
+            
+            const element = elements[selectedElement];
+            if (!element) return;
+            
+            // Create atom sphere
+            const atomGeometry = new THREE.SphereGeometry(element.radius, 32, 32);
+            const atomMaterial = new THREE.MeshPhongMaterial({ 
+                color: element.color,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            const atom = new THREE.Mesh(atomGeometry, atomMaterial);
+            
+            // Position randomly on bench
+            atom.position.set(
+                (Math.random() - 0.5) * 10,
+                -2.5 + element.radius,
+                (Math.random() - 0.5) * 8
+            );
+            
+            atom.castShadow = true;
+            atom.userData = {
+                element: selectedElement,
+                bonds: [],
+                charges: 0
+            };
+            
+            // Add element label
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 64;
+            canvas.height = 32;
+            context.fillStyle = '#ffffff';
+            context.font = '20px Arial';
+            context.textAlign = 'center';
+            context.fillText(selectedElement, 32, 24);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const label = new THREE.Sprite(spriteMaterial);
+            label.position.set(0, element.radius + 0.3, 0);
+            label.scale.set(1, 0.5, 1);
+            
+            atom.add(label);
+            scene.add(atom);
+            moleculeObjects.atoms.push(atom);
+            
+            updateMoleculeDisplay();
+        }
+        
+        function createBond() {
+            if (moleculeObjects.atoms.length < 2 || currentDemo !== 'molecules') return;
+            
+            const bondType = document.getElementById('bond-type').value;
+            const atom1 = moleculeObjects.atoms[moleculeObjects.atoms.length - 2];
+            const atom2 = moleculeObjects.atoms[moleculeObjects.atoms.length - 1];
+            
+            // Check valence
+            if (atom1.userData.bonds.length >= elements[atom1.userData.element].valence ||
+                atom2.userData.bonds.length >= elements[atom2.userData.element].valence) {
+                alert('Valence electrons exceeded!');
+                return;
+            }
+            
+            const distance = atom1.position.distanceTo(atom2.position);
+            if (distance > 2.5) {
+                alert('Atoms too far apart to bond!');
+                return;
+            }
+            
+            // Create bond cylinder
+            const bondGeometry = new THREE.CylinderGeometry(0.1, 0.1, distance);
+            const bondMaterial = new THREE.MeshPhongMaterial({ 
+                color: bondType === 'single' ? 0xffffff : 
+                       bondType === 'double' ? 0xffff00 : 0xff6600 
+            });
+            const bond = new THREE.Mesh(bondGeometry, bondMaterial);
+            
+            // Position bond between atoms
+            const midpoint = new THREE.Vector3().addVectors(atom1.position, atom2.position).multiplyScalar(0.5);
+            bond.position.copy(midpoint);
+            
+            // Orient bond
+            bond.lookAt(atom2.position);
+            bond.rotateX(Math.PI / 2);
+            
+            scene.add(bond);
+            moleculeObjects.bonds.push({
+                mesh: bond,
+                atom1: atom1,
+                atom2: atom2,
+                type: bondType,
+                order: bondType === 'single' ? 1 : bondType === 'double' ? 2 : 3
+            });
+            
+            // Update atom bond counts
+            atom1.userData.bonds.push(bond);
+            atom2.userData.bonds.push(bond);
+            
+            // Reposition atoms for optimal bonding
+            repositionAtoms(atom1, atom2);
+            
+            updateMoleculeDisplay();
+        }
+        
+        function repositionAtoms(atom1, atom2) {
+            const element1 = elements[atom1.userData.element];
+            const element2 = elements[atom2.userData.element];
+            
+            // Simple bond length calculation (approximately 1.5 * sum of radii)
+            const bondLength = 1.5 * (element1.radius + element2.radius);
+            const direction = new THREE.Vector3().subVectors(atom2.position, atom1.position).normalize();
+            
+            atom2.position.copy(atom1.position).add(direction.multiplyScalar(bondLength));
+            
+            // Move to bench level
+            atom1.position.y = -2.5 + element1.radius;
+            atom2.position.y = -2.5 + element2.radius;
+        }
+        
+        function buildCommonMolecule(moleculeType) {
+            if (currentDemo !== 'molecules') return;
+            
+            clearMolecule();
+            
+            switch(moleculeType) {
+                case 'water':
+                    buildWater();
+                    break;
+                case 'methane':
+                    buildMethane();
+                    break;
+                case 'benzene':
+                    buildBenzene();
+                    break;
+            }
+        }
+        
+        function buildWater() {
+            const h1 = createAtom('H', new THREE.Vector3(-1, -2.5 + 0.5, 0));
+            const o = createAtom('O', new THREE.Vector3(0, -2.5 + 0.6, 0));
+            const h2 = createAtom('H', new THREE.Vector3(1, -2.5 + 0.5, 0));
+            
+            createBondBetween(h1, o, 'single');
+            createBondBetween(h2, o, 'single');
+            
+            // Position in V-shape (104.5° bond angle)
+            h1.position.set(-0.957, -2.5 + 0.5, 0);
+            h2.position.set(0.957, -2.5 + 0.5, 0);
+        }
+        
+        function buildMethane() {
+            const c = createAtom('C', new THREE.Vector3(0, -2.5 + 0.7, 0));
+            
+            const h1 = createAtom('H', new THREE.Vector3(1, -2.5 + 0.5, 0));
+            const h2 = createAtom('H', new THREE.Vector3(-1, -2.5 + 0.5, 0));
+            const h3 = createAtom('H', new THREE.Vector3(0, -2.5 + 0.5, 1));
+            const h4 = createAtom('H', new THREE.Vector3(0, -2.5 + 0.5, -1));
+            
+            [h1, h2, h3, h4].forEach(h => createBondBetween(c, h, 'single'));
+        }
+        
+        function buildBenzene() {
+            const radius = 1.5;
+            
+            // Create hexagon of carbon atoms
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+                createAtom('C', new THREE.Vector3(x, -2.5 + 0.7, z));
+            }
+            
+            // Create alternating double bonds
+            for (let i = 0; i < 6; i++) {
+                const j = (i + 1) % 6;
+                const bondType = i % 2 === 0 ? 'double' : 'single';
+                createBondBetween(moleculeObjects.atoms[i], moleculeObjects.atoms[j], bondType);
+            }
+            
+            // Add hydrogen atoms
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const x = (radius + 1) * Math.cos(angle);
+                const z = (radius + 1) * Math.sin(angle);
+                const h = createAtom('H', new THREE.Vector3(x, -2.5 + 0.5, z));
+                createBondBetween(moleculeObjects.atoms[i], h, 'single');
+            }
+        }
+        
+        function createAtom(symbol, position) {
+            const element = elements[symbol];
+            const atomGeometry = new THREE.SphereGeometry(element.radius, 32, 32);
+            const atomMaterial = new THREE.MeshPhongMaterial({ 
+                color: element.color,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            const atom = new THREE.Mesh(atomGeometry, atomMaterial);
+            atom.position.copy(position);
+            
+            // Add label
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 64;
+            canvas.height = 32;
+            context.fillStyle = '#ffffff';
+            context.font = '20px Arial';
+            context.textAlign = 'center';
+            context.fillText(symbol, 32, 24);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const label = new THREE.Sprite(spriteMaterial);
+            label.position.set(0, element.radius + 0.3, 0);
+            label.scale.set(1, 0.5, 1);
+            
+            atom.add(label);
+            scene.add(atom);
+            moleculeObjects.atoms.push(atom);
+            
+            atom.userData = {
+                element: symbol,
+                bonds: [],
+                charges: 0
+            };
+            
+            return atom;
+        }
+        
+        function createBondBetween(atom1, atom2, type) {
+            const distance = atom1.position.distanceTo(atom2.position);
+            
+            const bondGeometry = new THREE.CylinderGeometry(0.1, 0.1, distance);
+            const bondMaterial = new THREE.MeshPhongMaterial({ 
+                color: type === 'single' ? 0xffffff : 
+                       type === 'double' ? 0xffff00 : 0xff6600 
+            });
+            const bond = new THREE.Mesh(bondGeometry, bondMaterial);
+            
+            const midpoint = new THREE.Vector3().addVectors(atom1.position, atom2.position).multiplyScalar(0.5);
+            bond.position.copy(midpoint);
+            
+            bond.lookAt(atom2.position);
+            bond.rotateX(Math.PI / 2);
+            
+            scene.add(bond);
+            moleculeObjects.bonds.push({
+                mesh: bond,
+                atom1: atom1,
+                atom2: atom2,
+                type: type,
+                order: type === 'single' ? 1 : type === 'double' ? 2 : 3
+            });
+            
+            atom1.userData.bonds.push(bond);
+            atom2.userData.bonds.push(bond);
+        }
+        
+        function clearMolecule() {
+            moleculeObjects.atoms.forEach(atom => scene.remove(atom));
+            moleculeObjects.bonds.forEach(bond => scene.remove(bond.mesh));
+            moleculeObjects.atoms = [];
+            moleculeObjects.bonds = [];
+            updateMoleculeDisplay();
+        }
+        
+        function updateMoleculeDisplay() {
+            const atomCount = {};
+            const bondCount = moleculeObjects.bonds.length;
+            
+            moleculeObjects.atoms.forEach(atom => {
+                const element = atom.userData.element;
+                atomCount[element] = (atomCount[element] || 0) + 1;
+            });
+            
+            const formula = Object.entries(atomCount)
+                .sort(([a], [b]) => elements[a].mass - elements[b].mass)
+                .map(([element, count]) => count > 1 ? element + count : element)
+                .join('');
+            
+            document.getElementById('molecule-display').innerHTML = `
+                <div class="molecule-info">
+                    <strong>Molecular Formula:</strong> ${formula || 'None'}<br>
+                    <strong>Atoms:</strong> ${moleculeObjects.atoms.length}<br>
+                    <strong>Bonds:</strong> ${bondCount}<br>
+                    <strong>Structure:</strong> ${getMolecularStructure()}
+                </div>
+            `;
+        }
+        
+        function getMolecularStructure() {
+            if (moleculeObjects.atoms.length === 0) return 'None';
+            if (moleculeObjects.atoms.length === 1) return 'Atomic';
+            if (moleculeObjects.atoms.length === 2) return 'Diatomic';
+            if (moleculeObjects.atoms.length <= 4) return 'Simple molecule';
+            if (moleculeObjects.atoms.length <= 10) return 'Complex molecule';
+            return 'Macromolecule';
+        }
+        
+        // Reaction simulation variables
+        let currentReaction = null;
+        let reactionProgress = 0;
+        let reactionRunning = false;
+        
+        function setupReaction() {
+            const reactionType = document.getElementById('reaction-type').value;
+            
+            switch(reactionType) {
+                case 'synthesis':
+                    setupSynthesisReaction();
+                    break;
+                case 'decomposition':
+                    setupDecompositionReaction();
+                    break;
+                case 'combustion':
+                    setupCombustionReaction();
+                    break;
+                case 'acid-base':
+                    setupAcidBaseReaction();
+                    break;
+            }
+        }
+        
+        function setupSynthesisReaction() {
+            // H2 + Cl2 → 2HCl
+            clearScene();
+            createLabEnvironment();
+            
+            // Create H2 molecule
+            const h1 = createAtom('H', new THREE.Vector3(-3, -2.5 + 0.5, 0));
+            const h2 = createAtom('H', new THREE.Vector3(-2, -2.5 + 0.5, 0));
+            createBondBetween(h1, h2, 'single');
+            
+            // Create Cl2 molecule
+            const cl1 = createAtom('Cl', new THREE.Vector3(2, -2.5 + 0.75, 0));
+            const cl2 = createAtom('Cl', new THREE.Vector3(3, -2.5 + 0.75, 0));
+            createBondBetween(cl1, cl2, 'single');
+            
+            reactionObjects.reactants = [h1, h2, cl1, cl2];
+            reactionObjects.products = [];
+            
+            updateInfoPanel('Synthesis Reaction', 
+                'Two elements combine to form a compound.', 
+                'H₂ + Cl₂ → 2HCl', 'Energy: Exothermic (ΔH = -184.6 kJ/mol)');
+        }
+        
+        function setupDecompositionReaction() {
+            // 2H2O → 2H2 + O2
+            clearScene();
+            createLabEnvironment();
+            
+            // Create 2 H2O molecules
+            buildWater();
+            const firstWater = [...moleculeObjects.atoms];
+            buildWater();
+            const secondWater = moleculeObjects.atoms.slice(-3);
+            
+            reactionObjects.reactants = [...firstWater, ...secondWater];
+            reactionObjects.products = [];
+            
+            updateInfoPanel('Decomposition Reaction', 
+                'A compound breaks down into elements.', 
+                '2H₂O → 2H₂ + O₂', 'Energy: Endothermic (ΔH = +571.6 kJ/mol)');
+        }
+        
+        function setupCombustionReaction() {
+            // CH4 + 2O2 → CO2 + 2H2O
+            clearScene();
+            createLabEnvironment();
+            
+            // Create CH4
+            const c = createAtom('C', new THREE.Vector3(-2, -2.5 + 0.7, 0));
+            const h1 = createAtom('H', new THREE.Vector3(-1, -2.5 + 0.5, 0));
+            const h2 = createAtom('H', new THREE.Vector3(-3, -2.5 + 0.5, 0));
+            const h3 = createAtom('H', new THREE.Vector3(-2, -2.5 + 0.5, 1));
+            const h4 = createAtom('H', new THREE.Vector3(-2, -2.5 + 0.5, -1));
+            [h1, h2, h3, h4].forEach(h => createBondBetween(c, h, 'single'));
+            
+            // Create 2 O2 molecules
+            const o1 = createAtom('O', new THREE.Vector3(2, -2.5 + 0.6, 0));
+            const o2 = createAtom('O', new THREE.Vector3(3, -2.5 + 0.6, 0));
+            createBondBetween(o1, o2, 'double');
+            
+            const o3 = createAtom('O', new THREE.Vector3(4, -2.5 + 0.6, 0));
+            const o4 = createAtom('O', new THREE.Vector3(5, -2.5 + 0.6, 0));
+            createBondBetween(o3, o4, 'double');
+            
+            reactionObjects.reactants = [c, h1, h2, h3, h4, o1, o2, o3, o4];
+            reactionObjects.products = [];
+            
+            updateInfoPanel('Combustion Reaction', 
+                'A substance reacts with oxygen, releasing energy.', 
+                'CH₄ + 2O₂ → CO₂ + 2H₂O', 'Energy: Strongly exothermic (ΔH = -890.3 kJ/mol)');
+        }
+        
+        function setupAcidBaseReaction() {
+            // HCl + NaOH → NaCl + H2O
+            clearScene();
+            createLabEnvironment();
+            
+            // Create HCl
+            const h = createAtom('H', new THREE.Vector3(-3, -2.5 + 0.5, 0));
+            const cl = createAtom('Cl', new THREE.Vector3(-2, -2.5 + 0.75, 0));
+            createBondBetween(h, cl, 'single');
+            
+            // Create NaOH
+            const na = createAtom('C', new THREE.Vector3(2, -2.5 + 0.7, 0)); // Using C as proxy for Na
+            const o = createAtom('O', new THREE.Vector3(3, -2.5 + 0.6, 0));
+            const oh = createAtom('H', new THREE.Vector3(4, -2.5 + 0.5, 0));
+            createBondBetween(o, oh, 'single');
+            
+            reactionObjects.reactants = [h, cl, na, o, oh];
+            reactionObjects.products = [];
+            
+            updateInfoPanel('Acid-Base Reaction', 
+                'An acid reacts with a base to form salt and water.', 
+                'HCl + NaOH → NaCl + H₂O', 'Energy: Neutralization (ΔH = -57.1 kJ/mol)');
+        }
+        
+        function startReaction() {
+            if (!reactionObjects.reactants || reactionRunning) return;
+            
+            reactionRunning = true;
+            reactionProgress = 0;
+            animateReaction();
+        }
+        
+        function animateReaction() {
+            if (!reactionRunning) return;
+            
+            reactionProgress += 2;
+            
+            if (reactionProgress >= 100) {
+                completeReaction();
+                return;
+            }
+            
+            // Update progress bar
+            document.getElementById('reaction-progress').style.width = reactionProgress + '%';
+            
+            // Animate reactants approaching each other
+            reactionObjects.reactants.forEach((atom, index) => {
+                if (atom.position.x < 0) {
+                    atom.position.x += 0.1;
+                } else if (atom.position.x > 0) {
+                    atom.position.x -= 0.1;
+                }
+            });
+            
+            setTimeout(animateReaction, 50);
+        }
+        
+        function completeReaction() {
+            reactionRunning = false;
+            
+            const reactionType = document.getElementById('reaction-type').value;
+            
+            switch(reactionType) {
+                case 'synthesis':
+                    createHClProducts();
+                    break;
+                case 'decomposition':
+                    createWaterDecompositionProducts();
+                    break;
+                case 'combustion':
+                    createCombustionProducts();
+                    break;
+                case 'acid-base':
+                    createSaltWaterProducts();
+                    break;
+            }
+            
+            // Clear reactants
+            reactionObjects.reactants.forEach(atom => scene.remove(atom));
+            
+            document.getElementById('reaction-progress').style.width = '100%';
+            document.getElementById('reaction-status').textContent = 'Reaction complete!';
+        }
+        
+        function createHClProducts() {
+            // Create 2 HCl molecules
+            const h1 = createAtom('H', new THREE.Vector3(-0.5, -2.5 + 0.5, 0));
+            const cl1 = createAtom('Cl', new THREE.Vector3(0.5, -2.5 + 0.75, 0));
+            createBondBetween(h1, cl1, 'single');
+            
+            const h2 = createAtom('H', new THREE.Vector3(-0.5, -2.5 + 0.5, 1.5));
+            const cl2 = createAtom('Cl', new THREE.Vector3(0.5, -2.5 + 0.75, 1.5));
+            createBondBetween(h2, cl2, 'single');
+        }
+        
+        function createWaterDecompositionProducts() {
+            // Create 2 H2 and 1 O2
+            const h1 = createAtom('H', new THREE.Vector3(-1, -2.5 + 0.5, 0));
+            const h2 = createAtom('H', new THREE.Vector3(0, -2.5 + 0.5, 0));
+            createBondBetween(h1, h2, 'single');
+            
+            const h3 = createAtom('H', new THREE.Vector3(-1, -2.5 + 0.5, 1.5));
+            const h4 = createAtom('H', new THREE.Vector3(0, -2.5 + 0.5, 1.5));
+            createBondBetween(h3, h4, 'single');
+            
+            const o1 = createAtom('O', new THREE.Vector3(2, -2.5 + 0.6, 0.75));
+            const o2 = createAtom('O', new THREE.Vector3(3, -2.5 + 0.6, 0.75));
+            createBondBetween(o1, o2, 'double');
+        }
+        
+        function createCombustionProducts() {
+            // Create CO2 and 2 H2O
+            const c = createAtom('C', new THREE.Vector3(0, -2.5 + 0.7, 0));
+            const o1 = createAtom('O', new THREE.Vector3(-1, -2.5 + 0.6, 0));
+            const o2 = createAtom('O', new THREE.Vector3(1, -2.5 + 0.6, 0));
+            createBondBetween(c, o1, 'double');
+            createBondBetween(c, o2, 'double');
+            
+            // 2 H2O molecules
+            buildWater();
+            const water1 = moleculeObjects.atoms.slice(-3);
+            
+            // Reposition second water molecule
+            moleculeObjects.atoms[moleculeObjects.atoms.length - 3].position.x = 3;
+            moleculeObjects.atoms[moleculeObjects.atoms.length - 2].position.x = 4;
+            moleculeObjects.atoms[moleculeObjects.atoms.length - 1].position.x = 5;
+        }
+        
+        function createSaltWaterProducts() {
+            // Create NaCl and H2O
+            const na = createAtom('C', new THREE.Vector3(-1, -2.5 + 0.7, 0)); // Using C as proxy for Na
+            const cl = createAtom('Cl', new THREE.Vector3(1, -2.5 + 0.75, 0));
+            // Ionic bond (represented as no direct bond)
+            
+            buildWater();
+        }
+        
+        function resetReaction() {
+            reactionRunning = false;
+            reactionProgress = 0;
+            document.getElementById('reaction-progress').style.width = '0%';
+            document.getElementById('reaction-status').textContent = 'Ready to start reaction';
+            setupReaction();
+        }
+        
+        function pauseReaction() {
+            reactionRunning = !reactionRunning;
+            if (reactionRunning) {
+                animateReaction();
+            }
+        }
+        
+        function createPeriodicTable() {
+            periodicTableObjects = [];
+            
+            const elementOrder = ['H', 'C', 'O', 'N', 'S', 'Cl'];
+            const positions = [
+                [-6, 2], [-5, 2], [-4, 2], [-3, 2], [-2, 2], [-1, 2],
+                [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2]
+            ];
+            
+            elementOrder.forEach((symbol, index) => {
+                const element = elements[symbol];
+                if (!element) return;
+                
+                const atomGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const atomMaterial = new THREE.MeshPhongMaterial({ 
+                    color: element.color,
+                    shininess: 100
+                });
+                const atom = new THREE.Mesh(atomGeometry, atomMaterial);
+                
+                atom.position.set(positions[index][0], positions[index][1], 0);
+                atom.userData = { element: symbol };
+                
+                // Add element label
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 64;
+                canvas.height = 64;
+                context.fillStyle = '#ffffff';
+                context.font = '16px Arial';
+                context.textAlign = 'center';
+                context.fillText(symbol, 32, 24);
+                context.font = '10px Arial';
+                context.fillText(element.name, 32, 40);
+                context.fillText(element.mass, 32, 50);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                const label = new THREE.Sprite(spriteMaterial);
+                label.position.set(0, 0.8, 0);
+                label.scale.set(1.5, 1.5, 1);
+                
+                atom.add(label);
+                scene.add(atom);
+                periodicTableObjects.push(atom);
+            });
+        }
+        
+        function searchElement() {
+            const searchTerm = document.getElementById('element-search').value.toLowerCase();
+            let foundElement = null;
+            
+            for (const [symbol, element] of Object.entries(elements)) {
+                if (symbol.toLowerCase() === searchTerm || 
+                    element.name.toLowerCase().includes(searchTerm)) {
+                    foundElement = { symbol, ...element };
+                    break;
+                }
+            }
+            
+            if (foundElement) {
+                document.getElementById('element-info').innerHTML = `
+                    <strong>${foundElement.name} (${foundElement.symbol})</strong><br>
+                    Atomic Mass: ${foundElement.mass}<br>
+                    Valence Electrons: ${foundElement.valence}<br>
+                    Covalent Radius: ${foundElement.radius}<br>
+                    Color: <span style="color: rgb(${((foundElement.color >> 16) & 255)}, ${((foundElement.color >> 8) & 255)}, ${(foundElement.color & 255)})">●</span>
+                `;
+            } else {
+                document.getElementById('element-info').innerHTML = 'Element not found';
+            }
+        }
+        
+        function updatePeriodicTable() {
+            const filter = document.getElementById('property-filter').value;
+            
+            periodicTableObjects.forEach(atom => {
+                const symbol = atom.userData.element;
+                const element = elements[symbol];
+                
+                let visible = true;
+                
+                switch(filter) {
+                    case 'metals':
+                        visible = ['C'].includes(symbol); // Simplified
+                        break;
+                    case 'nonmetals':
+                        visible = ['H', 'O', 'N', 'S', 'Cl'].includes(symbol);
+                        break;
+                    case 'noble-gases':
+                        visible = false; // None in our simplified set
+                        break;
+                }
+                
+                atom.visible = visible;
+                atom.children.forEach(child => child.visible = visible);
+            });
+        }
+        
+        function updateThermochemistry() {
+            const temp = document.getElementById('temperature').value;
+            const pressure = document.getElementById('pressure').value;
+            
+            document.getElementById('temperature-value').textContent = temp;
+            document.getElementById('pressure-value').textContent = pressure;
+            
+            updateInfoPanel('Thermochemistry', 
+                'Study energy changes in chemical processes.', 
+                'ΔH = H_products - H_reactants', 
+                `Temperature: ${temp}°C<br>Pressure: ${pressure} atm`);
+        }
+        
+        function simulateReaction() {
+            const temp = parseInt(document.getElementById('temperature').value);
+            const pressure = parseFloat(document.getElementById('pressure').value);
+            
+            // Simple simulation: higher temperature = faster reaction
+            const reactionRate = Math.max(0.1, Math.min(2.0, temp / 100));
+            
+            // Simulate energy change
+            const energyChange = -100 + (temp - 25) * 0.5 - (pressure - 1) * 10;
+            
+            document.getElementById('energy-display').innerHTML = `
+                <div class="energy-display">
+                    Reaction Rate: ${reactionRate.toFixed(2)}<br>
+                    ΔH: ${energyChange.toFixed(1)} kJ/mol<br>
+                    Status: ${energyChange < 0 ? 'Exothermic' : 'Endothermic'}
+                </div>
+            `;
+        }
+        
+        function calculateEnergy() {
+            const temp = parseInt(document.getElementById('temperature').value);
+            
+            // Simplified enthalpy calculation
+            const deltaH = -75 - (temp - 25) * 0.1;
+            const deltaS = 0.15; // Entropy change
+            const deltaG = deltaH - (temp + 273.15) * deltaS / 1000;
+            
+            updateInfoPanel('Energy Calculation', 
+                'Calculate Gibbs free energy change.', 
+                'ΔG = ΔH - TΔS', 
+                `ΔH: ${deltaH.toFixed(1)} kJ/mol<br>ΔS: ${deltaS.toFixed(2)} kJ/mol·K<br>ΔG: ${deltaG.toFixed(1)} kJ/mol`);
+        }
+        
+        function updateBondType() {
+            // Update bond color based on type
+            const bondType = document.getElementById('bond-type').value;
+            // Implementation would update bond visualization
+        }
+        
+        function clearScene() {
+            // Remove all objects except lights and bench
+            const objectsToRemove = [];
+            scene.traverse((object) => {
+                if (object !== scene && 
+                    object.type !== 'AmbientLight' && 
+                    object.type !== 'DirectionalLight' && 
+                    object.type !== 'PointLight' &&
+                    object.type !== 'Mesh' && object.material?.color?.getHex() !== 0x8d6e63) {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+        }
+        
+        function updateInfoPanel(title, description, formula, energyInfo) {
+            document.getElementById('demo-title').textContent = title;
+            document.getElementById('demo-description').textContent = description;
+            document.getElementById('molecule-display').innerHTML = `
+                <div class="molecule-info">
+                    <strong>Reaction:</strong> ${formula}<br>
+                    ${energyInfo}
+                </div>
+            `;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Animate molecular motion (Brownian motion simulation)
+            if (currentDemo === 'molecules' && moleculeObjects.atoms) {
+                moleculeObjects.atoms.forEach(atom => {
+                    if (Math.random() < 0.1) {
+                        atom.position.x += (Math.random() - 0.5) * 0.02;
+                        atom.position.z += (Math.random() - 0.5) * 0.02;
+                        
+                        // Keep atoms above bench
+                        const element = elements[atom.userData.element];
+                        if (atom.position.y < -2.5 + element.radius) {
+                            atom.position.y = -2.5 + element.radius;
+                        }
+                    }
+                });
+            }
+            
+            // Animate bond vibration
+            if (currentDemo === 'molecules' && moleculeObjects.bonds) {
+                moleculeObjects.bonds.forEach(bond => {
+                    const time = Date.now() * 0.001;
+                    bond.mesh.scale.y = 1 + Math.sin(time * 10) * 0.02;
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

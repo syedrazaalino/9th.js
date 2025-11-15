@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Medical Imaging 3D Visualization</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 13px;
+        }
+
+        .control-group select,
+        .control-group input[type="range"],
+        .control-group input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+
+        .medical-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .slice-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .hounsfield-scale {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 200px;
+            z-index: 100;
+        }
+
+        .scan-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .tissue-legend {
+            margin-top: 15px;
+        }
+
+        .tissue-color {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            font-size: 12px;
+        }
+
+        .tissue-color span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .slice-slider {
+            margin: 15px 0;
+        }
+
+        .slice-slider input {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .threshold-controls {
+            margin: 15px 0;
+        }
+
+        .threshold-row {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .threshold-row label {
+            width: 60px;
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .threshold-row input {
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+
+        .measurement {
+            position: absolute;
+            color: #60a5fa;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 90;
+        }
+
+        .file-input-group {
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .file-input-group input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 8px;
+            border: 1px dashed #64748b;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Loading medical imaging system...</div>
+        
+        <div class="controls">
+            <h3>Medical Imaging Controls</h3>
+            
+            <div class="control-group">
+                <label for="scanType">Scan Type:</label>
+                <select id="scanType">
+                    <option value="brain">Brain MRI</option>
+                    <option value="chest">Chest CT</option>
+                    <option value="abdomen">Abdomen CT</option>
+                    <option value="spine">Spine MRI</option>
+                    <option value="cardiac">Cardiac CT</option>
+                    <option value="skull">Skull CT</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="reconstruction">Reconstruction:</label>
+                <select id="reconstruction">
+                    <option value="3d">3D Volume Rendering</option>
+                    <option value="mpr">Multi-Planar Reconstruction</option>
+                    <option value="surface">Surface Rendering</option>
+                    <option value="mip">Maximum Intensity Projection</option>
+                    <option value="minip">Minimum Intensity Projection</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="windowLevel">Window Level:</label>
+                <div class="slider-group">
+                    <input type="range" id="windowLevel" min="-1000" max="1000" step="10" value="50">
+                    <div class="value-display">50 HU</div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label for="windowWidth">Window Width:</label>
+                <div class="slider-group">
+                    <input type="range" id="windowWidth" min="10" max="2000" step="10" value="400">
+                    <div class="value-display">400 HU</div>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showAnnotations" checked>
+                <label for="showAnnotations">Show Annotations</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showMeasurements">
+                <label for="showMeasurements">Enable Measurements</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showCrosshairs">
+                <label for="showCrosshairs">Show Crosshairs</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="resetView">Reset</button>
+                <button id="toggleSlices">Slices</button>
+            </div>
+            
+            <div class="file-input-group">
+                <div class="file-input-label" id="fileLabel">
+                    Import DICOM/NIfTI File
+                </div>
+                <input type="file" id="dataFile" accept=".dcm,.nii,.nii.gz,.dicom">
+            </div>
+        </div>
+        
+        <div class="medical-info">
+            <h3>Scan Information</h3>
+            <div class="scan-info">
+                <div class="info-item">
+                    <div class="info-value" id="modality">MRI</div>
+                    <div class="info-label">Modality</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="dimensions">256×256×100</div>
+                    <div class="info-label">Dimensions</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="resolution">1.0 mm</div>
+                    <div class="info-label">Voxel Size</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="sliceThickness">1.5 mm</div>
+                    <div class="info-label">Slice Thickness</div>
+                </div>
+            </div>
+            
+            <div id="patientInfo">
+                <h4>Patient Info</h4>
+                <p><strong>ID:</strong> 12345-ABC</p>
+                <p><strong>Age:</strong> 45 years</p>
+                <p><strong>Study Date:</strong> 2025-11-05</p>
+                <p><strong>Series:</strong> T1-weighted</p>
+            </div>
+            
+            <div class="tissue-legend">
+                <h4>Tissue Classification</h4>
+                <div class="tissue-color">
+                    <span style="background: #ff0000;"></span> Bone (-1000 to +3000 HU)
+                </div>
+                <div class="tissue-color">
+                    <span style="background: #ff8000;"></span> Soft Tissue (0 to +100 HU)
+                </div>
+                <div class="tissue-color">
+                    <span style="background: #80ff80;"></span> Fat (-50 to -100 HU)
+                </div>
+                <div class="tissue-color">
+                    <span style="background: #0080ff;"></span> Water (0 HU)
+                </div>
+                <div class="tissue-color">
+                    <span style="background: #8000ff;"></span> Air (-1000 HU)
+                </div>
+            </div>
+        </div>
+        
+        <div class="slice-controls">
+            <h3>Slice Navigation</h3>
+            
+            <div class="slice-slider">
+                <label for="axialSlice">Axial (Z-axis):</label>
+                <input type="range" id="axialSlice" min="0" max="100" value="50">
+                <div class="value-display" id="axialValue">Slice 50/100</div>
+            </div>
+            
+            <div class="slice-slider">
+                <label for="sagittalSlice">Sagittal (X-axis):</label>
+                <input type="range" id="sagittalSlice" min="0" max="256" value="128">
+                <div class="value-display" id="sagittalValue">Slice 128/256</div>
+            </div>
+            
+            <div class="slice-slider">
+                <label for="coronalSlice">Coronal (Y-axis):</label>
+                <input type="range" id="coronalSlice" min="0" max="256" value="128">
+                <div class="value-display" id="coronalValue">Slice 128/256</div>
+            </div>
+            
+            <div class="threshold-controls">
+                <h4>Intensity Thresholds</h4>
+                <div class="threshold-row">
+                    <label>Min:</label>
+                    <input type="range" id="minThreshold" min="-1000" max="1000" value="-200">
+                </div>
+                <div class="threshold-row">
+                    <label>Max:</label>
+                    <input type="range" id="maxThreshold" min="0" max="3000" value="1500">
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="applyFilters">Apply Filters</button>
+                <button id="exportSlices">Export</button>
+            </div>
+        </div>
+        
+        <div class="hounsfield-scale">
+            <h3>Hounsfield Scale</h3>
+            <div style="background: linear-gradient(90deg, #000000, #ffffff); height: 20px; border-radius: 10px; margin: 10px 0; position: relative;">
+                <div style="position: absolute; top: 25px; left: 0; font-size: 10px;">-1000</div>
+                <div style="position: absolute; top: 25px; right: 0; font-size: 10px;">+3000</div>
+            </div>
+            <div style="font-size: 11px; line-height: 1.3;">
+                <p><strong>Reference Points:</strong></p>
+                <p>Air: -1000 HU</p>
+                <p>Water: 0 HU</p>
+                <p>Fat: -50 HU</p>
+                <p>Brain: +40 HU</p>
+                <p>Bone: +300 HU</p>
+                <p>Metal: >1000 HU</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class MedicalImagingVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.volumeData = null;
+                this.volumeTexture = null;
+                this.slicePlanes = new Map();
+                this.measurements = [];
+                this.annotations = [];
+                this.currentSliceIndex = 50;
+                this.measurementMode = false;
+                this.measurementStart = null;
+                this.volumeDimensions = { x: 256, y: 256, z: 100 };
+                this.voxelSpacing = { x: 1.0, y: 1.0, z: 1.5 };
+                
+                // Hounsfield Units mapping
+                this.hounsfieldColors = {
+                    air: { min: -1000, max: -950, color: 0x000000 },
+                    lung: { min: -950, max: -200, color: 0x444444 },
+                    fat: { min: -200, max: -50, color: 0x80ff80 },
+                    water: { min: -50, max: 50, color: 0x0080ff },
+                    soft_tissue: { min: 50, max: 200, color: 0xff8000 },
+                    bone: { min: 200, max: 1000, color: 0xff0000 },
+                    metal: { min: 1000, max: 3000, color: 0xffffff }
+                };
+                
+                this.tissuePresets = {
+                    brain: {
+                        windowLevel: 40,
+                        windowWidth: 80,
+                        thresholds: { min: 20, max: 80 },
+                        modality: 'MRI (T1-weighted)'
+                    },
+                    chest: {
+                        windowLevel: -600,
+                        windowWidth: 1600,
+                        thresholds: { min: -1000, max: 300 },
+                        modality: 'CT'
+                    },
+                    abdomen: {
+                        windowLevel: 40,
+                        windowWidth: 400,
+                        thresholds: { min: -100, max: 200 },
+                        modality: 'CT'
+                    },
+                    spine: {
+                        windowLevel: 300,
+                        windowWidth: 1500,
+                        thresholds: { min: 100, max: 500 },
+                        modality: 'MRI (T2-weighted)'
+                    },
+                    cardiac: {
+                        windowLevel: 100,
+                        windowWidth: 500,
+                        thresholds: { min: 0, max: 200 },
+                        modality: 'CT Angiography'
+                    },
+                    skull: {
+                        windowLevel: 300,
+                        windowWidth: 1000,
+                        thresholds: { min: 200, max: 1000 },
+                        modality: 'CT'
+                    }
+                };
+                
+                this.init();
+                this.setupEventListeners();
+                this.createVolumeData();
+                this.loadScanType('brain');
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                this.scene.background = new Color(0x0f172a);
+                
+                // Camera
+                this.camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(100, 100, 100);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new DirectionalLight(0xffffff, 0.6);
+                directionalLight.position.set(1, 1, 1);
+                this.scene.add(directionalLight);
+                
+                // Controls
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                    
+                    if (this.measurementMode) {
+                        this.startMeasurement(e);
+                    }
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                    this.measurementStart = null;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    this.camera.position.x = Math.cos(rotationY) * 100 * Math.cos(rotationX);
+                    this.camera.position.y = Math.sin(rotationX) * 100;
+                    this.camera.position.z = Math.sin(rotationY) * 100 * Math.cos(rotationX);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    const distance = this.camera.position.length();
+                    this.camera.position.normalize().multiplyScalar(Math.max(20, Math.min(500, distance + delta * 10)));
+                });
+            }
+            
+            createVolumeData() {
+                // Create synthetic medical scan data
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                const size = width * height * depth;
+                this.volumeData = new Uint16Array(size);
+                
+                // Generate synthetic organ-like structures
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Create brain-like structure
+                            const centerX = width / 2;
+                            const centerY = height / 2;
+                            const centerZ = depth / 2;
+                            
+                            const distFromCenter = Math.sqrt(
+                                Math.pow(x - centerX, 2) +
+                                Math.pow(y - centerY, 2) +
+                                Math.pow(z - centerZ, 2)
+                            );
+                            
+                            const radius = Math.min(width, height, depth) * 0.3;
+                            const value = Math.max(0, 1000 - distFromCenter * 5);
+                            
+                            // Add some noise and structure
+                            const noise = Math.random() * 20;
+                            let hounsfield = value + noise;
+                            
+                            // Add some high-density regions (like bones in skull)
+                            if (distFromCenter < radius * 0.9 && Math.random() < 0.1) {
+                                hounsfield = 800 + Math.random() * 400;
+                            }
+                            
+                            this.volumeData[index] = Math.min(3000, Math.max(-1000, hounsfield));
+                        }
+                    }
+                }
+                
+                this.createVolumeTexture();
+            }
+            
+            createVolumeTexture() {
+                // Convert volume data to 3D texture
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                // Create RGBA data for texture
+                const texData = new Uint8Array(width * height * depth * 4);
+                
+                for (let i = 0; i < this.volumeData.length; i++) {
+                    const hounsfield = this.volumeData[i];
+                    const texIndex = i * 4;
+                    
+                    // Map Hounsfield units to RGBA
+                    let r, g, b, a;
+                    
+                    if (hounsfield >= 1000) {
+                        r = g = b = 255; a = 255; // Metal/bone
+                    } else if (hounsfield >= 200) {
+                        r = 255; g = b = 0; a = 255; // Bone
+                    } else if (hounsfield >= 50) {
+                        r = 255; g = 128; b = 0; a = 200; // Soft tissue
+                    } else if (hounsfield >= -50) {
+                        r = 0; g = 128; b = 255; a = 150; // Water/fluid
+                    } else if (hounsfield >= -200) {
+                        r = 128; g = 255; b = 128; a = 100; // Fat
+                    } else if (hounsfield >= -950) {
+                        r = 68; g = 68; b = 68; a = 80; // Lung
+                    } else {
+                        r = g = b = 0; a = 50; // Air
+                    }
+                    
+                    texData[texIndex] = r;
+                    texData[texIndex + 1] = g;
+                    texData[texIndex + 2] = b;
+                    texData[texIndex + 3] = a;
+                }
+                
+                this.volumeTexture = new Texture();
+                this.volumeTexture.needsUpdate = true;
+                
+                // Note: In a real implementation, this would use WebGL 3D textures
+            }
+            
+            setupEventListeners() {
+                document.getElementById('scanType').addEventListener('change', (e) => {
+                    this.loadScanType(e.target.value);
+                });
+                
+                document.getElementById('reconstruction').addEventListener('change', (e) => {
+                    this.changeReconstruction(e.target.value);
+                });
+                
+                document.getElementById('windowLevel').addEventListener('input', (e) => {
+                    const level = parseInt(e.target.value);
+                    e.target.nextElementSibling.textContent = `${level} HU`;
+                    this.updateWindowSettings(level, document.getElementById('windowWidth').value);
+                });
+                
+                document.getElementById('windowWidth').addEventListener('input', (e) => {
+                    const width = parseInt(e.target.value);
+                    e.target.nextElementSibling.textContent = `${width} HU`;
+                    this.updateWindowSettings(document.getElementById('windowLevel').value, width);
+                });
+                
+                document.getElementById('minThreshold').addEventListener('input', (e) => {
+                    this.updateThresholds(e.target.value, document.getElementById('maxThreshold').value);
+                });
+                
+                document.getElementById('maxThreshold').addEventListener('input', (e) => {
+                    this.updateThresholds(document.getElementById('minThreshold').value, e.target.value);
+                });
+                
+                document.getElementById('axialSlice').addEventListener('input', (e) => {
+                    const slice = parseInt(e.target.value);
+                    this.currentSliceIndex = slice;
+                    e.target.nextElementSibling.textContent = `Slice ${slice}/100`;
+                    this.updateSliceView('axial', slice);
+                });
+                
+                document.getElementById('sagittalSlice').addEventListener('input', (e) => {
+                    const slice = parseInt(e.target.value);
+                    e.target.nextElementSibling.textContent = `Slice ${slice}/256`;
+                    this.updateSliceView('sagittal', slice);
+                });
+                
+                document.getElementById('coronalSlice').addEventListener('input', (e) => {
+                    const slice = parseInt(e.target.value);
+                    e.target.nextElementSibling.textContent = `Slice ${slice}/256`;
+                    this.updateSliceView('coronal', slice);
+                });
+                
+                document.getElementById('showAnnotations').addEventListener('change', (e) => {
+                    this.toggleAnnotations(e.target.checked);
+                });
+                
+                document.getElementById('showMeasurements').addEventListener('change', (e) => {
+                    this.measurementMode = e.target.checked;
+                });
+                
+                document.getElementById('showCrosshairs').addEventListener('change', (e) => {
+                    this.toggleCrosshairs(e.target.checked);
+                });
+                
+                document.getElementById('resetView').addEventListener('click', () => {
+                    this.resetView();
+                });
+                
+                document.getElementById('toggleSlices').addEventListener('click', () => {
+                    this.toggleSliceVisibility();
+                });
+                
+                document.getElementById('applyFilters').addEventListener('click', () => {
+                    this.applyFilters();
+                });
+                
+                document.getElementById('exportSlices').addEventListener('click', () => {
+                    this.exportSlices();
+                });
+                
+                document.getElementById('dataFile').addEventListener('change', (e) => {
+                    this.importMedicalData(e.target.files[0]);
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            loadScanType(type) {
+                const preset = this.tissuePresets[type];
+                if (!preset) return;
+                
+                // Update UI
+                document.getElementById('windowLevel').value = preset.windowLevel;
+                document.getElementById('windowLevel').nextElementSibling.textContent = `${preset.windowLevel} HU`;
+                document.getElementById('windowWidth').value = preset.windowWidth;
+                document.getElementById('windowWidth').nextElementSibling.textContent = `${preset.windowWidth} HU`;
+                document.getElementById('minThreshold').value = preset.thresholds.min;
+                document.getElementById('maxThreshold').value = preset.thresholds.max;
+                document.getElementById('modality').textContent = preset.modality;
+                
+                // Generate appropriate volume data
+                this.generateOrganData(type);
+                this.createSlicePlanes();
+                this.updateWindowSettings(preset.windowLevel, preset.windowWidth);
+            }
+            
+            generateOrganData(organType) {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                // Clear existing data
+                this.volumeData = new Uint16Array(width * height * depth);
+                
+                switch (organType) {
+                    case 'brain':
+                        this.generateBrainData();
+                        break;
+                    case 'chest':
+                        this.generateChestData();
+                        break;
+                    case 'abdomen':
+                        this.generateAbdomenData();
+                        break;
+                    case 'spine':
+                        this.generateSpineData();
+                        break;
+                    case 'cardiac':
+                        this.generateCardiacData();
+                        break;
+                    case 'skull':
+                        this.generateSkullData();
+                        break;
+                }
+            }
+            
+            generateBrainData() {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Brain shape
+                            const centerX = width / 2;
+                            const centerY = height / 2;
+                            const centerZ = depth / 2;
+                            
+                            const distFromCenter = Math.sqrt(
+                                Math.pow(x - centerX, 2) +
+                                Math.pow(y - centerY, 2) +
+                                Math.pow(z - centerZ, 2)
+                            );
+                            
+                            const brainRadius = Math.min(width, height, depth) * 0.25;
+                            let hounsfield = 0;
+                            
+                            if (distFromCenter < brainRadius) {
+                                hounsfield = 40 + Math.random() * 20; // Brain tissue
+                                
+                                // Add ventricles (lower density)
+                                const ventricleDist = Math.sqrt(
+                                    Math.pow(x - centerX, 2) +
+                                    Math.pow(y - centerY * 1.2, 2) +
+                                    Math.pow(z - centerZ, 2)
+                                );
+                                if (ventricleDist < brainRadius * 0.3) {
+                                    hounsfield = 10; // CSF
+                                }
+                            }
+                            
+                            this.volumeData[index] = hounsfield;
+                        }
+                    }
+                }
+            }
+            
+            generateChestData() {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Chest cavity shape
+                            const chestCenterY = height * 0.4;
+                            const distFromChest = Math.abs(y - chestCenterY);
+                            
+                            let hounsfield = -800; // Lung parenchyma
+                            
+                            if (distFromChest < height * 0.15) {
+                                // Heart region
+                                const heartDist = Math.sqrt(
+                                    Math.pow(x - width * 0.6, 2) +
+                                    Math.pow(y - chestCenterY, 2)
+                                );
+                                if (heartDist < width * 0.15) {
+                                    hounsfield = 60; // Heart tissue
+                                }
+                                
+                                // Spine
+                                if (x < width * 0.2) {
+                                    hounsfield = 200; // Bone
+                                }
+                                
+                                // Ribs
+                                if (Math.abs(x - width * 0.8) < 5 || Math.abs(x - width * 0.2) < 5) {
+                                    hounsfield = 400; // Ribs
+                                }
+                            }
+                            
+                            this.volumeData[index] = hounsfield;
+                        }
+                    }
+                }
+            }
+            
+            generateAbdomenData() {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Abdominal cavity
+                            let hounsfield = 30; // Soft tissue
+                            
+                            // Liver
+                            if (x > width * 0.5 && y > height * 0.4 && y < height * 0.7) {
+                                hounsfield = 60;
+                            }
+                            
+                            // Kidneys
+                            if ((x < width * 0.3 && y > height * 0.5) || 
+                                (x > width * 0.7 && y > height * 0.5)) {
+                                hounsfield = 40;
+                            }
+                            
+                            // Spine
+                            if (x < width * 0.2) {
+                                hounsfield = 200;
+                            }
+                            
+                            this.volumeData[index] = hounsfield;
+                        }
+                    }
+                }
+            }
+            
+            generateSpineData() {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Spinal column
+                            const spineCenterX = width * 0.5;
+                            const distFromSpine = Math.abs(x - spineCenterX);
+                            
+                            let hounsfield = 20; // Soft tissue
+                            
+                            if (distFromSpine < width * 0.1) {
+                                hounsfield = 400; // Vertebrae
+                            }
+                            
+                            // Intervertebral discs
+                            if (distFromSpine < width * 0.15 && Math.sin(z * 0.5) > 0.8) {
+                                hounsfield = 80; // Discs
+                            }
+                            
+                            this.volumeData[index] = hounsfield;
+                        }
+                    }
+                }
+            }
+            
+            generateCardiacData() {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Heart chambers
+                            const heartCenterX = width * 0.5;
+                            const heartCenterY = height * 0.5;
+                            const distFromHeart = Math.sqrt(
+                                Math.pow(x - heartCenterX, 2) +
+                                Math.pow(y - heartCenterY, 2)
+                            );
+                            
+                            let hounsfield = 40; // Heart muscle
+                            
+                            // Ventricles
+                            if (distFromHeart < width * 0.1) {
+                                hounsfield = 20; // Blood pool
+                            }
+                            
+                            // Aorta
+                            if (x > width * 0.6 && Math.abs(y - height * 0.3) < 10) {
+                                hounsfield = 80; // Contrast-enhanced blood
+                            }
+                            
+                            this.volumeData[index] = hounsfield;
+                        }
+                    }
+                }
+            }
+            
+            generateSkullData() {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = x + y * width + z * width * height;
+                            
+                            // Skull shape
+                            const centerX = width / 2;
+                            const centerY = height / 2;
+                            const centerZ = depth / 2;
+                            
+                            const distFromCenter = Math.sqrt(
+                                Math.pow(x - centerX, 2) +
+                                Math.pow(y - centerY, 2) +
+                                Math.pow(z - centerZ, 2)
+                            );
+                            
+                            const skullRadius = Math.min(width, height, depth) * 0.3;
+                            let hounsfield = -800; // Air
+                            
+                            if (distFromCenter > skullRadius * 0.8 && distFromCenter < skullRadius) {
+                                hounsfield = 800; // Bone
+                            }
+                            
+                            // Brain tissue inside skull
+                            if (distFromCenter < skullRadius * 0.8) {
+                                hounsfield = 40;
+                            }
+                            
+                            this.volumeData[index] = hounsfield;
+                        }
+                    }
+                }
+            }
+            
+            createSlicePlanes() {
+                // Remove existing slice planes
+                this.slicePlanes.forEach(plane => {
+                    this.scene.remove(plane);
+                });
+                this.slicePlanes.clear();
+                
+                // Create slice planes for each view
+                this.createSlicePlane('axial', 'axialSlice');
+                this.createSlicePlane('sagittal', 'sagittalSlice');
+                this.createSlicePlane('coronal', 'coronalSlice');
+            }
+            
+            createSlicePlane(plane, sliderId) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                
+                const imageData = ctx.createImageData(256, 256);
+                const data = imageData.data;
+                
+                let sliceIndex = 50;
+                switch (plane) {
+                    case 'axial':
+                        sliceIndex = this.currentSliceIndex;
+                        break;
+                    case 'sagittal':
+                        sliceIndex = parseInt(document.getElementById('sagittalSlice').value);
+                        break;
+                    case 'coronal':
+                        sliceIndex = parseInt(document.getElementById('coronalSlice').value);
+                        break;
+                }
+                
+                this.renderSliceToCanvas(plane, sliceIndex, data);
+                
+                ctx.putImageData(imageData, 0, 0);
+                
+                const texture = new Texture(canvas);
+                texture.needsUpdate = true;
+                
+                const material = new MeshBasicMaterial({ 
+                    map: texture, 
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                let geometry;
+                let position = new Vector3();
+                
+                switch (plane) {
+                    case 'axial':
+                        geometry = new PlaneGeometry(100, 100);
+                        position.z = (sliceIndex - this.volumeDimensions.z / 2) * this.voxelSpacing.z;
+                        break;
+                    case 'sagittal':
+                        geometry = new PlaneGeometry(100, 100);
+                        position.x = (sliceIndex - this.volumeDimensions.x / 2) * this.voxelSpacing.x;
+                        position.rotateY(Math.PI / 2);
+                        break;
+                    case 'coronal':
+                        geometry = new PlaneGeometry(100, 100);
+                        position.y = (sliceIndex - this.volumeDimensions.y / 2) * this.voxelSpacing.y;
+                        position.rotateX(Math.PI / 2);
+                        break;
+                }
+                
+                const mesh = new Mesh(geometry, material);
+                mesh.position.copy(position);
+                
+                this.scene.add(mesh);
+                this.slicePlanes.set(plane, mesh);
+            }
+            
+            renderSliceToCanvas(plane, sliceIndex, data) {
+                const width = this.volumeDimensions.x;
+                const height = this.volumeDimensions.y;
+                const depth = this.volumeDimensions.z;
+                
+                const thresholdMin = parseInt(document.getElementById('minThreshold').value);
+                const thresholdMax = parseInt(document.getElementById('maxThreshold').value);
+                
+                for (let y = 0; y < 256; y++) {
+                    for (let x = 0; x < 256; x++) {
+                        const dataIndex = (y * 256 + x) * 4;
+                        let hounsfield = 0;
+                        
+                        switch (plane) {
+                            case 'axial':
+                                const axX = Math.floor((x / 256) * width);
+                                const axY = Math.floor((y / 256) * height);
+                                const axIndex = axX + axY * width + sliceIndex * width * height;
+                                hounsfield = this.volumeData[axIndex] || 0;
+                                break;
+                            case 'sagittal':
+                                const sagY = Math.floor((y / 256) * height);
+                                const sagZ = Math.floor((x / 256) * depth);
+                                const sagIndex = sliceIndex + sagY * width + sagZ * width * height;
+                                hounsfield = this.volumeData[sagIndex] || 0;
+                                break;
+                            case 'coronal':
+                                const corX = Math.floor((x / 256) * width);
+                                const corZ = Math.floor((y / 256) * depth);
+                                const corIndex = corX + sliceIndex * width + corZ * width * height;
+                                hounsfield = this.volumeData[corIndex] || 0;
+                                break;
+                        }
+                        
+                        // Apply thresholds
+                        if (hounsfield < thresholdMin || hounsfield > thresholdMax) {
+                            data[dataIndex] = data[dataIndex + 1] = data[dataIndex + 2] = 0;
+                            data[dataIndex + 3] = 0;
+                        } else {
+                            // Map Hounsfield units to grayscale
+                            const normalized = (hounsfield + 1000) / 4000; // Normalize to 0-1
+                            const intensity = Math.floor(normalized * 255);
+                            data[dataIndex] = intensity;
+                            data[dataIndex + 1] = intensity;
+                            data[dataIndex + 2] = intensity;
+                            data[dataIndex + 3] = 255;
+                        }
+                    }
+                }
+            }
+            
+            changeReconstruction(type) {
+                console.log('Changing reconstruction to:', type);
+                // Implement different reconstruction algorithms
+                // - 3D Volume Rendering: Ray marching
+                // - MPR: Multi-planar reconstruction
+                // - Surface Rendering: Marching cubes
+                // - MIP: Maximum intensity projection
+                // - MinIP: Minimum intensity projection
+            }
+            
+            updateWindowSettings(level, width) {
+                // Apply window level and width settings
+                console.log(`Window: Level=${level}, Width=${width}`);
+            }
+            
+            updateThresholds(min, max) {
+                console.log(`Thresholds: Min=${min}, Max=${max}`);
+                this.updateSlicePlanes();
+            }
+            
+            updateSliceView(plane, sliceIndex) {
+                if (this.slicePlanes.has(plane)) {
+                    const planeMesh = this.slicePlanes.get(plane);
+                    // Update plane position based on slice index
+                    this.updateSlicePosition(plane, sliceIndex);
+                    // Redraw the slice
+                    this.updateSlicePlanes();
+                }
+            }
+            
+            updateSlicePosition(plane, sliceIndex) {
+                const planeMesh = this.slicePlanes.get(plane);
+                if (!planeMesh) return;
+                
+                switch (plane) {
+                    case 'axial':
+                        planeMesh.position.z = (sliceIndex - this.volumeDimensions.z / 2) * this.voxelSpacing.z;
+                        break;
+                    case 'sagittal':
+                        planeMesh.position.x = (sliceIndex - this.volumeDimensions.x / 2) * this.voxelSpacing.x;
+                        break;
+                    case 'coronal':
+                        planeMesh.position.y = (sliceIndex - this.volumeDimensions.y / 2) * this.voxelSpacing.y;
+                        break;
+                }
+            }
+            
+            updateSlicePlanes() {
+                this.slicePlanes.forEach((planeMesh, plane) => {
+                    const canvas = planeMesh.material.map.image;
+                    const ctx = canvas.getContext('2d');
+                    const imageData = ctx.createImageData(canvas.width, canvas.height);
+                    
+                    let sliceIndex;
+                    switch (plane) {
+                        case 'axial':
+                            sliceIndex = this.currentSliceIndex;
+                            break;
+                        case 'sagittal':
+                            sliceIndex = parseInt(document.getElementById('sagittalSlice').value);
+                            break;
+                        case 'coronal':
+                            sliceIndex = parseInt(document.getElementById('coronalSlice').value);
+                            break;
+                    }
+                    
+                    this.renderSliceToCanvas(plane, sliceIndex, imageData.data);
+                    ctx.putImageData(imageData, 0, 0);
+                    planeMesh.material.map.needsUpdate = true;
+                });
+            }
+            
+            toggleAnnotations(show) {
+                this.annotations.forEach(annotation => {
+                    annotation.visible = show;
+                });
+            }
+            
+            toggleCrosshairs(show) {
+                // Show/hide crosshair guides
+                console.log('Crosshairs:', show);
+            }
+            
+            toggleSliceVisibility() {
+                const slicesVisible = this.slicePlanes.size > 0;
+                this.slicePlanes.forEach(plane => {
+                    plane.visible = !slicesVisible;
+                });
+            }
+            
+            startMeasurement(event) {
+                // Implement measurement functionality
+                if (!this.measurementStart) {
+                    this.measurementStart = { x: event.clientX, y: event.clientY };
+                } else {
+                    this.createMeasurement(this.measurementStart, { x: event.clientX, y: event.clientY });
+                    this.measurementStart = null;
+                }
+            }
+            
+            createMeasurement(start, end) {
+                // Create measurement line and label
+                console.log('Creating measurement from', start, 'to', end);
+            }
+            
+            applyFilters() {
+                console.log('Applying filters...');
+                // Implement image enhancement filters
+                // - Noise reduction
+                // - Edge enhancement
+                // - Contrast adjustment
+                // - Artifact reduction
+            }
+            
+            exportSlices() {
+                console.log('Exporting slices...');
+                // Export current slice views as images
+            }
+            
+            importMedicalData(file) {
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = e.target.result;
+                        this.parseMedicalData(content, file.name);
+                    } catch (error) {
+                        alert('Error parsing medical data: ' + error.message);
+                    }
+                };
+                
+                if (file.name.endsWith('.dcm') || file.name.endsWith('.dicom')) {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            }
+            
+            parseMedicalData(data, filename) {
+                // Parse DICOM or NIfTI file
+                console.log('Parsing medical data from:', filename);
+                
+                // In a real implementation, this would use libraries like:
+                // - dcmjs for DICOM files
+                // - nibabel for NIfTI files
+                
+                // For now, simulate loading
+                this.createVolumeData();
+                this.createSlicePlanes();
+            }
+            
+            resetView() {
+                this.camera.position.set(100, 100, 100);
+                this.camera.lookAt(0, 0, 0);
+                this.currentSliceIndex = 50;
+                document.getElementById('axialSlice').value = 50;
+                document.getElementById('axialSlice').nextElementSibling.textContent = 'Slice 50/100';
+                this.updateSlicePlanes();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the visualizer when the page loads
+        window.addEventListener('load', () => {
+            new MedicalImagingVisualizer();
+        });
+    </script>
+</body>
+</html>

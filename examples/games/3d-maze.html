@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Maze - First Person Exploration</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        #minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            border: 2px solid white;
+            background: rgba(0,0,0,0.8);
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Time: <span id="time">0</span>s</div>
+        <div>Treasure Found: <span id="treasures">0</span>/10</div>
+        <div>Health: <span id="health">100</span></div>
+    </div>
+    
+    <canvas id="minimap" width="150" height="150"></canvas>
+    
+    <div class="controls">
+        WASD: Move | Mouse: Look Around | Shift: Sprint | Click to lock mouse
+    </div>
+
+    <script>
+        class MazeGame3D {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimap = document.getElementById('minimap');
+                this.minimapCtx = this.minimap.getContext('2d');
+                
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+                
+                // Camera settings
+                this.camera = {
+                    x: 1.5,
+                    y: 1.5,
+                    z: 1.7,
+                    angle: 0,
+                    pitch: 0,
+                    fov: Math.PI / 3,
+                    sensitivity: 0.002
+                };
+                
+                // Movement
+                this.keys = {};
+                this.moveSpeed = 0.1;
+                this.sprintSpeed = 0.2;
+                
+                // Maze generation
+                this.mazeSize = 20;
+                this.maze = this.generateMaze();
+                this.treasures = this.generateTreasures();
+                
+                // Game state
+                this.score = 0;
+                this.startTime = Date.now();
+                this.treasuresFound = 0;
+                this.health = 100;
+                this.gameWon = false;
+                
+                // Raycasting data
+                this.zBuffer = [];
+                
+                this.setupControls();
+                this.start();
+            }
+            
+            generateMaze() {
+                const maze = [];
+                for (let i = 0; i < this.mazeSize; i++) {
+                    maze[i] = [];
+                    for (let j = 0; j < this.mazeSize; j++) {
+                        maze[i][j] = 1; // 1 = wall, 0 = empty
+                    }
+                }
+                
+                // Recursive backtracking algorithm
+                const stack = [];
+                const visited = new Set();
+                const start = { x: 1, y: 1 };
+                
+                maze[start.x][start.y] = 0;
+                visited.add(`${start.x},${start.y}`);
+                stack.push(start);
+                
+                while (stack.length > 0) {
+                    const current = stack[stack.length - 1];
+                    const neighbors = this.getUnvisitedNeighbors(current.x, current.y, visited, maze);
+                    
+                    if (neighbors.length > 0) {
+                        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        maze[current.x][current.y] = 0;
+                        maze[next.x][next.y] = 0;
+                        visited.add(`${next.x},${next.y}`);
+                        stack.push(next);
+                    } else {
+                        stack.pop();
+                    }
+                }
+                
+                return maze;
+            }
+            
+            getUnvisitedNeighbors(x, y, visited, maze) {
+                const neighbors = [];
+                const directions = [
+                    { x: x + 2, y: y },
+                    { x: x - 2, y: y },
+                    { x: x, y: y + 2 },
+                    { x: x, y: y - 2 }
+                ];
+                
+                for (let dir of directions) {
+                    if (dir.x > 0 && dir.x < this.mazeSize - 1 && 
+                        dir.y > 0 && dir.y < this.mazeSize - 1 &&
+                        !visited.has(`${dir.x},${dir.y}`)) {
+                        neighbors.push(dir);
+                    }
+                }
+                
+                return neighbors;
+            }
+            
+            generateTreasures() {
+                const treasures = [];
+                let count = 0;
+                
+                while (count < 10 && treasures.length < 10) {
+                    const x = Math.floor(Math.random() * (this.mazeSize - 2)) + 1;
+                    const y = Math.floor(Math.random() * (this.mazeSize - 2)) + 1;
+                    
+                    if (this.maze[x][y] === 0) {
+                        treasures.push({ x, y, found: false });
+                        count++;
+                    }
+                }
+                
+                return treasures;
+            }
+            
+            setupControls() {
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Mouse controls
+                this.canvas.addEventListener('click', () => {
+                    this.canvas.requestPointerLock();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (document.pointerLockElement === this.canvas) {
+                        this.camera.angle += e.movementX * this.camera.sensitivity;
+                        this.camera.pitch -= e.movementY * this.camera.sensitivity;
+                        
+                        // Limit pitch
+                        this.camera.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, this.camera.pitch));
+                    }
+                });
+            }
+            
+            update() {
+                if (this.gameWon) return;
+                
+                // Movement
+                this.handleMovement();
+                
+                // Check treasure collection
+                this.checkTreasureCollection();
+                
+                // Check win condition
+                this.checkWinCondition();
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            handleMovement() {
+                let speed = this.keys['shift'] ? this.sprintSpeed : this.moveSpeed;
+                
+                // Calculate forward and right vectors
+                const forwardX = Math.cos(this.camera.angle);
+                const forwardZ = Math.sin(this.camera.angle);
+                const rightX = Math.cos(this.camera.angle + Math.PI/2);
+                const rightZ = Math.sin(this.camera.angle + Math.PI/2);
+                
+                // Movement input
+                if (this.keys['w']) {
+                    const newX = this.camera.x + forwardX * speed;
+                    const newZ = this.camera.z + forwardZ * speed;
+                    if (this.canMoveTo(newX, this.camera.z)) this.camera.x = newX;
+                    if (this.canMoveTo(this.camera.x, newZ)) this.camera.z = newZ;
+                }
+                
+                if (this.keys['s']) {
+                    const newX = this.camera.x - forwardX * speed;
+                    const newZ = this.camera.z - forwardZ * speed;
+                    if (this.canMoveTo(newX, this.camera.z)) this.camera.x = newX;
+                    if (this.canMoveTo(this.camera.x, newZ)) this.camera.z = newZ;
+                }
+                
+                if (this.keys['a']) {
+                    const newX = this.camera.x - rightX * speed;
+                    const newZ = this.camera.z - rightZ * speed;
+                    if (this.canMoveTo(newX, this.camera.z)) this.camera.x = newX;
+                    if (this.canMoveTo(this.camera.x, newZ)) this.camera.z = newZ;
+                }
+                
+                if (this.keys['d']) {
+                    const newX = this.camera.x + rightX * speed;
+                    const newZ = this.camera.z + rightZ * speed;
+                    if (this.canMoveTo(newX, this.camera.z)) this.camera.x = newX;
+                    if (this.canMoveTo(this.camera.x, newZ)) this.camera.z = newZ;
+                }
+            }
+            
+            canMoveTo(x, z) {
+                const gridX = Math.floor(x);
+                const gridZ = Math.floor(z);
+                
+                // Check bounds
+                if (gridX < 0 || gridX >= this.mazeSize || gridZ < 0 || gridZ >= this.mazeSize) {
+                    return false;
+                }
+                
+                return this.maze[gridX][gridZ] === 0;
+            }
+            
+            checkTreasureCollection() {
+                for (let treasure of this.treasures) {
+                    if (!treasure.found) {
+                        const distance = Math.sqrt(
+                            Math.pow(this.camera.x - treasure.x, 2) + 
+                            Math.pow(this.camera.z - treasure.y, 2)
+                        );
+                        
+                        if (distance < 1) {
+                            treasure.found = true;
+                            this.treasuresFound++;
+                            this.score += 500;
+                        }
+                    }
+                }
+            }
+            
+            checkWinCondition() {
+                if (this.treasuresFound >= 10) {
+                    this.gameWon = true;
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('time').textContent = Math.floor((Date.now() - this.startTime) / 1000);
+                document.getElementById('treasures').textContent = this.treasuresFound;
+                document.getElementById('health').textContent = this.health;
+            }
+            
+            castRays() {
+                for (let x = 0; x < this.width; x++) {
+                    const rayAngle = this.camera.angle - this.camera.fov/2 + (x / this.width) * this.camera.fov;
+                    const rayDirX = Math.cos(rayAngle);
+                    const rayDirZ = Math.sin(rayAngle);
+                    
+                    let mapX = Math.floor(this.camera.x);
+                    let mapZ = Math.floor(this.camera.z);
+                    
+                    const deltaDistX = Math.abs(1 / rayDirX);
+                    const deltaDistZ = Math.abs(1 / rayDirZ);
+                    
+                    let stepX, stepZ;
+                    let sideDistX, sideDistZ;
+                    
+                    if (rayDirX < 0) {
+                        stepX = -1;
+                        sideDistX = (this.camera.x - mapX) * deltaDistX;
+                    } else {
+                        stepX = 1;
+                        sideDistX = (mapX + 1.0 - this.camera.x) * deltaDistX;
+                    }
+                    
+                    if (rayDirZ < 0) {
+                        stepZ = -1;
+                        sideDistZ = (this.camera.z - mapZ) * deltaDistZ;
+                    } else {
+                        stepZ = 1;
+                        sideDistZ = (mapZ + 1.0 - this.camera.z) * deltaDistZ;
+                    }
+                    
+                    let hit = false;
+                    let side = false;
+                    
+                    // DDA
+                    while (!hit) {
+                        if (sideDistX < sideDistZ) {
+                            sideDistX += deltaDistX;
+                            mapX += stepX;
+                            side = false;
+                        } else {
+                            sideDistZ += deltaDistZ;
+                            mapZ += stepZ;
+                            side = true;
+                        }
+                        
+                        if (mapX < 0 || mapX >= this.mazeSize || mapZ < 0 || mapZ >= this.mazeSize) {
+                            hit = true;
+                        } else if (this.maze[mapX][mapZ] > 0) {
+                            hit = true;
+                        }
+                    }
+                    
+                    // Calculate distance to wall
+                    let perpWallDist;
+                    if (side) {
+                        perpWallDist = (sideDistZ - deltaDistZ);
+                    } else {
+                        perpWallDist = (sideDistX - deltaDistX);
+                    }
+                    
+                    if (perpWallDist <= 0) perpWallDist = 0.1;
+                    
+                    this.zBuffer[x] = perpWallDist;
+                    
+                    // Calculate wall height
+                    const wallHeight = this.height / perpWallDist;
+                    const drawStart = Math.floor((this.height - wallHeight) / 2 + wallHeight * this.camera.pitch);
+                    const drawEnd = Math.floor((this.height + wallHeight) / 2 + wallHeight * this.camera.pitch);
+                    
+                    // Color based on distance and side
+                    let r = 100, g = 100, b = 100;
+                    if (side) {
+                        r *= 0.7; g *= 0.7; b *= 0.7;
+                    }
+                    
+                    // Fade with distance
+                    const fade = Math.max(0.3, 1 - perpWallDist / 10);
+                    r *= fade; g *= fade; b *= fade;
+                    
+                    this.ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
+                    this.ctx.fillRect(x, Math.max(0, drawStart), 1, Math.min(this.height, drawEnd) - Math.max(0, drawStart));
+                }
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Cast rays for 3D effect
+                this.castRays();
+                
+                // Render treasures
+                this.renderTreasures();
+                
+                // Render minimap
+                this.renderMinimap();
+                
+                // Render crosshair
+                this.renderCrosshair();
+                
+                // Render win screen
+                if (this.gameWon) {
+                    this.renderWinScreen();
+                }
+            }
+            
+            renderTreasures() {
+                for (let treasure of this.treasures) {
+                    if (!treasure.found) {
+                        // Check if treasure is in view
+                        const angleToTreasure = Math.atan2(treasure.y - this.camera.z, treasure.x - this.camera.x);
+                        let angleDiff = angleToTreasure - this.camera.angle;
+                        
+                        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                        
+                        if (Math.abs(angleDiff) < this.camera.fov / 2) {
+                            // Calculate distance and screen position
+                            const distance = Math.sqrt(
+                                Math.pow(treasure.x - this.camera.x, 2) + 
+                                Math.pow(treasure.y - this.camera.z, 2)
+                            );
+                            
+                            const screenX = ((angleDiff + this.camera.fov/2) / this.camera.fov) * this.width;
+                            const screenY = this.height / 2 - (distance * 10);
+                            
+                            if (screenY > 0 && screenY < this.height) {
+                                // Draw treasure marker
+                                const size = Math.max(2, 20 / distance);
+                                this.ctx.fillStyle = '#FFD700';
+                                this.ctx.beginPath();
+                                this.ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                                this.ctx.fill();
+                                
+                                // Glow effect
+                                this.ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                                this.ctx.beginPath();
+                                this.ctx.arc(screenX, screenY, size * 2, 0, Math.PI * 2);
+                                this.ctx.fill();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            renderMinimap() {
+                const size = 6;
+                this.minimapCtx.fillStyle = '#222';
+                this.minimapCtx.fillRect(0, 0, this.minimap.width, this.minimap.height);
+                
+                // Draw maze
+                for (let x = 0; x < this.mazeSize; x++) {
+                    for (let z = 0; z < this.mazeSize; z++) {
+                        if (this.maze[x][z] > 0) {
+                            this.minimapCtx.fillStyle = '#666';
+                            this.minimapCtx.fillRect(
+                                (x / this.mazeSize) * this.minimap.width,
+                                (z / this.mazeSize) * this.minimap.height,
+                                this.minimap.width / this.mazeSize,
+                                this.minimap.height / this.mazeSize
+                            );
+                        }
+                    }
+                }
+                
+                // Draw treasures
+                for (let treasure of this.treasures) {
+                    if (!treasure.found) {
+                        this.minimapCtx.fillStyle = '#FFD700';
+                        this.minimapCtx.fillRect(
+                            (treasure.x / this.mazeSize) * this.minimap.width - 2,
+                            (treasure.y / this.mazeSize) * this.minimap.height - 2,
+                            4, 4
+                        );
+                    }
+                }
+                
+                // Draw player
+                this.minimapCtx.fillStyle = '#00FF00';
+                this.minimapCtx.beginPath();
+                this.minimapCtx.arc(
+                    (this.camera.x / this.mazeSize) * this.minimap.width,
+                    (this.camera.z / this.mazeSize) * this.minimap.height,
+                    3, 0, Math.PI * 2
+                );
+                this.minimapCtx.fill();
+                
+                // Draw camera direction
+                this.minimapCtx.strokeStyle = '#00FF00';
+                this.minimapCtx.beginPath();
+                this.minimapCtx.moveTo(
+                    (this.camera.x / this.mazeSize) * this.minimap.width,
+                    (this.camera.z / this.mazeSize) * this.minimap.height
+                );
+                this.minimapCtx.lineTo(
+                    ((this.camera.x + Math.cos(this.camera.angle) * 0.5) / this.mazeSize) * this.minimap.width,
+                    ((this.camera.z + Math.sin(this.camera.angle) * 0.5) / this.mazeSize) * this.minimap.height
+                );
+                this.minimapCtx.stroke();
+            }
+            
+            renderCrosshair() {
+                this.ctx.strokeStyle = '#FFF';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.width/2 - 10, this.height/2);
+                this.ctx.lineTo(this.width/2 + 10, this.height/2);
+                this.ctx.moveTo(this.width/2, this.height/2 - 10);
+                this.ctx.lineTo(this.width/2, this.height/2 + 10);
+                this.ctx.stroke();
+            }
+            
+            renderWinScreen() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.font = '48px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('CONGRATULATIONS!', this.width/2, this.height/2 - 50);
+                
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText('You found all the treasures!', this.width/2, this.height/2);
+                this.ctx.fillText(`Final Score: ${this.score}`, this.width/2, this.height/2 + 50);
+                this.ctx.fillText(`Time: ${Math.floor((Date.now() - this.startTime) / 1000)} seconds`, this.width/2, this.height/2 + 80);
+                
+                this.ctx.textAlign = 'left';
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            start() {
+                this.gameLoop();
+            }
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            new MazeGame3D();
+        });
+    </script>
+</body>
+</html>

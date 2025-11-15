@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9th.js - Simple HTML Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        
+        .controls h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .slider {
+            width: 200px;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .value-display {
+            display: inline-block;
+            margin-left: 10px;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .color-picker {
+            width: 50px;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        .info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <h2>🎮 9th.js Controls</h2>
+        
+        <div class="control-group">
+            <label>Rotation Speed: <span class="value-display" id="speed-value">0.01</span></label>
+            <input type="range" class="slider" id="rotation-speed" min="0" max="0.05" step="0.001" value="0.01">
+        </div>
+        
+        <div class="control-group">
+            <label>Cube Size: <span class="value-display" id="size-value">1.0</span></label>
+            <input type="range" class="slider" id="cube-size" min="0.5" max="3" step="0.1" value="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Camera Distance: <span class="value-display" id="distance-value">5</span></label>
+            <input type="range" class="slider" id="camera-distance" min="2" max="10" step="0.5" value="5">
+        </div>
+        
+        <div class="control-group">
+            <label>Cube Color:</label>
+            <input type="color" class="color-picker" id="cube-color" value="#00ff00">
+        </div>
+        
+        <button id="reset-btn">Reset</button>
+    </div>
+    
+    <div class="info">
+        <strong>9th.js</strong><br>
+        Modern 3D JavaScript Library<br>
+        <small>Built by digitalcloud.no</small>
+    </div>
+
+    <!-- Load 9th.js from UMD build -->
+    <!-- Use local file for testing, or CDN for production -->
+    <script src="../dist/umd/9th.umd.js"></script>
+    <!-- <script src="https://unpkg.com/9th.js@0.1.18/dist/umd/9th.umd.js"></script> -->
+    
+    <script>
+        // Access 9th.js from global namespace
+        if (!window['9thJS']) {
+            console.error('9th.js not loaded! Make sure the script tag is correct.');
+        }
+        
+        const { 
+            WebGLRenderer, 
+            Scene, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            MeshBasicMaterial, 
+            Mesh,
+            DirectionalLight,
+            AmbientLight
+        } = window['9thJS'] || {};
+        
+        // Verify all required classes are available
+        if (!WebGLRenderer || typeof WebGLRenderer !== 'function') {
+            console.error('WebGLRenderer is not available!', typeof WebGLRenderer, WebGLRenderer);
+            console.log('Available in window["9thJS"]:', Object.keys(window['9thJS'] || {}).slice(0, 20));
+        }
+
+        // Get canvas element
+        const canvas = document.getElementById('canvas');
+
+        // Create renderer
+        const renderer = new WebGLRenderer(canvas);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Create scene
+        const scene = new Scene();
+
+        // Create camera
+        const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        // Create a cube
+        let geometry = new BoxGeometry(1, 1, 1);
+        let material = new MeshBasicMaterial({ color: 0x00ff00 });
+        let cube = new Mesh(geometry, material);
+        scene.add(cube);
+
+        // Add lights
+        const directionalLight = new DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const ambientLight = new AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        // Animation variables
+        let rotationSpeed = 0.01;
+
+        // Control handlers
+        const rotationSlider = document.getElementById('rotation-speed');
+        const sizeSlider = document.getElementById('cube-size');
+        const distanceSlider = document.getElementById('camera-distance');
+        const colorPicker = document.getElementById('cube-color');
+        const resetBtn = document.getElementById('reset-btn');
+
+        const speedValue = document.getElementById('speed-value');
+        const sizeValue = document.getElementById('size-value');
+        const distanceValue = document.getElementById('distance-value');
+
+        // Rotation speed control
+        rotationSlider.addEventListener('input', (e) => {
+            rotationSpeed = parseFloat(e.target.value);
+            speedValue.textContent = rotationSpeed.toFixed(3);
+        });
+
+        // Cube size control
+        sizeSlider.addEventListener('input', (e) => {
+            const size = parseFloat(e.target.value);
+            cube.scale.set(size, size, size);
+            sizeValue.textContent = size.toFixed(1);
+        });
+
+        // Camera distance control
+        distanceSlider.addEventListener('input', (e) => {
+            const distance = parseFloat(e.target.value);
+            camera.position.z = distance;
+            distanceValue.textContent = distance;
+        });
+
+        // Color control
+        colorPicker.addEventListener('input', (e) => {
+            const color = e.target.value;
+            material.setColor(color); // Use setColor method which handles hex strings
+        });
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            rotationSlider.value = 0.01;
+            sizeSlider.value = 1;
+            distanceSlider.value = 5;
+            colorPicker.value = '#00ff00';
+            
+            rotationSpeed = 0.01;
+            cube.scale.set(1, 1, 1);
+            camera.position.z = 5;
+            material.setColor('#00ff00');
+            
+            speedValue.textContent = '0.01';
+            sizeValue.textContent = '1.0';
+            distanceValue.textContent = '5';
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate the cube
+            cube.rotation.x += rotationSpeed;
+            cube.rotation.y += rotationSpeed;
+            
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        animate();
+
+        console.log('✅ 9th.js is running!');
+        console.log('📦 Version:', window['9thJS'].VERSION);
+    </script>
+</body>
+</html>
+

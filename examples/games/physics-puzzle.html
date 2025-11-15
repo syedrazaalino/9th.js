@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Puzzle - Rigid Body Mechanics</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+        }
+        #levelInfo {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 5px;
+        }
+        #instructions {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .toolbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .tool-btn {
+            padding: 10px 15px;
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .tool-btn:hover, .tool-btn.active {
+            background: #4CAF50;
+            transform: scale(1.05);
+        }
+        #winScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: #4CAF50;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #4CAF50;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="levelInfo">
+            <div>Level: <span id="level">1</span></div>
+            <div>Moves: <span id="moves">0</span></div>
+            <div>Time: <span id="time">0</span>s</div>
+            <div>Score: <span id="score">0</span></div>
+        </div>
+        <div id="instructions">
+            Click and drag to rotate pieces.<br>
+            Goal: Get the blue ball into the green goal area!
+        </div>
+    </div>
+    
+    <div class="toolbar">
+        <button class="tool-btn" data-tool="rotate">Rotate (1)</button>
+        <button class="tool-btn" data-tool="force">Force (2)</button>
+        <button class="tool-btn" data-tool="gravity">Gravity (3)</button>
+        <button class="tool-btn" data-tool="reset">Reset (R)</button>
+        <button class="tool-btn" data-tool="next">Next Level (N)</button>
+    </div>
+    
+    <div id="winScreen">
+        <h2>LEVEL COMPLETE!</h2>
+        <p>Great job! You've solved the puzzle.</p>
+        <button onclick="nextLevel()" style="padding: 10px 20px; background: #4CAF50; border: none; color: white; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 16px;">Next Level</button>
+    </div>
+
+    <script>
+        class PhysicsPuzzleGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width = window.innerWidth;
+                this.height = this.canvas.height = window.innerHeight;
+                
+                // Physics constants
+                this.gravity = 0.5;
+                this.friction = 0.98;
+                this.restitution = 0.7;
+                
+                // Game state
+                this.level = 1;
+                this.moves = 0;
+                this.score = 0;
+                this.startTime = Date.now();
+                this.gameWon = false;
+                this.currentTool = 'rotate';
+                
+                // Physics objects
+                this.bodies = [];
+                this.constraints = [];
+                this.selectedBody = null;
+                this.dragStart = { x: 0, y: 0 };
+                this.mouse = { x: 0, y: 0 };
+                
+                // Initialize
+                this.setupControls();
+                this.setupTools();
+                this.loadLevel(1);
+                this.start();
+            }
+            
+            setupControls() {
+                // Mouse controls
+                this.canvas.addEventListener('mousedown', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    this.mouse = { x, y };
+                    this.dragStart = { x, y };
+                    this.selectedBody = this.getBodyAt(x, y);
+                    
+                    if (this.selectedBody) {
+                        if (this.currentTool === 'rotate') {
+                            this.selectedBody.selected = true;
+                            this.selectedBody.dragOffset = {
+                                x: x - this.selectedBody.x,
+                                y: y - this.selectedBody.y
+                            };
+                        }
+                    }
+                });
+                
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    this.mouse = { x, y };
+                    
+                    if (this.selectedBody && this.currentTool === 'rotate') {
+                        const angle = Math.atan2(
+                            y - this.selectedBody.y,
+                            x - this.selectedBody.x
+                        );
+                        this.selectedBody.rotation = angle;
+                    } else if (this.selectedBody && this.currentTool === 'force') {
+                        // Apply force based on mouse movement
+                        if (this.selectedBody.selected) {
+                            const force = {
+                                x: (x - this.dragStart.x) * 0.02,
+                                y: (y - this.dragStart.y) * 0.02
+                            };
+                            this.applyForce(this.selectedBody, force);
+                        }
+                    }
+                });
+                
+                this.canvas.addEventListener('mouseup', () => {
+                    if (this.selectedBody) {
+                        this.selectedBody.selected = false;
+                        this.moves++;
+                        this.updateUI();
+                        this.selectedBody = null;
+                    }
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    switch (e.key.toLowerCase()) {
+                        case '1':
+                            this.selectTool('rotate');
+                            break;
+                        case '2':
+                            this.selectTool('force');
+                            break;
+                        case '3':
+                            this.selectTool('gravity');
+                            break;
+                        case 'r':
+                            this.resetLevel();
+                            break;
+                        case 'n':
+                            this.nextLevel();
+                            break;
+                    }
+                });
+            }
+            
+            setupTools() {
+                const toolButtons = document.querySelectorAll('.tool-btn');
+                toolButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.selectTool(button.dataset.tool);
+                    });
+                });
+                
+                this.selectTool('rotate');
+            }
+            
+            selectTool(tool) {
+                this.currentTool = tool;
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.tool === tool) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            loadLevel(levelNum) {
+                this.bodies = [];
+                this.constraints = [];
+                this.gameWon = false;
+                
+                // Clear win screen
+                document.getElementById('winScreen').style.display = 'none';
+                
+                // Add boundaries
+                this.addBoundaries();
+                
+                // Load level-specific objects
+                switch (levelNum) {
+                    case 1:
+                        this.loadLevel1();
+                        break;
+                    case 2:
+                        this.loadLevel2();
+                        break;
+                    case 3:
+                        this.loadLevel3();
+                        break;
+                    case 4:
+                        this.loadLevel4();
+                        break;
+                    case 5:
+                        this.loadLevel5();
+                        break;
+                    default:
+                        this.loadLevel1();
+                }
+            }
+            
+            addBoundaries() {
+                // Floor
+                this.addBody({
+                    x: this.width / 2,
+                    y: this.height - 50,
+                    width: this.width,
+                    height: 100,
+                    type: 'wall',
+                    color: '#8B4513',
+                    static: true
+                });
+                
+                // Left wall
+                this.addBody({
+                    x: 50,
+                    y: this.height / 2,
+                    width: 100,
+                    height: this.height,
+                    type: 'wall',
+                    color: '#8B4513',
+                    static: true
+                });
+                
+                // Right wall
+                this.addBody({
+                    x: this.width - 50,
+                    y: this.height / 2,
+                    width: 100,
+                    height: this.height,
+                    type: 'wall',
+                    color: '#8B4513',
+                    static: true
+                });
+            }
+            
+            loadLevel1() {
+                // Simple ramp to goal
+                this.addBody({
+                    x: 400,
+                    y: this.height - 150,
+                    width: 200,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0',
+                    angle: -0.3
+                });
+                
+                this.addBody({
+                    x: 650,
+                    y: this.height - 100,
+                    width: 150,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0',
+                    angle: 0.2
+                });
+                
+                // Player ball (blue)
+                this.addBody({
+                    x: 200,
+                    y: this.height - 200,
+                    radius: 20,
+                    type: 'circle',
+                    color: '#4169E1',
+                    mass: 1
+                });
+                
+                // Goal (green circle)
+                this.goal = {
+                    x: this.width - 150,
+                    y: this.height - 100,
+                    radius: 30
+                };
+            }
+            
+            loadLevel2() {
+                // Pendulum puzzle
+                this.addBody({
+                    x: this.width / 2,
+                    y: 100,
+                    width: 20,
+                    height: 200,
+                    type: 'box',
+                    color: '#8B4513',
+                    angle: Math.PI / 6,
+                    static: true
+                });
+                
+                this.addBody({
+                    x: this.width / 2 + 100 * Math.sin(Math.PI / 6),
+                    y: 300,
+                    radius: 25,
+                    type: 'circle',
+                    color: '#FF6347',
+                    mass: 2
+                });
+                
+                // Supporting structure
+                this.addBody({
+                    x: this.width / 2 + 200,
+                    y: this.height - 150,
+                    width: 150,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0'
+                });
+                
+                this.addBody({
+                    x: this.width - 200,
+                    y: this.height - 200,
+                    radius: 20,
+                    type: 'circle',
+                    color: '#4169E1',
+                    mass: 1
+                });
+                
+                this.goal = {
+                    x: this.width - 100,
+                    y: this.height - 100,
+                    radius: 30
+                };
+            }
+            
+            loadLevel3() {
+                // Domino effect
+                for (let i = 0; i < 8; i++) {
+                    this.addBody({
+                        x: 300 + i * 40,
+                        y: this.height - 200,
+                        width: 15,
+                        height: 80,
+                        type: 'box',
+                        color: '#FFD700'
+                    });
+                }
+                
+                // Trigger ball
+                this.addBody({
+                    x: 250,
+                    y: this.height - 200,
+                    radius: 15,
+                    type: 'circle',
+                    color: '#FF4500',
+                    mass: 0.5
+                });
+                
+                // Target structure
+                this.addBody({
+                    x: this.width - 200,
+                    y: this.height - 200,
+                    width: 100,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0'
+                });
+                
+                this.addBody({
+                    x: this.width - 150,
+                    y: this.height - 250,
+                    radius: 20,
+                    type: 'circle',
+                    color: '#4169E1',
+                    mass: 1
+                });
+                
+                this.goal = {
+                    x: this.width - 150,
+                    y: this.height - 150,
+                    radius: 30
+                };
+            }
+            
+            loadLevel4() {
+                // Complex lever system
+                this.addBody({
+                    x: this.width / 2,
+                    y: this.height - 200,
+                    width: 300,
+                    height: 15,
+                    type: 'box',
+                    color: '#8B4513',
+                    mass: 2
+                });
+                
+                this.addBody({
+                    x: this.width / 2 - 50,
+                    y: this.height - 180,
+                    radius: 20,
+                    type: 'circle',
+                    color: '#4169E1',
+                    mass: 1
+                });
+                
+                this.addBody({
+                    x: this.width / 2 + 50,
+                    y: this.height - 250,
+                    radius: 30,
+                    type: 'circle',
+                    color: '#FF4500',
+                    mass: 3
+                });
+                
+                // Ramps
+                this.addBody({
+                    x: this.width / 2 + 200,
+                    y: this.height - 180,
+                    width: 200,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0',
+                    angle: -0.4
+                });
+                
+                this.goal = {
+                    x: this.width - 100,
+                    y: this.height - 150,
+                    radius: 30
+                };
+            }
+            
+            loadLevel5() {
+                // Final challenge - multiple balls and obstacles
+                this.addBody({
+                    x: 200,
+                    y: this.height - 300,
+                    width: 100,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0',
+                    angle: 0.3
+                });
+                
+                this.addBody({
+                    x: 350,
+                    y: this.height - 250,
+                    width: 100,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0',
+                    angle: -0.3
+                });
+                
+                this.addBody({
+                    x: 500,
+                    y: this.height - 200,
+                    width: 150,
+                    height: 20,
+                    type: 'box',
+                    color: '#A0A0A0',
+                    angle: 0.1
+                });
+                
+                // Multiple balls
+                this.addBody({
+                    x: 150,
+                    y: this.height - 350,
+                    radius: 15,
+                    type: 'circle',
+                    color: '#4169E1',
+                    mass: 0.8
+                });
+                
+                this.addBody({
+                    x: 250,
+                    y: this.height - 350,
+                    radius: 15,
+                    type: 'circle',
+                    color: '#32CD32',
+                    mass: 0.8
+                });
+                
+                this.addBody({
+                    x: 200,
+                    y: this.height - 380,
+                    radius: 15,
+                    type: 'circle',
+                    color: '#FF6347',
+                    mass: 0.8
+                });
+                
+                this.goal = {
+                    x: this.width - 150,
+                    y: this.height - 180,
+                    radius: 35
+                };
+            }
+            
+            addBody(options) {
+                const body = {
+                    x: options.x || 0,
+                    y: options.y || 0,
+                    vx: 0,
+                    vy: 0,
+                    width: options.width || options.radius * 2 || 40,
+                    height: options.height || options.radius * 2 || 40,
+                    radius: options.radius || null,
+                    type: options.type || 'box',
+                    color: options.color || '#808080',
+                    mass: options.mass || (options.static ? 0 : 1),
+                    angle: options.angle || 0,
+                    rotation: options.rotation || 0,
+                    angularVelocity: 0,
+                    static: options.static || false,
+                    selected: false,
+                    dragOffset: { x: 0, y: 0 }
+                };
+                
+                this.bodies.push(body);
+                return body;
+            }
+            
+            getBodyAt(x, y) {
+                for (let i = this.bodies.length - 1; i >= 0; i--) {
+                    const body = this.bodies[i];
+                    
+                    if (body.static) continue;
+                    
+                    if (body.type === 'circle') {
+                        const dist = Math.sqrt((x - body.x) ** 2 + (y - body.y) ** 2);
+                        if (dist <= body.radius) return body;
+                    } else {
+                        // Check if point is inside rotated rectangle
+                        const cos = Math.cos(body.rotation);
+                        const sin = Math.sin(body.rotation);
+                        const relX = x - body.x;
+                        const relY = y - body.y;
+                        
+                        const localX = relX * cos + relY * sin;
+                        const localY = -relX * sin + relY * cos;
+                        
+                        if (Math.abs(localX) <= body.width / 2 && 
+                            Math.abs(localY) <= body.height / 2) {
+                            return body;
+                        }
+                    }
+                }
+                return null;
+            }
+            
+            applyForce(body, force) {
+                if (body.static) return;
+                
+                body.vx += force.x / body.mass;
+                body.vy += force.y / body.mass;
+                
+                // Apply torque for rotation
+                if (force.x !== 0 || force.y !== 0) {
+                    body.angularVelocity += (force.x * body.height - force.y * body.width) / body.mass * 0.01;
+                }
+            }
+            
+            update() {
+                if (this.gameWon) return;
+                
+                // Apply gravity
+                for (let body of this.bodies) {
+                    if (!body.static && this.currentTool !== 'gravity') {
+                        body.vy += this.gravity;
+                    }
+                }
+                
+                // Update positions
+                for (let body of this.bodies) {
+                    if (!body.static) {
+                        body.x += body.vx;
+                        body.y += body.vy;
+                        body.rotation += body.angularVelocity;
+                        
+                        // Apply friction
+                        body.vx *= this.friction;
+                        body.vy *= this.friction;
+                        body.angularVelocity *= this.friction;
+                    }
+                }
+                
+                // Collision detection and response
+                this.handleCollisions();
+                
+                // Check win condition
+                this.checkWinCondition();
+                
+                this.updateUI();
+            }
+            
+            handleCollisions() {
+                for (let i = 0; i < this.bodies.length; i++) {
+                    for (let j = i + 1; j < this.bodies.length; j++) {
+                        const bodyA = this.bodies[i];
+                        const bodyB = this.bodies[j];
+                        
+                        if (this.checkCollision(bodyA, bodyB)) {
+                            this.resolveCollision(bodyA, bodyB);
+                        }
+                    }
+                }
+            }
+            
+            checkCollision(bodyA, bodyB) {
+                // Simple AABB and circle collision
+                if (bodyA.type === 'circle' && bodyB.type === 'circle') {
+                    const dist = Math.sqrt((bodyA.x - bodyB.x) ** 2 + (bodyA.y - bodyB.y) ** 2);
+                    return dist < bodyA.radius + bodyB.radius;
+                } else if (bodyA.type === 'circle' && bodyB.type === 'box') {
+                    return this.circleBoxCollision(bodyA, bodyB);
+                } else if (bodyA.type === 'box' && bodyB.type === 'circle') {
+                    return this.circleBoxCollision(bodyB, bodyA);
+                } else {
+                    return this.boxBoxCollision(bodyA, bodyB);
+                }
+            }
+            
+            circleBoxCollision(circle, box) {
+                const closestX = Math.max(box.x - box.width/2, Math.min(circle.x, box.x + box.width/2));
+                const closestY = Math.max(box.y - box.height/2, Math.min(circle.y, box.y + box.height/2));
+                
+                const dist = Math.sqrt((circle.x - closestX) ** 2 + (circle.y - closestY) ** 2);
+                return dist < circle.radius;
+            }
+            
+            boxBoxCollision(boxA, boxB) {
+                return Math.abs(boxA.x - boxB.x) < (boxA.width + boxB.width) / 2 &&
+                       Math.abs(boxA.y - boxB.y) < (boxA.height + boxB.height) / 2;
+            }
+            
+            resolveCollision(bodyA, bodyB) {
+                // Calculate collision normal
+                let normal = { x: 0, y: 0 };
+                let penetration = 0;
+                
+                if (bodyA.type === 'circle' && bodyB.type === 'circle') {
+                    const dist = Math.sqrt((bodyA.x - bodyB.x) ** 2 + (bodyA.y - bodyB.y) ** 2);
+                    if (dist > 0) {
+                        normal.x = (bodyB.x - bodyA.x) / dist;
+                        normal.y = (bodyB.y - bodyA.y) / dist;
+                        penetration = bodyA.radius + bodyB.radius - dist;
+                    }
+                } else {
+                    // Simple separation for boxes
+                    const dx = bodyA.x - bodyB.x;
+                    const dy = bodyA.y - bodyB.y;
+                    
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        normal.x = Math.sign(dx);
+                        penetration = (bodyA.width + bodyB.width) / 2 - Math.abs(dx);
+                    } else {
+                        normal.y = Math.sign(dy);
+                        penetration = (bodyA.height + bodyB.height) / 2 - Math.abs(dy);
+                    }
+                }
+                
+                // Separate the objects
+                if (bodyA.static && bodyB.static) return;
+                
+                if (bodyA.static) {
+                    bodyB.x += normal.x * penetration;
+                    bodyB.y += normal.y * penetration;
+                    bodyB.vx *= -this.restitution;
+                    bodyB.vy *= -this.restitution;
+                } else if (bodyB.static) {
+                    bodyA.x -= normal.x * penetration;
+                    bodyA.y -= normal.y * penetration;
+                    bodyA.vx *= -this.restitution;
+                    bodyA.vy *= -this.restitution;
+                } else {
+                    const totalMass = bodyA.mass + bodyB.mass;
+                    bodyA.x -= normal.x * penetration * (bodyB.mass / totalMass);
+                    bodyA.y -= normal.y * penetration * (bodyB.mass / totalMass);
+                    bodyB.x += normal.x * penetration * (bodyA.mass / totalMass);
+                    bodyB.y += normal.y * penetration * (bodyA.mass / totalMass);
+                    
+                    // Exchange velocities
+                    const relativeVel = {
+                        x: bodyA.vx - bodyB.vx,
+                        y: bodyA.vy - bodyB.vy
+                    };
+                    
+                    const velocityAlongNormal = relativeVel.x * normal.x + relativeVel.y * normal.y;
+                    
+                    if (velocityAlongNormal > 0) return;
+                    
+                    const restitution = 0.8;
+                    const impulse = -(1 + restitution) * velocityAlongNormal / (1/bodyA.mass + 1/bodyB.mass);
+                    
+                    bodyA.vx += impulse * normal.x / bodyA.mass;
+                    bodyA.vy += impulse * normal.y / bodyA.mass;
+                    bodyB.vx -= impulse * normal.x / bodyB.mass;
+                    bodyB.vy -= impulse * normal.y / bodyB.mass;
+                }
+            }
+            
+            checkWinCondition() {
+                if (!this.goal) return;
+                
+                for (let body of this.bodies) {
+                    if (body.type === 'circle' && body.color === '#4169E1') {
+                        const dist = Math.sqrt((body.x - this.goal.x) ** 2 + (body.y - this.goal.y) ** 2);
+                        if (dist < this.goal.radius - 5 && Math.abs(body.vx) < 1 && Math.abs(body.vy) < 1) {
+                            this.winLevel();
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            winLevel() {
+                this.gameWon = true;
+                const timeElapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const timeBonus = Math.max(0, 300 - timeElapsed);
+                const moveBonus = Math.max(0, 50 - this.moves) * 10;
+                this.score += 1000 + timeBonus + moveBonus;
+                
+                document.getElementById('winScreen').style.display = 'block';
+            }
+            
+            resetLevel() {
+                this.loadLevel(this.level);
+                this.moves = 0;
+                this.startTime = Date.now();
+            }
+            
+            nextLevel() {
+                this.level++;
+                if (this.level > 5) this.level = 1;
+                this.moves = 0;
+                this.startTime = Date.now();
+                this.loadLevel(this.level);
+            }
+            
+            updateUI() {
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('moves').textContent = this.moves;
+                document.getElementById('time').textContent = Math.floor((Date.now() - this.startTime) / 1000);
+                document.getElementById('score').textContent = this.score;
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = 'rgba(135, 206, 250, 0.3)';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Draw goal
+                if (this.goal) {
+                    this.drawGoal(this.goal);
+                }
+                
+                // Draw bodies
+                for (let body of this.bodies) {
+                    this.drawBody(body);
+                }
+                
+                // Draw constraints/connections
+                this.drawConstraints();
+                
+                // Draw gravity field indicator
+                if (this.currentTool === 'gravity') {
+                    this.drawGravityField();
+                }
+            }
+            
+            drawBody(body) {
+                this.ctx.save();
+                this.ctx.translate(body.x, body.y);
+                this.ctx.rotate(body.rotation);
+                
+                if (body.type === 'circle') {
+                    this.ctx.fillStyle = body.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, body.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    if (body.selected) {
+                        this.ctx.strokeStyle = '#FFFF00';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.stroke();
+                    }
+                } else {
+                    this.ctx.fillStyle = body.color;
+                    this.ctx.fillRect(-body.width/2, -body.height/2, body.width, body.height);
+                    
+                    if (body.selected) {
+                        this.ctx.strokeStyle = '#FFFF00';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.strokeRect(-body.width/2, -body.height/2, body.width, body.height);
+                    }
+                }
+                
+                this.ctx.restore();
+                
+                // Draw velocity vector for selected body
+                if (body.selected) {
+                    this.ctx.strokeStyle = '#FF0000';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(body.x, body.y);
+                    this.ctx.lineTo(body.x + body.vx * 10, body.y + body.vy * 10);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawGoal(goal) {
+                // Draw goal area
+                const gradient = this.ctx.createRadialGradient(
+                    goal.x, goal.y, 0,
+                    goal.x, goal.y, goal.radius
+                );
+                gradient.addColorStop(0, 'rgba(0, 255, 0, 0.8)');
+                gradient.addColorStop(0.7, 'rgba(0, 255, 0, 0.3)');
+                gradient.addColorStop(1, 'rgba(0, 255, 0, 0.1)');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(goal.x, goal.y, goal.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw goal ring
+                this.ctx.strokeStyle = '#00FF00';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.arc(goal.x, goal.y, goal.radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                // Draw target icon
+                this.ctx.strokeStyle = '#FFFFFF';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(goal.x - 10, goal.y);
+                this.ctx.lineTo(goal.x + 10, goal.y);
+                this.ctx.moveTo(goal.x, goal.y - 10);
+                this.ctx.lineTo(goal.x, goal.y + 10);
+                this.ctx.stroke();
+            }
+            
+            drawConstraints() {
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 1;
+                
+                for (let constraint of this.constraints) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(constraint.bodyA.x, constraint.bodyA.y);
+                    this.ctx.lineTo(constraint.bodyB.x, constraint.bodyB.y);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawGravityField() {
+                this.ctx.fillStyle = 'rgba(0, 100, 255, 0.1)';
+                
+                // Draw gravity arrows
+                for (let x = 0; x < this.width; x += 50) {
+                    for (let y = 0; y < this.height; y += 50) {
+                        this.ctx.save();
+                        this.ctx.translate(x, y);
+                        
+                        // Draw arrow pointing down
+                        this.ctx.strokeStyle = 'rgba(0, 100, 255, 0.6)';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(0, -10);
+                        this.ctx.lineTo(0, 10);
+                        this.ctx.moveTo(0, 10);
+                        this.ctx.lineTo(-3, 6);
+                        this.ctx.moveTo(0, 10);
+                        this.ctx.lineTo(3, 6);
+                        this.ctx.stroke();
+                        
+                        this.ctx.restore();
+                    }
+                }
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            start() {
+                this.gameLoop();
+            }
+        }
+        
+        // Global function for win screen
+        function nextLevel() {
+            if (window.game) {
+                window.game.nextLevel();
+            }
+        }
+        
+        // Start the game when page loads
+        window.addEventListener('load', () => {
+            window.game = new PhysicsPuzzleGame();
+        });
+    </script>
+</body>
+</html>

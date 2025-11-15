@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVisualSync - Particle System Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+        }
+        
+        .file-input {
+            margin: 10px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 5px;
+        }
+        
+        .play-button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .play-button:hover {
+            background: #45a049;
+        }
+        
+        .play-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .audio-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            min-width: 200px;
+        }
+        
+        .metric {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .metric-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            flex: 1;
+            margin-left: 10px;
+        }
+        
+        .metric-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 2px;
+            transition: width 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <h3>Audio Particle Visualization</h3>
+        <input type="file" id="audioFile" class="file-input" accept="audio/*">
+        <br>
+        <button id="playButton" class="play-button" disabled>Play Audio</button>
+        <button id="pauseButton" class="play-button" disabled>Pause Audio</button>
+        <br>
+        <label>Volume: <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5"></label>
+    </div>
+    
+    <div class="audio-info">
+        <h4>Audio Analysis</h4>
+        <div class="metric">
+            <span>Bass:</span>
+            <div class="metric-bar"><div class="metric-fill" id="bassBar"></div></div>
+        </div>
+        <div class="metric">
+            <span>Mid:</span>
+            <div class="metric-bar"><div class="metric-fill" id="midBar"></div></div>
+        </div>
+        <div class="metric">
+            <span>Treble:</span>
+            <div class="metric-bar"><div class="metric-fill" id="trebleBar"></div></div>
+        </div>
+        <div class="metric">
+            <span>Volume:</span>
+            <div class="metric-bar"><div class="metric-fill" id="volumeBar"></div></div>
+        </div>
+        <div class="metric">
+            <span>Beat:</span>
+            <div class="metric-bar"><div class="metric-fill" id="beatBar"></div></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import necessary modules
+        import { AudioVisualSync, BeatReactive } from '../src/core/AudioVisualSync.js';
+        import { Scene } from '../src/core/Scene.js';
+        import { PerspectiveCamera } from '../src/cameras/PerspectiveCamera.js';
+        import { WebGLRenderer } from '../src/core/WebGLRenderer.js';
+        import { Mesh } from '../src/core/Mesh.js';
+        import { Shader } from '../src/core/Shader.js';
+        import { ParticleSystem } from '../src/particles/ParticleSystem.js';
+        import { PointLight } from '../src/lights/PointLight.js';
+
+        class AudioReactiveParticleSystem {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.audioSync = new AudioVisualSync();
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new WebGLRenderer(this.canvas);
+                
+                this.particleSystem = null;
+                this.light = null;
+                this.isPlaying = false;
+                
+                this.init();
+            }
+            
+            init() {
+                // Setup renderer
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000510, 1.0);
+                
+                // Setup camera
+                this.camera.position.z = 15;
+                this.camera.position.y = 5;
+                this.camera.lookAt(0, 0, 0);
+                
+                // Create particle system
+                this.createParticleSystem();
+                
+                // Create reactive lighting
+                this.createReactiveLighting();
+                
+                // Register with audio sync
+                this.audioSync.registerVisualObject(this);
+                
+                // Setup controls
+                this.setupControls();
+                
+                // Start render loop
+                this.animate();
+            }
+            
+            createParticleSystem() {
+                // Create particle system with audio-reactive properties
+                this.particleSystem = new ParticleSystem();
+                this.particleSystem.particleCount = 2000;
+                this.particleSystem.emissionRate = 100;
+                this.particleSystem.maxLifetime = 5.0;
+                this.particleSystem.size = 0.1;
+                
+                // Custom shader for audio-reactive particles
+                const particleShader = new Shader(`
+                    attribute vec3 position;
+                    attribute vec4 color;
+                    attribute float size;
+                    attribute float alpha;
+                    
+                    uniform mat4 modelViewMatrix;
+                    uniform mat4 projectionMatrix;
+                    
+                    varying vec4 vColor;
+                    varying float vAlpha;
+                    
+                    void main() {
+                        vColor = color;
+                        vAlpha = alpha;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `, `
+                    precision mediump float;
+                    
+                    varying vec4 vColor;
+                    varying float vAlpha;
+                    
+                    void main() {
+                        vec2 center = gl_PointCoord - vec2(0.5);
+                        float distance = length(center);
+                        
+                        if (distance > 0.5) {
+                            discard;
+                        }
+                        
+                        float alpha = 1.0 - (distance * 2.0);
+                        gl_FragColor = vec4(vColor.rgb, vColor.a * alpha * vAlpha);
+                    }
+                `);
+                
+                this.particleSystem.material = new AudioReactiveMaterial(particleShader);
+                this.scene.add(this.particleSystem);
+            }
+            
+            createReactiveLighting() {
+                this.light = new PointLight(0x4A90E2, 2, 50);
+                this.light.position.set(0, 0, 5);
+                this.scene.add(this.light);
+            }
+            
+            setupControls() {
+                const audioFile = document.getElementById('audioFile');
+                const playButton = document.getElementById('playButton');
+                const pauseButton = document.getElementById('pauseButton');
+                const volumeSlider = document.getElementById('volumeSlider');
+                
+                audioFile.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            await this.audioSync.loadAudio(file);
+                            playButton.disabled = false;
+                            pauseButton.disabled = false;
+                        } catch (error) {
+                            console.error('Failed to load audio:', error);
+                            alert('Failed to load audio file. Please try a different file.');
+                        }
+                    }
+                });
+                
+                playButton.addEventListener('click', async () => {
+                    await this.audioSync.playAudio();
+                    this.isPlaying = true;
+                });
+                
+                pauseButton.addEventListener('click', () => {
+                    this.audioSync.stopAudio();
+                    this.isPlaying = false;
+                });
+                
+                volumeSlider.addEventListener('input', (e) => {
+                    this.audioSync.setVolume(parseFloat(e.target.value));
+                });
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            update(audioData, isBeat) {
+                if (!this.particleSystem) return;
+                
+                // Update particle properties based on audio
+                const material = this.particleSystem.material;
+                
+                // Particle emission rate reacts to overall volume
+                this.particleSystem.emissionRate = Math.floor(50 + audioData.volume * 200);
+                
+                // Particle size reacts to bass
+                this.particleSystem.size = 0.05 + (audioData.bass * 0.2);
+                
+                // Color shifts with frequency
+                if (material.shader.uniforms.audioSpectrum) {
+                    const spectrum = audioData.frequencyData || [];
+                    for (let i = 0; i < material.shader.uniforms.audioSpectrum.value.length; i++) {
+                        const index = Math.floor((i / material.shader.uniforms.audioSpectrum.value.length) * spectrum.length);
+                        material.shader.uniforms.audioSpectrum.value[i] = (spectrum[index] || 0) / 255;
+                    }
+                }
+                
+                // Beat reactions
+                if (isBeat) {
+                    // Burst of particles on beat
+                    this.particleSystem.emissionRate *= 3;
+                    
+                    // Change light color on beat
+                    this.light.color.setHSL(Math.random(), 0.8, 0.6);
+                    
+                    // Pulsing effect
+                    this.light.intensity = 5 + (audioData.volume * 10);
+                } else {
+                    // Normal lighting
+                    this.light.intensity = 1 + (audioData.volume * 3);
+                }
+                
+                // Rotate particle system slowly
+                if (this.particleSystem.rotation) {
+                    this.particleSystem.rotation.y += 0.005 + (audioData.mid * 0.02);
+                    this.particleSystem.rotation.x = audioData.treble * 0.5;
+                }
+                
+                // Update audio info display
+                this.updateAudioDisplay(audioData, isBeat);
+            }
+            
+            updateAudioDisplay(audioData, isBeat) {
+                document.getElementById('bassBar').style.width = (audioData.bass * 100) + '%';
+                document.getElementById('midBar').style.width = (audioData.mid * 100) + '%';
+                document.getElementById('trebleBar').style.width = (audioData.treble * 100) + '%';
+                document.getElementById('volumeBar').style.width = (audioData.volume * 100) + '%';
+                document.getElementById('beatBar').style.width = isBeat ? '100%' : '0%';
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update audio analysis
+                this.audioSync.update();
+                
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Add BeatReactive mixin to particle system prototype
+        Object.assign(AudioReactiveParticleSystem.prototype, BeatReactive.prototype);
+        
+        // Start the application
+        window.addEventListener('load', () => {
+            new AudioReactiveParticleSystem();
+        });
+    </script>
+</body>
+</html>

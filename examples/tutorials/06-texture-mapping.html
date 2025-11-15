@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>06 - Texture Mapping: Images on 3D Surfaces</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #e1bee7;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #e1bee7;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls button.active {
+            background: #9c27b0;
+            border-color: #9c27b0;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🖼️ Tutorial 06: Texture Mapping</h1>
+        <div class="step">
+            <strong>Goal:</strong> Learn to apply images to 3D surfaces
+        </div>
+        <div class="step">
+            <strong>What you'll learn:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li>Loading texture images</li>
+                <li>UV mapping coordinates</li>
+                <li>Different wrapping modes</li>
+                <li>Texture filtering and mipmaps</li>
+                <li>Multiple texture channels</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>Demo Controls:</strong><br>
+            <button id="texture-mode" onclick="toggleTextureMode()">Show Wireframe</button><br>
+            <button id="wrap-mode" onclick="toggleWrapMode()">Repeat Wrap</button><br>
+            <button id="filter-mode" onclick="toggleFilterMode()">Smooth Filter</button>
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 06: TEXTURE MAPPING
+         * ==========================================
+         * 
+         * Textures are images applied to 3D surfaces to add detail
+         * and realism without adding geometric complexity.
+         * 
+         * KEY CONCEPTS:
+         * - UV Mapping: How 2D coordinates map to 3D surfaces
+         * - Wrapping: How textures repeat/tile
+         * - Filtering: How textures are sampled when scaled
+         * - Mipmaps: Pre-calculated smaller versions for performance
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let textureObjects = [];
+        let currentTextureMode = 'textured';
+        let currentWrapMode = 'repeat';
+        let currentFilterMode = 'smooth';
+        
+        // ==========================================
+        // CREATE CHECKERBOARD TEXTURE
+        // ==========================================
+        function createCheckerTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // Create checkerboard pattern
+            const squareSize = 64;
+            for (let y = 0; y < 8; y++) {
+                for (let x = 0; x < 8; x++) {
+                    ctx.fillStyle = (x + y) % 2 === 0 ? '#3498db' : '#2c3e50';
+                    ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+                }
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            return texture;
+        }
+        
+        // ==========================================
+        // CREATE GRADIENT TEXTURE
+        // ==========================================
+        function createGradientTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Create radial gradient
+            const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+            gradient.addColorStop(0, '#ff6b6b');
+            gradient.addColorStop(0.5, '#f7b731');
+            gradient.addColorStop(1, '#5f27cd');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 256, 256);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+        
+        // ==========================================
+        // CREATE PATTERN TEXTURE
+        // ==========================================
+        function createPatternTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // Create striped pattern
+            for (let i = 0; i < 16; i++) {
+                ctx.fillStyle = i % 2 === 0 ? '#4ecdc4' : '#45b7d1';
+                ctx.fillRect(i * 8, 0, 4, 128);
+            }
+            
+            // Add some dots
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 16; i++) {
+                ctx.beginPath();
+                ctx.arc(i * 8 + 4, 64, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 8, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+        }
+        
+        // ==========================================
+        // CREATE TEXTURED OBJECTS
+        // ==========================================
+        function createTexturedObjects() {
+            const checkerTexture = createCheckerTexture();
+            const gradientTexture = createGradientTexture();
+            const patternTexture = createPatternTexture();
+            
+            // Box with checker texture
+            const boxGeometry = new THREE.BoxGeometry(2, 2, 2);
+            const boxMaterial = new THREE.MeshStandardMaterial({ 
+                map: checkerTexture,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+            const box = new THREE.Mesh(boxGeometry, boxMaterial);
+            box.position.set(-4, 2, 0);
+            box.castShadow = true;
+            scene.add(box);
+            textureObjects.push({ mesh: box, texture: checkerTexture, type: 'box' });
+            
+            // Sphere with gradient texture
+            const sphereGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const sphereMaterial = new THREE.MeshStandardMaterial({ 
+                map: gradientTexture,
+                roughness: 0.5,
+                metalness: 0.2
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(0, 0, 0);
+            sphere.castShadow = true;
+            scene.add(sphere);
+            textureObjects.push({ mesh: sphere, texture: gradientTexture, type: 'sphere' });
+            
+            // Torus with pattern texture
+            const torusGeometry = new THREE.TorusGeometry(1.2, 0.4, 16, 32);
+            const torusMaterial = new THREE.MeshStandardMaterial({ 
+                map: patternTexture,
+                roughness: 0.2,
+                metalness: 0.6
+            });
+            const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+            torus.position.set(4, 2, 0);
+            torus.castShadow = true;
+            scene.add(torus);
+            textureObjects.push({ mesh: torus, texture: patternTexture, type: 'torus' });
+            
+            // Plane with checker texture (floor effect)
+            const planeGeometry = new THREE.PlaneGeometry(10, 10, 10, 10);
+            const planeMaterial = new THREE.MeshStandardMaterial({ 
+                map: checkerTexture,
+                side: THREE.DoubleSide,
+                roughness: 0.8
+            });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = -3;
+            plane.receiveShadow = true;
+            scene.add(plane);
+            textureObjects.push({ mesh: plane, texture: checkerTexture, type: 'plane' });
+        }
+        
+        // ==========================================
+        // TEXTURE MODE CONTROLS
+        // ==========================================
+        function toggleTextureMode() {
+            const button = document.getElementById('texture-mode');
+            
+            if (currentTextureMode === 'textured') {
+                // Switch to wireframe
+                textureObjects.forEach(obj => {
+                    obj.mesh.material.wireframe = true;
+                });
+                currentTextureMode = 'wireframe';
+                button.textContent = 'Show Textured';
+            } else {
+                // Switch to textured
+                textureObjects.forEach(obj => {
+                    obj.mesh.material.wireframe = false;
+                });
+                currentTextureMode = 'textured';
+                button.textContent = 'Show Wireframe';
+            }
+        }
+        
+        function toggleWrapMode() {
+            const button = document.getElementById('wrap-mode');
+            
+            textureObjects.forEach(obj => {
+                if (currentWrapMode === 'repeat') {
+                    obj.texture.wrapS = THREE.ClampToEdgeWrapping;
+                    obj.texture.wrapT = THREE.ClampToEdgeWrapping;
+                } else {
+                    obj.texture.wrapS = THREE.RepeatWrapping;
+                    obj.texture.wrapT = THREE.RepeatWrapping;
+                }
+                obj.texture.needsUpdate = true;
+            });
+            
+            currentWrapMode = currentWrapMode === 'repeat' ? 'clamp' : 'repeat';
+            button.textContent = currentWrapMode === 'repeat' ? 'Clamp Wrap' : 'Repeat Wrap';
+        }
+        
+        function toggleFilterMode() {
+            const button = document.getElementById('filter-mode');
+            
+            textureObjects.forEach(obj => {
+                if (currentFilterMode === 'smooth') {
+                    obj.texture.magFilter = THREE.NearestFilter;
+                    obj.texture.minFilter = THREE.NearestFilter;
+                } else {
+                    obj.texture.magFilter = THREE.LinearFilter;
+                    obj.texture.minFilter = THREE.LinearMipmapLinearFilter;
+                }
+                obj.texture.needsUpdate = true;
+            });
+            
+            currentFilterMode = currentFilterMode === 'smooth' : 'sharp' : 'smooth';
+            button.textContent = currentFilterMode === 'smooth' ? 'Sharp Filter' : 'Smooth Filter';
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Rotate all objects
+            textureObjects.forEach((obj, index) => {
+                if (obj.type === 'box') {
+                    obj.mesh.rotation.x += 0.01;
+                    obj.mesh.rotation.y += 0.02;
+                } else if (obj.type === 'sphere') {
+                    obj.mesh.rotation.y += 0.015;
+                } else if (obj.type === 'torus') {
+                    obj.mesh.rotation.x += 0.02;
+                    obj.mesh.rotation.z += 0.01;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🖼️ Starting Texture Mapping Demo...');
+            
+            setupScene();
+            createTexturedObjects();
+            
+            window.addEventListener('resize', handleResize);
+            animate();
+            
+            console.log('✅ Texture demo initialized!');
+        }
+        
+        // Make functions globally available
+        window.toggleTextureMode = toggleTextureMode;
+        window.toggleWrapMode = toggleWrapMode;
+        window.toggleFilterMode = toggleFilterMode;
+        
+        init();
+    </script>
+</body>
+</html>

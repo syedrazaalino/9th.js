@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Geological Data Visualization</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #8b4513 0%, #cd853f 50%, #daa520 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(41, 37, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+            font-size: 13px;
+        }
+
+        .control-group select,
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #d2691e;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #b8571a;
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+        }
+
+        .geological-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(41, 37, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .stratigraphy-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(41, 37, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 300px;
+            z-index: 100;
+        }
+
+        .resources-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(41, 37, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .data-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 12px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .strat-column {
+            display: flex;
+            flex-direction: column;
+            height: 200px;
+            margin: 10px 0;
+        }
+
+        .strat-layer {
+            flex: 1;
+            margin: 1px 0;
+            border-radius: 2px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+
+        .rock-type-legend {
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+
+        .elevation-profile {
+            width: 100%;
+            height: 60px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-line {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(90deg, #8b4513, #daa520, #f5deb3);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .cross-section {
+            width: 100%;
+            height: 80px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cross-section-line {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(90deg, #8b4513, #a0522d, #cd853f, #daa520);
+            border-radius: 2px;
+        }
+
+        .value-display {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+
+        .mineral-deposit {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffd700;
+            border-radius: 50%;
+            border: 2px solid #ffed4e;
+            animation: twinkle 2s infinite;
+            z-index: 90;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+            100% { opacity: 0.3; transform: scale(1); }
+        }
+
+        .seismic-event {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ff4757;
+            border-radius: 50%;
+            border: 2px solid #ff6b7a;
+            animation: pulse 3s infinite;
+            z-index: 90;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+            100% { opacity: 0.7; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Loading geological survey data...</div>
+        
+        <div class="controls">
+            <h3>Geological Survey Controls</h3>
+            
+            <div class="control-group">
+                <label for="dataType">Survey Type:</label>
+                <select id="dataType">
+                    <option value="topography">Topographic Survey</option>
+                    <option value="geology">Geological Mapping</option>
+                    <option value="seismic">Seismic Survey</option>
+                    <option value="magnetic">Magnetic Survey</option>
+                    <option value="gravity">Gravity Survey</option>
+                    <option value="hydrogeology">Hydrogeological Survey</option>
+                    <option value="mineral">Mineral Exploration</option>
+                    <option value="environmental">Environmental Geology</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="verticalScale">Vertical Exaggeration:</label>
+                <div class="slider-group">
+                    <input type="range" id="verticalScale" min="0.5" max="10" step="0.5" value="2">
+                    <div class="value-display">2.0x</div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label for="resolution">Data Resolution:</label>
+                <select id="resolution">
+                    <option value="100m">100m grid</option>
+                    <option value="50m">50m grid</option>
+                    <option value="25m">25m grid</option>
+                    <option value="10m">10m grid</option>
+                    <option value="1m">1m grid</option>
+                </select>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showContours" checked>
+                <label for="showContours">Show Contour Lines</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showCrossSections">
+                <label for="showCrossSections">Show Cross Sections</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showStratigraphy" checked>
+                <label for="showStratigraphy">Show Stratigraphy</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showFaults">
+                <label for="showFaults">Show Fault Lines</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showMinerals">
+                <label for="showMineral Deposits</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showSeismic">
+                <label for="showSeismic Events</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="generateTerrain">Generate</button>
+                <button id="resetView">Reset</button>
+                <button id="exportSurvey">Export</button>
+            </div>
+        </div>
+        
+        <div class="geological-info">
+            <h3>Survey Information</h3>
+            <div class="data-metrics">
+                <div class="metric-item">
+                    <div class="metric-value" id="elevation">1,247m</div>
+                    <div class="metric-label">Max Elevation</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="slope">15.3°</div>
+                    <div class="metric-label">Avg Slope</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="area">1,250 km²</div>
+                    <div class="metric-label">Survey Area</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="age">250 Ma</div>
+                    <div class="metric-label">Rock Age</div>
+                </div>
+            </div>
+            
+            <div id="geologyInfo">
+                <h4>Geological Formation</h4>
+                <p><strong>Formation:</strong> <span id="formation">Basaltic Flows</span></p>
+                <p><strong>Age:</strong> <span id="rockAge">Permian</span></p>
+                <p><strong>Type:</strong> <span id="rockType">Igneous</span></p>
+                <p><strong>Thickness:</strong> <span id="thickness">150m</span></p>
+                <p><strong>Formation:</strong> <span id="deposition">Marine</span></p>
+            </div>
+            
+            <div class="rock-type-legend">
+                <h4>Rock Types</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #8b4513;"></div>
+                    <span>Sedimentary</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #696969;"></div>
+                    <span>Igneous</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #32cd32;"></div>
+                    <span>Metamorphic</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #87ceeb;"></div>
+                    <span>Water Bodies</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stratigraphy-panel">
+            <h3>Stratigraphic Column</h3>
+            <div class="strat-column" id="stratColumn">
+                <div class="strat-layer" style="flex: 1; background: #8b4513;">
+                    Quaternary Alluvium
+                </div>
+                <div class="strat-layer" style="flex: 2; background: #a0522d;">
+                    Tertiary Sandstone
+                </div>
+                <div class="strat-layer" style="flex: 1.5; background: #cd853f;">
+                    Cretaceous Shale
+                </div>
+                <div class="strat-layer" style="flex: 1; background: #daa520;">
+                    Jurassic Limestone
+                </div>
+                <div class="strat-layer" style="flex: 2; background: #8b4513;">
+                    Permian Basalt
+                </div>
+                <div class="strat-layer" style="flex: 1; background: #696969;">
+                    Precambrian Gneiss
+                </div>
+            </div>
+            
+            <div class="elevation-profile">
+                <h4 style="margin: 5px 0; font-size: 12px;">Elevation Profile</h4>
+                <div id="elevationProfile" style="height: 40px; position: relative;"></div>
+            </div>
+            
+            <div class="cross-section">
+                <h4 style="margin: 5px 0; font-size: 12px;">Cross Section A-A'</h4>
+                <div id="crossSection" style="height: 50px; position: relative;"></div>
+            </div>
+        </div>
+        
+        <div class="resources-panel">
+            <h3>Resource Assessment</h3>
+            <div id="resourceList" style="font-size: 12px; line-height: 1.4;">
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Gold Deposits</strong><br>
+                    Grade: 2.3 g/t | Reserve: 1.2 M oz<br>
+                    Status: Proven Reserve
+                </div>
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Coal Seam</strong><br>
+                    Thickness: 3.2m | Reserve: 45 Mt<br>
+                    Status: Economic Interest
+                </div>
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Groundwater</strong><br>
+                    Depth: 25m | Yield: 150 L/s<br>
+                    Status: Sustainable
+                </div>
+                <div style="padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                    <strong>Limestone</strong><br>
+                    Quality: High | Reserve: 25 Mt<br>
+                    Status: Active Mining
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; font-size: 11px;">
+                <p><strong>Seismic Activity:</strong></p>
+                <ul style="margin-left: 15px; margin-top: 5px;">
+                    <li>Last Event: 3.2 ML - 15 km NE</li>
+                    <li>Fault Activity: Moderate</li>
+                    <li>Liquefaction Risk: Low</li>
+                    <li>Slope Stability: Good</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class GeologicalVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.terrainMesh = null;
+                this.terrainData = null;
+                this.geologicalLayers = [];
+                this.faultLines = [];
+                this.mineralDeposits = [];
+                this.seismicEvents = [];
+                this.crossSections = [];
+                this.verticalScale = 2.0;
+                this.resolution = 100; // meters
+                
+                // Geological formations
+                this.formations = {
+                    quaternary: { name: 'Quaternary Alluvium', age: '0-2 Ma', color: 0x8b4513, thickness: '0-50m' },
+                    tertiary: { name: 'Tertiary Sandstone', age: '2-66 Ma', color: 0xa0522d, thickness: '100-300m' },
+                    cretaceous: { name: 'Cretaceous Shale', age: '66-145 Ma', color: 0xcd853f, thickness: '50-200m' },
+                    jurassic: { name: 'Jurassic Limestone', age: '145-201 Ma', color: 0xdaa520, thickness: '30-150m' },
+                    permian: { name: 'Permian Basalt', age: '252-299 Ma', color: 0x8b4513, thickness: '100-250m' },
+                    precambrian: { name: 'Precambrian Gneiss', age: '>540 Ma', color: 0x696969, thickness: '>1000m' }
+                };
+                
+                this.rockTypes = {
+                    sedimentary: { color: 0x8b4513, characteristics: ['Layered', 'Fossil-bearing', 'Stratified'] },
+                    igneous: { color: 0x696969, characteristics: ['Crystalline', 'Intrusive/Extrusive', 'Volcanic'] },
+                    metamorphic: { color: 0x32cd32, characteristics: ['Recrystallized', 'Foliated', 'Heat-modified'] },
+                    water: { color: 0x87ceeb, characteristics: ['Aquifer', 'Surface water', 'Groundwater'] }
+                };
+                
+                this.mineralResources = [
+                    { type: 'Gold', grade: 2.3, reserve: 1.2, unit: 'M oz', status: 'Proven Reserve' },
+                    { type: 'Coal', grade: null, reserve: 45, unit: 'Mt', status: 'Economic Interest' },
+                    { type: 'Limestone', grade: null, reserve: 25, unit: 'Mt', status: 'Active Mining' },
+                    { type: 'Groundwater', depth: 25, yield: 150, unit: 'L/s', status: 'Sustainable' }
+                ];
+                
+                this.init();
+                this.setupEventListeners();
+                this.generateTerrain();
+                this.createGeologicalFeatures();
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                this.scene.background = new Color(0x87ceeb);
+                
+                // Camera
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(0, 50, 100);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(100, 100, 50);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                // Controls
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    this.camera.position.x = Math.cos(rotationY) * 100 * Math.cos(rotationX);
+                    this.camera.position.y = Math.sin(rotationX) * 50 + 20;
+                    this.camera.position.z = Math.sin(rotationY) * 100 * Math.cos(rotationX);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    const distance = this.camera.position.length();
+                    this.camera.position.normalize().multiplyScalar(Math.max(20, Math.min(500, distance + delta * 20)));
+                });
+                
+                canvas.addEventListener('click', (e) => {
+                    this.handleLocationSelection(e);
+                });
+            }
+            
+            setupEventListeners() {
+                document.getElementById('dataType').addEventListener('change', (e) => {
+                    this.changeSurveyType(e.target.value);
+                });
+                
+                document.getElementById('verticalScale').addEventListener('input', (e) => {
+                    this.verticalScale = parseFloat(e.target.value);
+                    e.target.nextElementSibling.textContent = `${this.verticalScale.toFixed(1)}x`;
+                    this.updateTerrainGeometry();
+                });
+                
+                document.getElementById('resolution').addEventListener('change', (e) => {
+                    this.changeResolution(e.target.value);
+                });
+                
+                document.getElementById('showContours').addEventListener('change', (e) => {
+                    this.toggleContours(e.target.checked);
+                });
+                
+                document.getElementById('showCrossSections').addEventListener('change', (e) => {
+                    this.toggleCrossSections(e.target.checked);
+                });
+                
+                document.getElementById('showStratigraphy').addEventListener('change', (e) => {
+                    this.toggleStratigraphy(e.target.checked);
+                });
+                
+                document.getElementById('showFaults').addEventListener('change', (e) => {
+                    this.toggleFaults(e.target.checked);
+                });
+                
+                document.getElementById('showMinerals').addEventListener('change', (e) => {
+                    this.toggleMineralDeposits(e.target.checked);
+                });
+                
+                document.getElementById('showSeismic').addEventListener('change', (e) => {
+                    this.toggleSeismicEvents(e.target.checked);
+                });
+                
+                document.getElementById('generateTerrain').addEventListener('click', () => {
+                    this.generateTerrain();
+                    this.createGeologicalFeatures();
+                });
+                
+                document.getElementById('resetView').addEventListener('click', () => {
+                    this.resetView();
+                });
+                
+                document.getElementById('exportSurvey').addEventListener('click', () => {
+                    this.exportSurvey();
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            generateTerrain() {
+                const width = 100;
+                const height = 100;
+                const segments = 100;
+                
+                // Generate height map using noise
+                const heights = [];
+                for (let i = 0; i <= segments; i++) {
+                    heights[i] = [];
+                    for (let j = 0; j <= segments; j++) {
+                        const x = (i / segments) * width - width / 2;
+                        const y = (j / segments) * height - height / 2;
+                        
+                        // Multi-octave noise for realistic terrain
+                        let elevation = 0;
+                        elevation += this.noise2D(x * 0.01, y * 0.01) * 50;
+                        elevation += this.noise2D(x * 0.02, y * 0.02) * 20;
+                        elevation += this.noise2D(x * 0.05, y * 0.05) * 10;
+                        elevation += this.noise2D(x * 0.1, y * 0.1) * 5;
+                        
+                        // Add some valleys and ridges
+                        const ridge = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 15;
+                        const valley = Math.cos(x * 0.08) * Math.sin(y * 0.08) * 10;
+                        
+                        elevation += ridge - valley;
+                        
+                        heights[i][j] = elevation;
+                    }
+                }
+                
+                this.terrainData = heights;
+                this.createTerrainMesh(heights);
+                this.updateSurveyMetrics(heights);
+                this.createElevationProfile(heights);
+            }
+            
+            createTerrainMesh(heights) {
+                const segments = heights.length - 1;
+                const width = 100;
+                const height = 100;
+                
+                const geometry = new PlaneGeometry(width, height, segments, segments);
+                const vertices = geometry.attributes.position.array;
+                
+                for (let i = 0; i <= segments; i++) {
+                    for (let j = 0; j <= segments; j++) {
+                        const index = (i * (segments + 1) + j) * 3;
+                        const elevation = heights[i][j] * this.verticalScale;
+                        vertices[index + 2] = elevation; // Z-coordinate (height)
+                    }
+                }
+                
+                geometry.attributes.position.needsUpdate = true;
+                geometry.computeVertexNormals();
+                
+                // Create material based on elevation
+                const material = new MeshLambertMaterial({
+                    vertexColors: true,
+                    side: THREE.DoubleSide
+                });
+                
+                // Add colors based on elevation
+                const colors = [];
+                for (let i = 0; i <= segments; i++) {
+                    for (let j = 0; j <= segments; j++) {
+                        const elevation = heights[i][j];
+                        const color = this.getElevationColor(elevation);
+                        colors.push(color.r, color.g, color.b);
+                    }
+                }
+                geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+                
+                // Remove existing terrain
+                if (this.terrainMesh) {
+                    this.scene.remove(this.terrainMesh);
+                }
+                
+                this.terrainMesh = new Mesh(geometry, material);
+                this.terrainMesh.rotation.x = -Math.PI / 2;
+                this.terrainMesh.receiveShadow = true;
+                this.scene.add(this.terrainMesh);
+            }
+            
+            createGeologicalFeatures() {
+                this.createStratigraphicLayers();
+                this.createFaultLines();
+                this.createMineralDeposits();
+                this.createSeismicEvents();
+                this.createCrossSections();
+            }
+            
+            createStratigraphicLayers() {
+                const layerThickness = 5;
+                let cumulativeDepth = 0;
+                
+                Object.keys(this.formations).forEach(formationKey => {
+                    const formation = this.formations[formationKey];
+                    
+                    const geometry = new PlaneGeometry(100, 100);
+                    const material = new MeshLambertMaterial({ 
+                        color: formation.color,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    
+                    const layer = new Mesh(geometry, material);
+                    layer.position.y = -cumulativeDepth - layerThickness / 2;
+                    layer.rotation.x = -Math.PI / 2;
+                    
+                    // Add some deformation
+                    layer.rotation.z = Math.random() * 0.1 - 0.05;
+                    layer.rotation.x += Math.random() * 0.1 - 0.05;
+                    
+                    this.scene.add(layer);
+                    this.geologicalLayers.push({ mesh: layer, formation: formation });
+                    
+                    cumulativeDepth += layerThickness;
+                });
+            }
+            
+            createFaultLines() {
+                const faultSystems = [
+                    { start: { x: -30, z: -20 }, end: { x: 30, z: 20 }, type: 'Normal' },
+                    { start: { x: -40, z: 10 }, end: { x: 40, z: -15 }, type: 'Strike-slip' },
+                    { start: { x: -20, z: -30 }, end: { x: 15, z: 25 }, type: 'Reverse' }
+                ];
+                
+                faultSystems.forEach(fault => {
+                    const points = [
+                        new Vector3(fault.start.x, 10, fault.start.z),
+                        new Vector3(fault.end.x, 10, fault.end.z),
+                        new Vector3(fault.end.x, -20, fault.end.z),
+                        new Vector3(fault.start.x, -20, fault.start.z)
+                    ];
+                    
+                    const geometry = new BufferGeometry().setFromPoints(points);
+                    const material = new LineBasicMaterial({ 
+                        color: 0xff0000, 
+                        linewidth: 3,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const faultLine = new Line(geometry, material);
+                    this.scene.add(faultLine);
+                    this.faultLines.push(faultLine);
+                });
+            }
+            
+            createMineralDeposits() {
+                const deposits = [
+                    { x: -15, z: 5, type: 'Gold', depth: -5 },
+                    { x: 20, z: -10, type: 'Coal', depth: -10 },
+                    { x: -25, z: 20, type: 'Copper', depth: -8 },
+                    { x: 10, z: 25, type: 'Iron', depth: -15 }
+                ];
+                
+                deposits.forEach(deposit => {
+                    const geometry = new SphereGeometry(1, 8, 8);
+                    const material = new MeshBasicMaterial({ 
+                        color: 0xffd700,
+                        emissive: 0xffd700,
+                        emissiveIntensity: 0.5
+                    });
+                    
+                    const depositMesh = new Mesh(geometry, material);
+                    depositMesh.position.set(deposit.x, deposit.depth, deposit.z);
+                    
+                    // Add label
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = 64;
+                    canvas.height = 32;
+                    
+                    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    context.fillStyle = '#ffd700';
+                    context.font = '12px Arial';
+                    context.textAlign = 'center';
+                    context.fillText(deposit.type, canvas.width / 2, 20);
+                    
+                    const texture = new Texture(canvas);
+                    texture.needsUpdate = true;
+                    
+                    const labelMaterial = new SpriteMaterial({ map: texture });
+                    const label = new Sprite(labelMaterial);
+                    label.scale.set(8, 4, 1);
+                    label.position.set(0, 5, 0);
+                    
+                    depositMesh.add(label);
+                    
+                    this.scene.add(depositMesh);
+                    this.mineralDeposits.push(depositMesh);
+                });
+            }
+            
+            createSeismicEvents() {
+                const events = [
+                    { x: 5, z: -5, magnitude: 3.2, depth: -12 },
+                    { x: -10, z: 15, magnitude: 2.8, depth: -8 },
+                    { x: 25, z: 5, magnitude: 4.1, depth: -15 }
+                ];
+                
+                events.forEach(event => {
+                    const geometry = new SphereGeometry(0.5, 8, 8);
+                    const material = new MeshBasicMaterial({ 
+                        color: 0xff4757,
+                        emissive: 0xff4757,
+                        emissiveIntensity: 0.8
+                    });
+                    
+                    const eventMesh = new Mesh(geometry, material);
+                    eventMesh.position.set(event.x, event.depth, event.z);
+                    
+                    this.scene.add(eventMesh);
+                    this.seismicEvents.push(eventMesh);
+                });
+            }
+            
+            createCrossSections() {
+                const sections = [
+                    { start: { x: -40, z: 0 }, end: { x: 40, z: 0 } }, // A-A'
+                    { start: { x: 0, z: -30 }, end: { x: 0, z: 30 } } // B-B'
+                ];
+                
+                sections.forEach((section, index) => {
+                    this.createCrossSection(section, index);
+                });
+            }
+            
+            createCrossSection(section, index) {
+                const points = [];
+                const steps = 50;
+                
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const x = section.start.x + (section.end.x - section.start.x) * t;
+                    const z = section.start.z + (section.end.z - section.start.z) * t;
+                    
+                    // Get terrain height at this position
+                    const gridX = Math.floor((x + 50) / 100 * 100);
+                    const gridZ = Math.floor((z + 50) / 100 * 100);
+                    const height = this.terrainData[gridX] && this.terrainData[gridX][gridZ] ? 
+                                   this.terrainData[gridX][gridZ] * this.verticalScale : 0;
+                    
+                    points.push(new Vector3(t * 200 - 100, height, -30 + index * 60));
+                }
+                
+                const geometry = new BufferGeometry().setFromPoints(points);
+                const material = new LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+                
+                const crossSection = new Line(geometry, material);
+                this.scene.add(crossSection);
+                this.crossSections.push(crossSection);
+            }
+            
+            updateSurveyMetrics(heights) {
+                let minElevation = Infinity;
+                let maxElevation = -Infinity;
+                let totalElevation = 0;
+                let elevationCount = 0;
+                
+                heights.forEach(row => {
+                    row.forEach(elevation => {
+                        minElevation = Math.min(minElevation, elevation);
+                        maxElevation = Math.max(maxElevation, elevation);
+                        totalElevation += elevation;
+                        elevationCount++;
+                    });
+                });
+                
+                const avgElevation = totalElevation / elevationCount;
+                const elevationRange = maxElevation - minElevation;
+                
+                // Calculate average slope (simplified)
+                let totalSlope = 0;
+                let slopeCount = 0;
+                
+                for (let i = 1; i < heights.length - 1; i++) {
+                    for (let j = 1; j < heights[i].length - 1; j++) {
+                        const dx = (heights[i + 1][j] - heights[i - 1][j]) / 2;
+                        const dz = (heights[i][j + 1] - heights[i][j - 1]) / 2;
+                        const slope = Math.sqrt(dx * dx + dz * dz);
+                        totalSlope += slope;
+                        slopeCount++;
+                    }
+                }
+                
+                const avgSlope = (totalSlope / slopeCount) * (180 / Math.PI);
+                
+                document.getElementById('elevation').textContent = `${Math.round(maxElevation)}m`;
+                document.getElementById('slope').textContent = `${avgSlope.toFixed(1)}°`;
+                document.getElementById('area').textContent = '1,250 km²';
+                document.getElementById('age').textContent = '250 Ma';
+            }
+            
+            createElevationProfile(heights) {
+                const profileContainer = document.getElementById('elevationProfile');
+                if (!profileContainer) return;
+                
+                profileContainer.innerHTML = '';
+                
+                const profile = heights[50]; // Middle row
+                const maxHeight = Math.max(...profile);
+                const width = 260;
+                const height = 40;
+                
+                profile.forEach((elevation, i) => {
+                    const normalizedHeight = (elevation / maxHeight) * height;
+                    const bar = document.createElement('div');
+                    bar.className = 'profile-line';
+                    bar.style.left = `${(i / profile.length) * width}px`;
+                    bar.style.width = `${width / profile.length - 1}px`;
+                    bar.style.height = `${normalizedHeight}px`;
+                    bar.style.background = this.getElevationColor(elevation);
+                    profileContainer.appendChild(bar);
+                });
+            }
+            
+            getElevationColor(elevation) {
+                if (elevation < -10) return new Color(0x4169e1); // Water
+                if (elevation < 0) return new Color(0x8b4513); // Low elevation
+                if (elevation < 10) return new Color(0xdaa520); // Hills
+                if (elevation < 20) return new Color(0x32cd32); // Mountains
+                return new Color(0x696969); // High mountains
+            }
+            
+            changeSurveyType(type) {
+                console.log('Changing survey type to:', type);
+                
+                // Update geological information based on survey type
+                const surveyConfigs = {
+                    topography: { formation: 'Terrain Surface', age: 'Holocene', type: 'Sedimentary', thickness: 'Variable' },
+                    geology: { formation: 'Multi-layer Sequence', age: '250 Ma', type: 'Mixed', thickness: '1,500m' },
+                    seismic: { formation: 'Basement Complex', age: 'Precambrian', type: 'Igneous', thickness: '>2,000m' },
+                    magnetic: { formation: 'Magnetic Anomalies', age: 'Various', type: 'Metallic', thickness: 'Deep source' },
+                    gravity: { formation: 'Density Variations', age: 'Various', type: 'Rock density', thickness: 'Crustal' },
+                    hydrogeology: { formation: 'Aquifer System', age: 'Cenozoic', type: 'Sedimentary', thickness: '200m' },
+                    mineral: { formation: 'Ore Bodies', age: 'Various', type: 'Economic geology', thickness: 'Variable' },
+                    environmental: { formation: 'Topsoil/Overburden', age: 'Recent', type: 'Unconsolidated', thickness: '0-50m' }
+                };
+                
+                const config = surveyConfigs[type];
+                if (config) {
+                    document.getElementById('formation').textContent = config.formation;
+                    document.getElementById('rockAge').textContent = config.age;
+                    document.getElementById('rockType').textContent = config.type;
+                    document.getElementById('thickness').textContent = config.thickness;
+                }
+            }
+            
+            changeResolution(resolution) {
+                const resolutions = {
+                    '100m': 50,
+                    '50m': 100,
+                    '25m': 200,
+                    '10m': 500,
+                    '1m': 5000
+                };
+                
+                this.resolution = resolutions[resolution] || 100;
+                console.log('Changed resolution to:', this.resolution);
+            }
+            
+            toggleContours(show) {
+                console.log('Toggle contours:', show);
+            }
+            
+            toggleCrossSections(show) {
+                this.crossSections.forEach(section => {
+                    section.visible = show;
+                });
+            }
+            
+            toggleStratigraphy(show) {
+                this.geologicalLayers.forEach(layer => {
+                    layer.mesh.visible = show;
+                });
+            }
+            
+            toggleFaults(show) {
+                this.faultLines.forEach(fault => {
+                    fault.visible = show;
+                });
+            }
+            
+            toggleMineralDeposits(show) {
+                this.mineralDeposits.forEach(deposit => {
+                    deposit.visible = show;
+                });
+            }
+            
+            toggleSeismicEvents(show) {
+                this.seismicEvents.forEach(event => {
+                    event.visible = show;
+                });
+            }
+            
+            updateTerrainGeometry() {
+                if (this.terrainData && this.terrainMesh) {
+                    this.createTerrainMesh(this.terrainData);
+                }
+            }
+            
+            resetView() {
+                this.camera.position.set(0, 50, 100);
+                this.camera.lookAt(0, 0, 0);
+                this.verticalScale = 2.0;
+                document.getElementById('verticalScale').value = '2';
+                document.getElementById('verticalScale').nextElementSibling.textContent = '2.0x';
+            }
+            
+            exportSurvey() {
+                console.log('Exporting geological survey data...');
+                
+                const surveyData = {
+                    timestamp: new Date().toISOString(),
+                    surveyType: document.getElementById('dataType').value,
+                    terrainData: this.terrainData,
+                    formations: this.formations,
+                    mineralResources: this.mineralResources,
+                    metadata: {
+                        resolution: this.resolution,
+                        area: '1,250 km²',
+                        verticalScale: this.verticalScale
+                    }
+                };
+                
+                const dataStr = JSON.stringify(surveyData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'geological_survey.json';
+                link.click();
+                
+                URL.revokeObjectURL(url);
+            }
+            
+            handleLocationSelection(event) {
+                // Handle click to get geological information at location
+                const mouse = new Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                console.log('Selected location at:', mouse);
+                
+                // Raycast to terrain for geological information
+                // This would be implemented with proper raycasting
+            }
+            
+            noise2D(x, y) {
+                // Simple 2D noise function (could be replaced with Perlin noise)
+                return (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the visualizer when the page loads
+        window.addEventListener('load', () => {
+            new GeologicalVisualizer();
+        });
+    </script>
+</body>
+</html>

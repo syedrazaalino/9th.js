@@ -1,0 +1,94 @@
+{
+  "name": "9th.js-core",
+  "version": "0.1.0",
+  "description": "Minimal core 3D graphics library - essential features only",
+  "type": "module",
+  "main": "dist/core/cjs/index.js",
+  "module": "dist/core/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/core/esm/index.js",
+      "require": "./dist/core/cjs/index.js",
+      "types": "./dist/core/esm/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/core/esm/core/index.js",
+      "require": "./dist/core/cjs/core/index.js",
+      "types": "./dist/core/esm/core/index.d.ts"
+    },
+    "./geometry": {
+      "import": "./dist/core/esm/geometry/index.js",
+      "require": "./dist/core/cjs/geometry/index.js",
+      "types": "./dist/core/esm/geometry/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/core",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:core",
+    "build:core": "node build-core.js",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/core/esm --project tsconfig.core.json",
+    "dev": "node build-core.js --watch",
+    "test": "jest --testPathPattern=core",
+    "validate": "npm run type-check && npm run lint && npm run test",
+    "prepublishOnly": "npm run validate && npm run build",
+    "clean": "rm -rf dist/core",
+    "release:patch": "npm version patch --channel core && npm publish --tag latest-core",
+    "release:minor": "npm version minor --channel core && npm publish --tag latest-core",
+    "release:major": "npm version major --channel core && npm publish --tag latest-core",
+    "size": "npm run build && npx vite-bundle-analyzer dist/core/**/*.js"
+  },
+  "keywords": [
+    "3d",
+    "graphics",
+    "core",
+    "minimal",
+    "webgl",
+    "library",
+    "javascript",
+    "typescript",
+    "rendering",
+    "geometry",
+    "camera"
+  ],
+  "author": {
+    "name": "9th.js Team",
+    "email": "team@9thjs.com",
+    "url": "https://github.com/9thjs"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/9th.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/9th.js/issues"
+  },
+  "homepage": "https://github.com/username/9th.js#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "tag": "latest-core"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

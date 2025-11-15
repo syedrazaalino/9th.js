@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Astronomical Data Visualization</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: radial-gradient(ellipse at center, #0d1b2a 0%, #000000 100%);
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 320px;
+            z-index: 100;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .control-group select,
+        .control-group input[type="range"],
+        .control-group input[type="checkbox"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .planet-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .star-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 250px;
+            z-index: 100;
+        }
+
+        .data-import {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .planet-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            font-size: 18px;
+            z-index: 50;
+        }
+
+        .slider-group {
+            margin: 10px 0;
+        }
+
+        .slider-group input {
+            margin-top: 5px;
+        }
+
+        .value-display {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="loading" id="loading">Loading astronomical visualization...</div>
+        
+        <div class="controls">
+            <h3>Astronomical Controls</h3>
+            
+            <div class="control-group">
+                <label for="systemType">System Type:</label>
+                <select id="systemType">
+                    <option value="solar">Solar System</option>
+                    <option value="exoplanets">Exoplanet System</option>
+                    <option value="binary-star">Binary Star System</option>
+                    <option value="star-cluster">Star Cluster</option>
+                    <option value="galaxy">Galaxy</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="timeScale">Time Scale:</label>
+                <div class="slider-group">
+                    <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="1.0">
+                    <div class="value-display">1.0x</div>
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showOrbits" checked>
+                <label for="showOrbits">Show Orbital Paths</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showLabels" checked>
+                <label for="showLabels">Show Labels</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="showMoons">
+                <label for="showMoons">Show Moons</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="animate">
+                <label for="animate">Animate Orbits</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="resetView">Reset View</button>
+                <button id="centerOn">Focus Planet</button>
+            </div>
+        </div>
+        
+        <div class="planet-info">
+            <h3>Selected Body</h3>
+            <div id="bodyInfo">
+                <div class="planet-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">Sun</div>
+                        <div class="stat-label">Primary Star</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">5778K</div>
+                        <div class="stat-label">Temperature</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">1.99×10³⁰</div>
+                        <div class="stat-label">Mass (kg)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">8 planets</div>
+                        <div class="stat-label">Planets</div>
+                    </div>
+                </div>
+                
+                <div id="planetDetails">
+                    <p><strong>Type:</strong> Yellow Dwarf Star</p>
+                    <p><strong>Age:</strong> ~4.6 billion years</p>
+                    <p><strong>Distance:</strong> 26,000 ly from Galactic Center</p>
+                    <p><strong>Composition:</strong> 73% Hydrogen, 25% Helium</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="star-info">
+            <h3>System Statistics</h3>
+            <div id="systemStats">
+                <p><strong>Total Objects:</strong> <span id="objectCount">9</span></p>
+                <p><strong>Planets:</strong> <span id="planetCount">8</span></p>
+                <p><strong>Moons:</strong> <span id="moonCount">181</span></p>
+                <p><strong>Orbital Period:</strong> <span id="period">225-250 million years</span></p>
+            </div>
+        </div>
+        
+        <div class="data-import">
+            <h3>Data Import</h3>
+            <div class="control-group">
+                <label for="csvFile">Import Planet Data (CSV):</label>
+                <input type="file" id="csvFile" accept=".csv">
+            </div>
+            <div class="control-group">
+                <label for="jsonFile">Import System Data (JSON):</label>
+                <input type="file" id="jsonFile" accept=".json">
+            </div>
+            <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
+                Supported formats: CSV (planet data), JSON (complete systems)
+            </p>
+        </div>
+    </div>
+
+    <script src="../../src/index.js"></script>
+    <script>
+        class AstronomicalVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.astronomicalObjects = new Map();
+                this.currentSystem = null;
+                this.animationId = null;
+                this.time = 0;
+                this.animationSpeed = 1.0;
+                this.selectedBody = null;
+                
+                this.planetColors = {
+                    Mercury: 0x8c7853,
+                    Venus: 0xffc649,
+                    Earth: 0x6b93d6,
+                    Mars: 0xcd5c5c,
+                    Jupiter: 0xd8ca9d,
+                    Saturn: 0xfad5a5,
+                    Uranus: 0x4fd0e7,
+                    Neptune: 0x4b70dd,
+                    Pluto: 0xfff2e0
+                };
+                
+                this.planetData = {
+                    'Mercury': { 
+                        name: 'Mercury', radius: 0.383, distance: 0.4, period: 0.24, 
+                        moons: 0, color: 0x8c7853, temperature: 440, mass: '3.30×10²³'
+                    },
+                    'Venus': { 
+                        name: 'Venus', radius: 0.949, distance: 0.7, period: 0.62, 
+                        moons: 0, color: 0xffc649, temperature: 737, mass: '4.87×10²⁴'
+                    },
+                    'Earth': { 
+                        name: 'Earth', radius: 1.0, distance: 1.0, period: 1.0, 
+                        moons: 1, color: 0x6b93d6, temperature: 288, mass: '5.97×10²⁴'
+                    },
+                    'Mars': { 
+                        name: 'Mars', radius: 0.532, distance: 1.5, period: 1.88, 
+                        moons: 2, color: 0xcd5c5c, temperature: 210, mass: '6.39×10²³'
+                    },
+                    'Jupiter': { 
+                        name: 'Jupiter', radius: 11.21, distance: 5.2, period: 11.86, 
+                        moons: 95, color: 0xd8ca9d, temperature: 165, mass: '1.90×10²⁷'
+                    },
+                    'Saturn': { 
+                        name: 'Saturn', radius: 9.45, distance: 9.5, period: 29.46, 
+                        moons: 83, color: 0xfad5a5, temperature: 134, mass: '5.68×10²⁶'
+                    },
+                    'Uranus': { 
+                        name: 'Uranus', radius: 4.01, distance: 19.2, period: 84.01, 
+                        moons: 27, color: 0x4fd0e7, temperature: 76, mass: '8.68×10²⁵'
+                    },
+                    'Neptune': { 
+                        name: 'Neptune', radius: 3.88, distance: 30.1, period: 164.8, 
+                        moons: 14, color: 0x4b70dd, temperature: 73, mass: '1.02×10²⁶'
+                    }
+                };
+                
+                this.init();
+                this.setupEventListeners();
+                this.createSolarSystem();
+                this.loadSystem('solar');
+            }
+            
+            init() {
+                const canvas = document.getElementById('canvas');
+                
+                // Scene
+                this.scene = new Scene();
+                
+                // Camera
+                this.camera = new PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(0, 0, 50);
+                
+                // Renderer
+                this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setClearColor(0x000000, 1);
+                
+                // Starfield background
+                this.createStarfield();
+                
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+                
+                // Controls
+                this.setupControls();
+                
+                this.animate();
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            createStarfield() {
+                const starGeometry = new BufferGeometry();
+                const starCount = 2000;
+                const positions = new Float32Array(starCount * 3);
+                const colors = new Float32Array(starCount * 3);
+                
+                for (let i = 0; i < starCount * 3; i += 3) {
+                    positions[i] = (Math.random() - 0.5) * 2000;
+                    positions[i + 1] = (Math.random() - 0.5) * 2000;
+                    positions[i + 2] = (Math.random() - 0.5) * 2000;
+                    
+                    const colorIntensity = Math.random();
+                    colors[i] = colorIntensity;
+                    colors[i + 1] = colorIntensity;
+                    colors[i + 2] = colorIntensity;
+                }
+                
+                starGeometry.setAttribute('position', new BufferAttribute(positions, 3));
+                starGeometry.setAttribute('color', new BufferAttribute(colors, 3));
+                
+                const starMaterial = new PointsMaterial({ 
+                    size: 1, 
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const stars = new Points(starGeometry, starMaterial);
+                this.scene.add(stars);
+            }
+            
+            setupControls() {
+                const canvas = document.getElementById('canvas');
+                let mouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let rotationX = 0, rotationY = 0;
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!mouseDown) return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    rotationY += deltaX * 0.01;
+                    rotationX += deltaY * 0.01;
+                    
+                    // Rotate the entire system
+                    this.scene.rotation.x = rotationX;
+                    this.scene.rotation.y = rotationY;
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY * 0.01;
+                    this.camera.position.z += delta;
+                    this.camera.position.z = Math.max(10, Math.min(500, this.camera.position.z));
+                });
+                
+                canvas.addEventListener('click', (e) => {
+                    this.handleBodySelection(e);
+                });
+            }
+            
+            createSolarSystem() {
+                const system = new Group();
+                
+                // Sun
+                const sun = this.createStar('Sun', 1.0, 0xffaa00);
+                system.add(sun);
+                
+                // Create orbital groups for each planet
+                Object.keys(this.planetData).forEach(planetName => {
+                    const planetInfo = this.planetData[planetName];
+                    this.createPlanet(system, planetInfo);
+                });
+                
+                this.astronomicalObjects.set('solar', {
+                    system,
+                    center: sun,
+                    stats: {
+                        objects: 9,
+                        planets: 8,
+                        moons: 181,
+                        period: '225-250 million years'
+                    }
+                });
+            }
+            
+            createStar(name, radius, color) {
+                const geometry = new SphereGeometry(radius, 32, 32);
+                const material = new MeshBasicMaterial({ 
+                    color,
+                    emissive: color,
+                    emissiveIntensity: 0.3
+                });
+                const star = new Mesh(geometry, material);
+                star.userData = { type: 'star', name, radius };
+                
+                // Add glow effect
+                const glowGeometry = new SphereGeometry(radius * 1.2, 32, 32);
+                const glowMaterial = new MeshBasicMaterial({
+                    color,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const glow = new Mesh(glowGeometry, glowMaterial);
+                star.add(glow);
+                
+                return star;
+            }
+            
+            createPlanet(system, planetInfo) {
+                const planetGroup = new Group();
+                
+                // Create orbital ring
+                const orbitGeometry = new RingGeometry(planetInfo.distance - 0.1, planetInfo.distance + 0.1, 64);
+                const orbitMaterial = new MeshBasicMaterial({ 
+                    color: 0x444444, 
+                    transparent: true, 
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const orbitRing = new Mesh(orbitGeometry, orbitMaterial);
+                orbitRing.rotation.x = Math.PI / 2;
+                system.add(orbitRing);
+                
+                // Create planet
+                const geometry = new SphereGeometry(planetInfo.radius * 0.3, 32, 32);
+                const material = new MeshLambertMaterial({ 
+                    color: planetInfo.color,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const planet = new Mesh(geometry, material);
+                
+                planet.userData = { 
+                    type: 'planet', 
+                    name: planetInfo.name,
+                    info: planetInfo,
+                    distance: planetInfo.distance,
+                    period: planetInfo.period
+                };
+                
+                // Position planet at orbital distance
+                planet.position.x = planetInfo.distance;
+                
+                planetGroup.add(planet);
+                
+                // Create label
+                const label = this.createLabel(planetInfo.name);
+                label.position.copy(planet.position);
+                label.position.y += planetInfo.radius * 0.5;
+                planetGroup.add(label);
+                
+                // Create moons if any
+                if (planetInfo.moons > 0) {
+                    this.createMoons(planetGroup, planet, planetInfo.moons);
+                }
+                
+                system.add(planetGroup);
+            }
+            
+            createMoons(planetGroup, planet, moonCount) {
+                for (let i = 0; i < moonCount; i++) {
+                    const moonDistance = 0.8 + (i * 0.3);
+                    const moonRadius = 0.1 + (Math.random() * 0.1);
+                    const moonSpeed = 0.5 + (Math.random() * 0.5);
+                    
+                    const moonGeometry = new SphereGeometry(moonRadius, 16, 16);
+                    const moonMaterial = new MeshLambertMaterial({ color: 0x888888 });
+                    const moon = new Mesh(moonGeometry, moonMaterial);
+                    
+                    moon.userData = { 
+                        type: 'moon', 
+                        parent: planet,
+                        distance: moonDistance,
+                        speed: moonSpeed
+                    };
+                    
+                    moon.position.x = moonDistance;
+                    planetGroup.add(moon);
+                }
+            }
+            
+            createLabel(text) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 64;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.fillStyle = '#ffffff';
+                context.font = '20px Arial';
+                context.textAlign = 'center';
+                context.fillText(text, canvas.width / 2, canvas.height / 2 + 7);
+                
+                const texture = new Texture(canvas);
+                texture.needsUpdate = true;
+                
+                const material = new SpriteMaterial({ map: texture });
+                const sprite = new Sprite(material);
+                sprite.scale.set(2, 0.5, 1);
+                
+                return sprite;
+            }
+            
+            setupEventListeners() {
+                document.getElementById('systemType').addEventListener('change', (e) => {
+                    this.loadSystem(e.target.value);
+                });
+                
+                document.getElementById('timeScale').addEventListener('input', (e) => {
+                    this.animationSpeed = parseFloat(e.target.value);
+                    e.target.nextElementSibling.textContent = `${this.animationSpeed.toFixed(1)}x`;
+                });
+                
+                document.getElementById('showOrbits').addEventListener('change', (e) => {
+                    this.toggleOrbits(e.target.checked);
+                });
+                
+                document.getElementById('showLabels').addEventListener('change', (e) => {
+                    this.toggleLabels(e.target.checked);
+                });
+                
+                document.getElementById('showMoons').addEventListener('change', (e) => {
+                    this.toggleMoons(e.target.checked);
+                });
+                
+                document.getElementById('animate').addEventListener('change', (e) => {
+                    this.toggleAnimation(e.target.checked);
+                });
+                
+                document.getElementById('resetView').addEventListener('click', () => {
+                    this.resetView();
+                });
+                
+                document.getElementById('centerOn').addEventListener('click', () => {
+                    this.centerOnSelected();
+                });
+                
+                document.getElementById('csvFile').addEventListener('change', (e) => {
+                    this.importCSV(e.target.files[0]);
+                });
+                
+                document.getElementById('jsonFile').addEventListener('change', (e) => {
+                    this.importJSON(e.target.files[0]);
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            loadSystem(systemType) {
+                if (this.currentSystem) {
+                    this.scene.remove(this.currentSystem);
+                }
+                
+                switch (systemType) {
+                    case 'solar':
+                        this.createSolarSystem();
+                        break;
+                    case 'exoplanets':
+                        this.createExoplanetSystem();
+                        break;
+                    case 'binary-star':
+                        this.createBinaryStarSystem();
+                        break;
+                    case 'star-cluster':
+                        this.createStarCluster();
+                        break;
+                    case 'galaxy':
+                        this.createGalaxy();
+                        break;
+                }
+                
+                const systemData = this.astronomicalObjects.get(systemType);
+                if (systemData) {
+                    this.currentSystem = systemData.system;
+                    this.scene.add(this.currentSystem);
+                    this.updateSystemStats(systemData.stats);
+                }
+            }
+            
+            createExoplanetSystem() {
+                const system = new Group();
+                
+                // Hot Jupiter
+                const star = this.createStar('Star', 1.2, 0xff6600);
+                system.add(star);
+                
+                const exoplanets = [
+                    { name: 'Hot Jupiter', radius: 1.1, distance: 0.1, period: 0.1, color: 0xcc4400 },
+                    { name: 'Super Earth', radius: 0.7, distance: 0.3, period: 0.2, color: 0x4488ff },
+                    { name: 'Gas Giant', radius: 0.9, distance: 0.8, period: 0.7, color: 0xffaa44 }
+                ];
+                
+                exoplanets.forEach(planetInfo => {
+                    const planetGroup = new Group();
+                    
+                    // Orbit ring
+                    const orbitGeometry = new RingGeometry(planetInfo.distance - 0.05, planetInfo.distance + 0.05, 32);
+                    const orbitMaterial = new MeshBasicMaterial({ 
+                        color: 0x666666, 
+                        transparent: true, 
+                        opacity: 0.3,
+                        side: THREE.DoubleSide
+                    });
+                    const orbitRing = new Mesh(orbitGeometry, orbitMaterial);
+                    orbitRing.rotation.x = Math.PI / 2;
+                    system.add(orbitRing);
+                    
+                    // Planet
+                    const geometry = new SphereGeometry(planetInfo.radius * 0.2, 16, 16);
+                    const material = new MeshLambertMaterial({ color: planetInfo.color });
+                    const planet = new Mesh(geometry, material);
+                    planet.position.x = planetInfo.distance;
+                    planet.userData = { type: 'exoplanet', info: planetInfo };
+                    planetGroup.add(planet);
+                    
+                    system.add(planetGroup);
+                });
+                
+                this.astronomicalObjects.set('exoplanets', {
+                    system,
+                    center: star,
+                    stats: {
+                        objects: 4,
+                        planets: 3,
+                        moons: 0,
+                        period: 'Variable'
+                    }
+                });
+            }
+            
+            createBinaryStarSystem() {
+                const system = new Group();
+                
+                // Binary stars
+                const star1 = this.createStar('Star A', 0.8, 0xffaa00);
+                const star2 = this.createStar('Star B', 0.6, 0xff6600);
+                
+                star1.position.x = -2;
+                star2.position.x = 2;
+                
+                system.add(star1);
+                system.add(star2);
+                
+                // Planet orbiting both stars
+                const planetInfo = { name: 'Circumbinary Planet', radius: 0.5, distance: 4, period: 2 };
+                const planetGroup = new Group();
+                
+                const orbitGeometry = new RingGeometry(planetInfo.distance - 0.1, planetInfo.distance + 0.1, 32);
+                const orbitMaterial = new MeshBasicMaterial({ 
+                    color: 0x666666, 
+                    transparent: true, 
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const orbitRing = new Mesh(orbitGeometry, orbitMaterial);
+                orbitRing.rotation.x = Math.PI / 2;
+                system.add(orbitRing);
+                
+                const geometry = new SphereGeometry(planetInfo.radius * 0.15, 16, 16);
+                const material = new MeshLambertMaterial({ color: 0x4488ff });
+                const planet = new Mesh(geometry, material);
+                planet.position.x = planetInfo.distance;
+                planet.userData = { type: 'circumbinary', info: planetInfo };
+                planetGroup.add(planet);
+                
+                system.add(planetGroup);
+                
+                this.astronomicalObjects.set('binary-star', {
+                    system,
+                    center: star1,
+                    stats: {
+                        objects: 3,
+                        planets: 1,
+                        moons: 0,
+                        period: 'Binary orbit: ~10 years'
+                    }
+                });
+            }
+            
+            createStarCluster() {
+                const system = new Group();
+                
+                const starCount = 50;
+                for (let i = 0; i < starCount; i++) {
+                    const angle = (i / starCount) * Math.PI * 2;
+                    const radius = 10 + Math.random() * 20;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+                    const y = (Math.random() - 0.5) * 10;
+                    
+                    const starRadius = 0.2 + Math.random() * 0.3;
+                    const starColors = [0xffaa00, 0xffffff, 0xff6600, 0x4488ff];
+                    const color = starColors[Math.floor(Math.random() * starColors.length)];
+                    
+                    const star = this.createStar(`Star ${i}`, starRadius, color);
+                    star.position.set(x, y, z);
+                    system.add(star);
+                }
+                
+                this.astronomicalObjects.set('star-cluster', {
+                    system,
+                    center: system,
+                    stats: {
+                        objects: starCount,
+                        planets: 0,
+                        moons: 0,
+                        period: 'Stable cluster'
+                    }
+                });
+            }
+            
+            createGalaxy() {
+                const system = new Group();
+                
+                // Spiral arms
+                const armCount = 4;
+                const starsPerArm = 100;
+                
+                for (let arm = 0; arm < armCount; arm++) {
+                    for (let i = 0; i < starsPerArm; i++) {
+                        const distance = 5 + (i * 0.3);
+                        const angle = (arm / armCount) * Math.PI * 2 + (i * 0.1);
+                        const x = Math.cos(angle) * distance;
+                        const z = Math.sin(angle) * distance;
+                        const y = (Math.random() - 0.5) * 2;
+                        
+                        const starRadius = 0.1 + Math.random() * 0.2;
+                        const starColors = [0xffaa00, 0xffffff, 0xff6600];
+                        const color = starColors[Math.floor(Math.random() * starColors.length)];
+                        
+                        const star = this.createStar(`Galaxy Star ${i}`, starRadius, color);
+                        star.position.set(x, y, z);
+                        system.add(star);
+                    }
+                }
+                
+                // Central bulge
+                const centerStar = this.createStar('Galactic Core', 1.5, 0xffaa00);
+                system.add(centerStar);
+                
+                this.astronomicalObjects.set('galaxy', {
+                    system,
+                    center: centerStar,
+                    stats: {
+                        objects: starsPerArm * armCount + 1,
+                        planets: 0,
+                        moons: 0,
+                        period: 'Rotation: ~230 million years'
+                    }
+                });
+            }
+            
+            toggleOrbits(show) {
+                this.currentSystem.children.forEach(child => {
+                    if (child instanceof Mesh && child.geometry instanceof RingGeometry) {
+                        child.visible = show;
+                    }
+                });
+            }
+            
+            toggleLabels(show) {
+                this.currentSystem.children.forEach(child => {
+                    if (child instanceof Sprite) {
+                        child.visible = show;
+                    }
+                });
+            }
+            
+            toggleMoons(show) {
+                this.currentSystem.traverse(obj => {
+                    if (obj.userData && obj.userData.type === 'moon') {
+                        obj.visible = show;
+                    }
+                });
+            }
+            
+            toggleAnimation(animate) {
+                // Animation is handled in the animate() method
+            }
+            
+            handleBodySelection(event) {
+                // Simplified raycasting for body selection
+                const mouse = new Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                const raycaster = new Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                
+                const objects = [];
+                this.currentSystem.traverse(obj => {
+                    if (obj instanceof Mesh && obj.userData.type) {
+                        objects.push(obj);
+                    }
+                });
+                
+                const intersects = raycaster.intersectObjects(objects);
+                
+                if (intersects.length > 0) {
+                    const selected = intersects[0].object;
+                    this.selectBody(selected);
+                }
+            }
+            
+            selectBody(body) {
+                this.selectedBody = body;
+                
+                if (body.userData.type === 'star') {
+                    this.updateStarInfo(body.userData);
+                } else if (body.userData.type === 'planet') {
+                    this.updatePlanetInfo(body.userData.info);
+                } else if (body.userData.type === 'exoplanet') {
+                    this.updateExoplanetInfo(body.userData.info);
+                }
+            }
+            
+            updateStarInfo(starInfo) {
+                document.getElementById('bodyInfo').innerHTML = `
+                    <div class="planet-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${starInfo.name}</div>
+                            <div class="stat-label">Primary Star</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">5778K</div>
+                            <div class="stat-label">Temperature</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">G-Type</div>
+                            <div class="stat-label">Spectral Class</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">4.6×10⁹</div>
+                            <div class="stat-label">Age (years)</div>
+                        </div>
+                    </div>
+                    <p><strong>Type:</strong> Yellow Dwarf Star</p>
+                    <p><strong>Luminosity:</strong> 3.828×10²⁶ W</p>
+                    <p><strong>Distance from Earth:</strong> 149.6 million km</p>
+                    <p><strong>Composition:</strong> 73% Hydrogen, 25% Helium, 2% heavier elements</p>
+                `;
+            }
+            
+            updatePlanetInfo(planetInfo) {
+                document.getElementById('bodyInfo').innerHTML = `
+                    <div class="planet-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${planetInfo.name}</div>
+                            <div class="stat-label">Planet</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${planetInfo.temperature}K</div>
+                            <div class="stat-label">Temperature</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${planetInfo.moons}</div>
+                            <div class="stat-label">Moons</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${planetInfo.mass}</div>
+                            <div class="stat-label">Mass (kg)</div>
+                        </div>
+                    </div>
+                    <p><strong>Orbital Period:</strong> ${planetInfo.period} Earth years</p>
+                    <p><strong>Distance from Sun:</strong> ${planetInfo.distance} AU</p>
+                    <p><strong>Radius:</strong> ${planetInfo.radius.toFixed(2)} Earth radii</p>
+                    <p><strong>Type:</strong> ${this.getPlanetType(planetInfo.name)}</p>
+                `;
+            }
+            
+            updateExoplanetInfo(exoplanetInfo) {
+                document.getElementById('bodyInfo').innerHTML = `
+                    <div class="planet-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${exoplanetInfo.name}</div>
+                            <div class="stat-label">Exoplanet</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">Unknown</div>
+                            <div class="stat-label">Temperature</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Moons</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">Unknown</div>
+                            <div class="stat-label">Mass</div>
+                        </div>
+                    </div>
+                    <p><strong>Orbital Period:</strong> ${exoplanetInfo.period} years</p>
+                    <p><strong>Distance from Star:</strong> ${exoplanetInfo.distance} AU</p>
+                    <p><strong>Discovery:</strong> Radial Velocity Method</p>
+                    <p><strong>Status:</strong> Confirmed Exoplanet</p>
+                `;
+            }
+            
+            getPlanetType(planetName) {
+                const types = {
+                    'Mercury': 'Terrestrial',
+                    'Venus': 'Terrestrial',
+                    'Earth': 'Terrestrial',
+                    'Mars': 'Terrestrial',
+                    'Jupiter': 'Gas Giant',
+                    'Saturn': 'Gas Giant',
+                    'Uranus': 'Ice Giant',
+                    'Neptune': 'Ice Giant'
+                };
+                return types[planetName] || 'Unknown';
+            }
+            
+            updateSystemStats(stats) {
+                document.getElementById('objectCount').textContent = stats.objects;
+                document.getElementById('planetCount').textContent = stats.planets;
+                document.getElementById('moonCount').textContent = stats.moons;
+                document.getElementById('period').textContent = stats.period;
+            }
+            
+            resetView() {
+                this.scene.rotation.set(0, 0, 0);
+                this.camera.position.set(0, 0, 50);
+            }
+            
+            centerOnSelected() {
+                if (this.selectedBody) {
+                    this.camera.position.copy(this.selectedBody.position);
+                    this.camera.position.z += 10;
+                    this.camera.lookAt(this.selectedBody.position);
+                }
+            }
+            
+            importCSV(file) {
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = e.target.result;
+                        this.parsePlanetCSV(content);
+                    } catch (error) {
+                        alert('Error parsing CSV: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+            
+            parsePlanetCSV(content) {
+                const lines = content.split('\n');
+                const headers = lines[0].split(',');
+                
+                const planets = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        const values = lines[i].split(',');
+                        const planet = {};
+                        headers.forEach((header, index) => {
+                            planet[header.trim()] = values[index] ? values[index].trim() : '';
+                        });
+                        planets.push(planet);
+                    }
+                }
+                
+                this.createSystemFromPlanets(planets);
+            }
+            
+            importJSON(file) {
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = JSON.parse(e.target.result);
+                        this.createSystemFromJSON(content);
+                    } catch (error) {
+                        alert('Error parsing JSON: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+            
+            createSystemFromPlanets(planets) {
+                // Implementation for creating custom systems from imported data
+                console.log('Creating system from planets:', planets);
+            }
+            
+            createSystemFromJSON(data) {
+                // Implementation for creating systems from JSON data
+                console.log('Creating system from JSON:', data);
+            }
+            
+            animate() {
+                this.animationId = requestAnimationFrame(() => this.animate());
+                
+                this.time += this.animationSpeed * 0.016; // ~60 FPS
+                
+                // Animate orbital motion
+                if (this.currentSystem && document.getElementById('animate').checked) {
+                    this.currentSystem.children.forEach(child => {
+                        if (child instanceof Group) {
+                            // Animate planets
+                            child.children.forEach(planet => {
+                                if (planet.userData.type === 'planet') {
+                                    const orbitalSpeed = 0.01 / planet.userData.period;
+                                    planet.rotation.y += orbitalSpeed * this.animationSpeed;
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // Rotate starfield slowly
+                this.scene.children.forEach(child => {
+                    if (child instanceof Points && child.material.size === 1) {
+                        child.rotation.y += 0.0001;
+                    }
+                });
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the visualizer when the page loads
+        window.addEventListener('load', () => {
+            new AstronomicalVisualizer();
+        });
+    </script>
+</body>
+</html>

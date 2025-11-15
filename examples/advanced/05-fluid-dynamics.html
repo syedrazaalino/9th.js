@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Dynamics Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #0a0a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #controls {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 20px; border-radius: 12px;
+            color: #fff; min-width: 300px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+        #controls h3 { color: #4fc3f7; margin-bottom: 15px; font-size: 18px; text-align: center; }
+        #controls label { display: block; margin: 12px 0 6px; color: #b0bec5; font-size: 13px; font-weight: 500; }
+        #controls input, #controls select {
+            width: 100%; padding: 10px; margin-bottom: 12px;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; color: #fff; font-size: 13px;
+        }
+        #controls button {
+            width: 100%; padding: 12px; margin: 8px 0;
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            border: none; border-radius: 8px; color: white; cursor: pointer;
+            font-weight: 600; transition: all 0.3s; font-size: 14px;
+        }
+        #controls button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(79, 195, 247, 0.4); 
+        }
+        #controls button.danger {
+            background: linear-gradient(135deg, #ff5252 0%, #f44336 100%);
+        }
+        #controls button.danger:hover {
+            box-shadow: 0 8px 25px rgba(255, 82, 82, 0.4);
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+        .checkbox-group input[type="checkbox"] { width: auto; margin: 0; transform: scale(1.2); }
+        .slider-group { margin: 15px 0; }
+        .slider-group input[type="range"] { width: 100%; margin: 8px 0; }
+        .value-display { float: right; color: #4fc3f7; font-weight: bold; }
+        #fluid-panel {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; line-height: 1.8;
+            backdrop-filter: blur(10px); border: 1px solid rgba(79, 195, 247, 0.3);
+            min-width: 250px;
+        }
+        #render-options {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.9); padding: 15px; border-radius: 12px;
+            color: #fff; font-size: 12px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+        #render-options h4 { color: #4fc3f7; margin-bottom: 10px; }
+        .render-mode { margin: 8px 0; display: flex; align-items: center; gap: 8px; }
+        .render-mode input { margin: 0; }
+        #temperature-bar {
+            width: 100%; height: 20px; background: linear-gradient(to right, #2196f3, #f44336);
+            border-radius: 10px; margin: 8px 0; position: relative; overflow: hidden;
+        }
+        #temperature-indicator {
+            position: absolute; top: 0; width: 3px; height: 100%;
+            background: #fff; transition: left 0.3s;
+        }
+        #viscosity-indicator {
+            position: absolute; top: 0; right: 0; width: 4px; height: 100%;
+            background: linear-gradient(to bottom, #ff9800, #ff5722);
+        }
+        #interaction-hint {
+            position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%);
+            color: rgba(255,255,255,0.6); font-size: 14px; text-align: center;
+            pointer-events: none; z-index: 999;
+        }
+        #particle-count-indicator {
+            position: absolute; top: 50%; right: 30px; transform: translateY(-50%);
+            color: #4fc3f7; font-size: 24px; font-weight: bold;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+            z-index: 998;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="interaction-hint">
+        <div>🖱️ Click and drag to stir the fluid</div>
+        <div>🌡️ Adjust temperature and viscosity</div>
+        <div>⚡ Watch the particle dynamics!</div>
+    </div>
+    
+    <div id="particle-count-indicator">0</div>
+    
+    <div id="controls">
+        <h3>Fluid Dynamics Engine</h3>
+        
+        <label>Fluid Type:</label>
+        <select id="fluid-type">
+            <option value="water">Water</option>
+            <option value="oil">Oil</option>
+            <option value="honey">Honey</option>
+            <option value="lava">Lava (Hot)</option>
+            <option value="mercury">Mercury</option>
+            <option value="custom">Custom</option>
+        </select>
+        
+        <div class="slider-group">
+            <label>Temperature: <span class="value-display" id="temp-value">20°C</span></label>
+            <div id="temperature-bar">
+                <div id="temperature-indicator"></div>
+            </div>
+            <input type="range" id="temperature" min="-50" max="200" value="20">
+        </div>
+        
+        <div class="slider-group">
+            <label>Viscosity: <span class="value-display" id="viscosity-value">1.0</span></label>
+            <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin: 5px 0; position: relative;">
+                <div id="viscosity-indicator" style="width: 50%;"></div>
+            </div>
+            <input type="range" id="viscosity" min="0.1" max="10" step="0.1" value="1.0">
+        </div>
+        
+        <div class="slider-group">
+            <label>Density: <span class="value-display" id="density-value">1.0</span></label>
+            <input type="range" id="density" min="0.1" max="5" step="0.1" value="1.0">
+        </div>
+        
+        <div class="slider-group">
+            <label>Particle Count: <span class="value-display" id="particle-count-value">2000</span></label>
+            <input type="range" id="particle-count" min="500" max="5000" step="100" value="2000">
+        </div>
+        
+        <div class="slider-group">
+            <label>Container Size: <span class="value-display" id="container-size-value">Large</span></label>
+            <input type="range" id="container-size" min="0" max="2" step="1" value="1">
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-velocity">
+            <label for="show-velocity">Show Velocity Vectors</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="show-pressure">
+            <label for="show-pressure">Show Pressure Map</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="gravity-enabled" checked>
+            <label for="gravity-enabled">Enable Gravity</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="turbulence">
+            <label for="turbulence">Enable Turbulence</label>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="boundaries">
+            <label for="boundaries">Container Boundaries</label>
+        </div>
+        
+        <button id="start-simulation">Start Simulation</button>
+        <button id="pause-simulation">Pause</button>
+        <button id="reset-fluids" class="danger">Reset Fluids</button>
+        <button id="add-obstacle">Add Obstacle</button>
+        <button id="clear-obstacles">Clear Obstacles</button>
+        
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 11px; color: #888;">
+                Real-time Smoothed Particle Hydrodynamics (SPH)
+            </div>
+        </div>
+    </div>
+    
+    <div id="fluid-panel">
+        <div><strong>🔬 Fluid Properties</strong></div>
+        <div>Active Particles: <span id="active-particles">0</span></div>
+        <div>Avg Velocity: <span id="avg-velocity">0.00</span> m/s</div>
+        <div>Kinetic Energy: <span id="kinetic-energy">0.00</span> J</div>
+        <div>Temperature: <span id="current-temp">20</span>°C</div>
+        <div>Pressure: <span id="avg-pressure">0.00</span> Pa</div>
+        <div>Flow Rate: <span id="flow-rate">0.00</span> L/s</div>
+        <div>Reynolds Number: <span id="reynolds">0</span></div>
+    </div>
+    
+    <div id="render-options">
+        <h4>Rendering Options</h4>
+        <div class="render-mode">
+            <input type="radio" id="render-particles" name="render-mode" value="particles" checked>
+            <label for="render-particles">Particle View</label>
+        </div>
+        <div class="render-mode">
+            <input type="radio" id="render-surface" name="render-mode" value="surface">
+            <label for="render-surface">Surface Mesh</label>
+        </div>
+        <div class="render-mode">
+            <input type="radio" id="render-volume" name="render-mode" value="volume">
+            <label for="render-volume">Volume Rendering</label>
+        </div>
+        <div class="render-mode">
+            <input type="radio" id="render-iso" name="render-mode" value="iso">
+            <label for="render-iso">Isosurface</label>
+        </div>
+    </div>
+    
+    <script src="../../src/index.js"></script>
+    <script>
+        class FluidSimulation {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.gl = this.canvas.getContext('webgl');
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                
+                // Physics engine
+                this.scene = new Engine.Scene();
+                this.camera = new Engine.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+                this.renderer = new Engine.WebGLRenderer({ canvas: this.canvas, gl: this.gl });
+                
+                // Fluid properties
+                this.fluidType = 'water';
+                this.temperature = 20;
+                this.viscosity = 1.0;
+                this.density = 1.0;
+                this.gravity = new Engine.Vector3(0, -9.81, 0);
+                this.boundariesEnabled = true;
+                this.turbulenceEnabled = false;
+                
+                // SPH parameters
+                this.smoothingRadius = 2.0;
+                this.gasConstant = 2000;
+                this.restDensity = 1000;
+                this.timeStep = 0.016;
+                this.subSteps = 3;
+                
+                // Particles
+                this.particles = [];
+                this.particleCount = 2000;
+                this.particleMesh = null;
+                this.particleGeometry = null;
+                this.particleMaterial = null;
+                
+                // Rendering
+                this.renderMode = 'particles';
+                this.showVelocity = false;
+                this.showPressure = false;
+                
+                // Interaction
+                this.isMouseDown = false;
+                this.mouseForce = new Engine.Vector3();
+                this.mousePosition = new Engine.Vector3();
+                
+                // Obstacles
+                this.obstacles = [];
+                this.obstacleMeshes = [];
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 60;
+                this.isRunning = false;
+                
+                this.setupLighting();
+                this.setupControls();
+                this.createContainer();
+                this.initializeParticles();
+                
+                this.animate();
+            }
+            
+            setupLighting() {
+                // Ambient underwater lighting
+                const ambientLight = new Engine.AmbientLight(0x1a3a5a);
+                this.scene.add(ambientLight);
+                
+                // Main light from above (simulating sunlight)
+                const sunLight = new Engine.DirectionalLight(0x87ceeb, 0.8);
+                sunLight.position.set(10, 20, 10);
+                sunLight.castShadow = true;
+                sunLight.shadow.mapSize.width = 2048;
+                sunLight.shadow.mapSize.height = 2048;
+                this.scene.add(sunLight);
+                
+                // Underwater caustics effect
+                const causticLight1 = new Engine.PointLight(0x4fc3f7, 0.3, 50);
+                causticLight1.position.set(-15, 15, -15);
+                this.scene.add(causticLight1);
+                
+                const causticLight2 = new Engine.PointLight(0x29b6f6, 0.2, 50);
+                causticLight2.position.set(15, 12, -10);
+                this.scene.add(causticLight2);
+                
+                // Atmospheric depth light
+                const depthLight = new Engine.PointLight(0x0d47a1, 0.4, 100);
+                depthLight.position.set(0, 25, 0);
+                this.scene.add(depthLight);
+            }
+            
+            setupControls() {
+                // Fluid type selection
+                document.getElementById('fluid-type').addEventListener('change', (e) => {
+                    this.fluidType = e.target.value;
+                    this.applyFluidProperties();
+                });
+                
+                // Temperature control
+                document.getElementById('temperature').addEventListener('input', (e) => {
+                    this.temperature = parseInt(e.target.value);
+                    this.updateTemperatureDisplay();
+                    this.applyFluidProperties();
+                });
+                
+                // Viscosity control
+                document.getElementById('viscosity').addEventListener('input', (e) => {
+                    this.viscosity = parseFloat(e.target.value);
+                    this.updateViscosityDisplay();
+                });
+                
+                // Density control
+                document.getElementById('density').addEventListener('input', (e) => {
+                    this.density = parseFloat(e.target.value);
+                    this.updateDensityDisplay();
+                });
+                
+                // Particle count control
+                document.getElementById('particle-count').addEventListener('input', (e) => {
+                    this.particleCount = parseInt(e.target.value);
+                    this.updateParticleCountDisplay();
+                });
+                
+                // Container size control
+                document.getElementById('container-size').addEventListener('input', (e) => {
+                    this.updateContainerSize(parseInt(e.target.value));
+                });
+                
+                // Checkbox controls
+                document.getElementById('show-velocity').addEventListener('change', (e) => {
+                    this.showVelocity = e.target.checked;
+                });
+                
+                document.getElementById('show-pressure').addEventListener('change', (e) => {
+                    this.showPressure = e.target.checked;
+                });
+                
+                document.getElementById('gravity-enabled').addEventListener('change', (e) => {
+                    this.gravityEnabled = e.target.checked;
+                });
+                
+                document.getElementById('turbulence').addEventListener('change', (e) => {
+                    this.turbulenceEnabled = e.target.checked;
+                });
+                
+                document.getElementById('boundaries').addEventListener('change', (e) => {
+                    this.boundariesEnabled = e.target.checked;
+                    this.updateContainerVisibility();
+                });
+                
+                // Button controls
+                document.getElementById('start-simulation').addEventListener('click', () => this.startSimulation());
+                document.getElementById('pause-simulation').addEventListener('click', () => this.togglePause());
+                document.getElementById('reset-fluids').addEventListener('click', () => this.resetFluids());
+                document.getElementById('add-obstacle').addEventListener('click', () => this.addObstacle());
+                document.getElementById('clear-obstacles').addEventListener('click', () => this.clearObstacles());
+                
+                // Render mode selection
+                document.querySelectorAll('input[name="render-mode"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        this.changeRenderMode(e.target.value);
+                    });
+                });
+                
+                // Mouse interaction
+                this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const scale = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(scale);
+                });
+            }
+            
+            applyFluidProperties() {
+                const fluids = {
+                    water: { density: 1.0, viscosity: 1.0, temp: 20 },
+                    oil: { density: 0.8, viscosity: 5.0, temp: 20 },
+                    honey: { density: 1.4, viscosity: 10.0, temp: 20 },
+                    lava: { density: 2.7, viscosity: 3.0, temp: 1000 },
+                    mercury: { density: 13.5, viscosity: 1.5, temp: 20 }
+                };
+                
+                if (this.fluidType !== 'custom' && fluids[this.fluidType]) {
+                    const properties = fluids[this.fluidType];
+                    
+                    document.getElementById('density').value = properties.density;
+                    document.getElementById('viscosity').value = properties.viscosity;
+                    document.getElementById('temperature').value = properties.temp;
+                    
+                    this.density = properties.density;
+                    this.viscosity = properties.viscosity;
+                    this.temperature = properties.temp;
+                    
+                    this.updateTemperatureDisplay();
+                    this.updateViscosityDisplay();
+                    this.updateDensityDisplay();
+                }
+                
+                this.updateFluidColor();
+            }
+            
+            updateFluidColor() {
+                const colors = {
+                    water: 0x4fc3f7,
+                    oil: 0xffc107,
+                    honey: 0xff9800,
+                    lava: 0xff5722,
+                    mercury: 0x9e9e9e
+                };
+                
+                if (this.particleMaterial) {
+                    const temperatureFactor = Math.min(1, this.temperature / 200);
+                    const baseColor = new Engine.Color(colors[this.fluidType] || 0x4fc3f7);
+                    
+                    if (this.fluidType === 'lava') {
+                        // Lava gets brighter with temperature
+                        baseColor.lerp(new Engine.Color(0xffff00), temperatureFactor);
+                    } else {
+                        // Other fluids get lighter with temperature
+                        baseColor.lerp(new Engine.Color(0xffffff), temperatureFactor * 0.3);
+                    }
+                    
+                    this.particleMaterial.color = baseColor;
+                }
+            }
+            
+            createContainer() {
+                this.container = new Engine.Group();
+                
+                const size = 30;
+                const height = 20;
+                const thickness = 0.5;
+                
+                // Floor
+                const floorGeometry = new Engine.BoxGeometry(size, thickness, size);
+                const floorMaterial = new Engine.MeshPhongMaterial({ 
+                    color: 0x263238,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const floor = new Engine.Mesh(floorGeometry, floorMaterial);
+                floor.position.y = -height / 2;
+                floor.receiveShadow = true;
+                this.container.add(floor);
+                
+                // Walls
+                const wallMaterial = new Engine.MeshPhongMaterial({ 
+                    color: 0x37474f,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                const wallConfigs = [
+                    { pos: [0, 0, -size/2], size: [size, height, thickness] },
+                    { pos: [0, 0, size/2], size: [size, height, thickness] },
+                    { pos: [-size/2, 0, 0], size: [thickness, height, size] },
+                    { pos: [size/2, 0, 0], size: [thickness, height, size] }
+                ];
+                
+                wallConfigs.forEach(config => {
+                    const wall = new Engine.Mesh(
+                        new Engine.BoxGeometry(...config.size),
+                        wallMaterial
+                    );
+                    wall.position.set(...config.pos);
+                    wall.receiveShadow = true;
+                    this.container.add(wall);
+                });
+                
+                this.scene.add(this.container);
+                this.containerBounds = { min: new Engine.Vector3(-size/2, -height/2, -size/2), max: new Engine.Vector3(size/2, height/2, size/2) };
+            }
+            
+            updateContainerSize(sizeIndex) {
+                const sizes = [
+                    { name: 'Small', scale: 0.6 },
+                    { name: 'Medium', scale: 1.0 },
+                    { name: 'Large', scale: 1.5 }
+                ];
+                
+                const selectedSize = sizes[sizeIndex];
+                document.getElementById('container-size-value').textContent = selectedSize.name;
+                
+                this.container.scale.setScalar(selectedSize.scale);
+            }
+            
+            updateContainerVisibility() {
+                this.container.visible = this.boundariesEnabled;
+            }
+            
+            initializeParticles() {
+                this.particles = [];
+                
+                // Create particle data
+                for (let i = 0; i < this.particleCount; i++) {
+                    const particle = {
+                        position: new Engine.Vector3(
+                            (Math.random() - 0.5) * 20,
+                            (Math.random() * 10) + 5,
+                            (Math.random() - 0.5) * 20
+                        ),
+                        velocity: new Engine.Vector3(
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2
+                        ),
+                        acceleration: new Engine.Vector3(),
+                        density: this.restDensity,
+                        pressure: 0,
+                        temperature: this.temperature,
+                        mass: 1.0,
+                        id: i
+                    };
+                    
+                    this.particles.push(particle);
+                }
+                
+                this.createParticleMesh();
+                this.updateUI();
+            }
+            
+            createParticleMesh() {
+                // Remove existing mesh
+                if (this.particleMesh) {
+                    this.scene.remove(this.particleMesh);
+                }
+                
+                // Create particle geometry
+                this.particleGeometry = new Engine.BufferGeometry();
+                
+                const positions = new Float32Array(this.particleCount * 3);
+                const colors = new Float32Array(this.particleCount * 3);
+                const sizes = new Float32Array(this.particleCount);
+                
+                // Initialize arrays
+                for (let i = 0; i < this.particleCount; i++) {
+                    const particle = this.particles[i];
+                    positions[i * 3] = particle.position.x;
+                    positions[i * 3 + 1] = particle.position.y;
+                    positions[i * 3 + 2] = particle.position.z;
+                    
+                    colors[i * 3] = 0.3; // R
+                    colors[i * 3 + 1] = 0.8; // G
+                    colors[i * 3 + 2] = 1.0; // B
+                    
+                    sizes[i] = 0.2;
+                }
+                
+                this.particleGeometry.setAttribute('position', new Engine.BufferAttribute(positions, 3));
+                this.particleGeometry.setAttribute('color', new Engine.BufferAttribute(colors, 3));
+                this.particleGeometry.setAttribute('size', new Engine.BufferAttribute(sizes, 1));
+                
+                // Create material
+                this.particleMaterial = new Engine.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    sizeAttenuation: true
+                });
+                
+                this.particleMesh = new Engine.Points(this.particleGeometry, this.particleMaterial);
+                this.particleMesh.castShadow = true;
+                this.particleMesh.receiveShadow = true;
+                
+                this.scene.add(this.particleMesh);
+                
+                this.updateFluidColor();
+            }
+            
+            applyFluidForces() {
+                // Clear accelerations
+                this.particles.forEach(particle => {
+                    particle.acceleration.set(0, 0, 0);
+                });
+                
+                // Calculate density and pressure
+                this.calculateDensityAndPressure();
+                
+                // Calculate pressure forces
+                this.calculatePressureForces();
+                
+                // Calculate viscosity forces
+                this.calculateViscosityForces();
+                
+                // Apply external forces
+                this.particles.forEach(particle => {
+                    // Gravity
+                    if (document.getElementById('gravity-enabled').checked) {
+                        particle.acceleration.add(this.gravity);
+                    }
+                    
+                    // Turbulence
+                    if (this.turbulenceEnabled) {
+                        const turbulence = new Engine.Vector3(
+                            (Math.random() - 0.5) * 10,
+                            (Math.random() - 0.5) * 10,
+                            (Math.random() - 0.5) * 10
+                        );
+                        particle.acceleration.add(turbulence.multiplyScalar(0.1));
+                    }
+                    
+                    // Mouse force
+                    if (this.isMouseDown) {
+                        const force = this.mouseForce.clone().multiplyScalar(0.5);
+                        particle.acceleration.add(force);
+                    }
+                });
+            }
+            
+            calculateDensityAndPressure() {
+                for (let i = 0; i < this.particles.length; i++) {
+                    let density = 0;
+                    const particle = this.particles[i];
+                    
+                    for (let j = 0; j < this.particles.length; j++) {
+                        const otherParticle = this.particles[j];
+                        const distance = particle.position.distanceTo(otherParticle.position);
+                        
+                        if (distance < this.smoothingRadius) {
+                            const influence = this.poly6Kernel(distance);
+                            density += otherParticle.mass * influence;
+                        }
+                    }
+                    
+                    particle.density = density;
+                    particle.pressure = Math.max(0, this.gasConstant * (density - this.restDensity));
+                }
+            }
+            
+            calculatePressureForces() {
+                for (let i = 0; i < this.particles.length; i++) {
+                    const particle = this.particles[i];
+                    
+                    for (let j = 0; j < this.particles.length; j++) {
+                        if (i === j) continue;
+                        
+                        const otherParticle = this.particles[j];
+                        const distance = particle.position.distanceTo(otherParticle.position);
+                        
+                        if (distance < this.smoothingRadius) {
+                            const force = new Engine.Vector3();
+                            const gradient = this.spikyGradient(distance);
+                            
+                            const pressureTerm = (particle.pressure + otherParticle.pressure) / (2 * otherParticle.density);
+                            force.copy(gradient).multiplyScalar(-pressureTerm * otherParticle.mass);
+                            
+                            particle.acceleration.add(force);
+                        }
+                    }
+                }
+            }
+            
+            calculateViscosityForces() {
+                for (let i = 0; i < this.particles.length; i++) {
+                    const particle = this.particles[i];
+                    
+                    for (let j = 0; j < this.particles.length; j++) {
+                        if (i === j) continue;
+                        
+                        const otherParticle = this.particles[j];
+                        const distance = particle.position.distanceTo(otherParticle.position);
+                        
+                        if (distance < this.smoothingRadius) {
+                            const laplacian = this.viscosityLaplacian(distance);
+                            const force = otherParticle.velocity.clone()
+                                .sub(particle.velocity)
+                                .multiplyScalar(laplacian * this.viscosity * otherParticle.mass / otherParticle.density);
+                            
+                            particle.acceleration.add(force);
+                        }
+                    }
+                }
+            }
+            
+            poly6Kernel(distance) {
+                const h = this.smoothingRadius;
+                if (distance >= h) return 0;
+                
+                const coefficient = 315.0 / (64.0 * Math.PI * Math.pow(h, 9));
+                const term = h * h - distance * distance;
+                return coefficient * term * term * term;
+            }
+            
+            spikyGradient(distance) {
+                const h = this.smoothingRadius;
+                if (distance >= h) return new Engine.Vector3();
+                
+                const coefficient = -45.0 / (Math.PI * Math.pow(h, 6));
+                const direction = new Engine.Vector3();
+                
+                // Simplified gradient calculation
+                const factor = coefficient * Math.pow(h - distance, 2);
+                direction.set(factor, factor, factor);
+                
+                return direction;
+            }
+            
+            viscosityLaplacian(distance) {
+                const h = this.smoothingRadius;
+                if (distance >= h) return 0;
+                
+                const coefficient = 45.0 / (Math.PI * Math.pow(h, 6));
+                return coefficient * (h - distance);
+            }
+            
+            integrateParticles() {
+                const damping = 0.99;
+                const timeStep = this.timeStep;
+                
+                this.particles.forEach(particle => {
+                    // Semi-implicit Euler integration
+                    particle.velocity.add(particle.acceleration.clone().multiplyScalar(timeStep));
+                    particle.velocity.multiplyScalar(damping);
+                    particle.position.add(particle.velocity.clone().multiplyScalar(timeStep));
+                    
+                    // Boundary collisions
+                    if (this.boundariesEnabled) {
+                        this.handleBoundaryCollision(particle);
+                    }
+                    
+                    // Obstacle collisions
+                    this.handleObstacleCollisions(particle);
+                });
+            }
+            
+            handleBoundaryCollision(particle) {
+                const bounds = this.containerBounds;
+                const bounceDamping = 0.3;
+                
+                // X boundaries
+                if (particle.position.x < bounds.min.x) {
+                    particle.position.x = bounds.min.x;
+                    particle.velocity.x *= -bounceDamping;
+                } else if (particle.position.x > bounds.max.x) {
+                    particle.position.x = bounds.max.x;
+                    particle.velocity.x *= -bounceDamping;
+                }
+                
+                // Y boundaries
+                if (particle.position.y < bounds.min.y) {
+                    particle.position.y = bounds.min.y;
+                    particle.velocity.y *= -bounceDamping;
+                } else if (particle.position.y > bounds.max.y) {
+                    particle.position.y = bounds.max.y;
+                    particle.velocity.y *= -bounceDamping;
+                }
+                
+                // Z boundaries
+                if (particle.position.z < bounds.min.z) {
+                    particle.position.z = bounds.min.z;
+                    particle.velocity.z *= -bounceDamping;
+                } else if (particle.position.z > bounds.max.z) {
+                    particle.position.z = bounds.max.z;
+                    particle.velocity.z *= -bounceDamping;
+                }
+            }
+            
+            handleObstacleCollisions(particle) {
+                this.obstacles.forEach(obstacle => {
+                    const distance = particle.position.distanceTo(obstacle.position);
+                    const minDistance = obstacle.radius + 0.2;
+                    
+                    if (distance < minDistance) {
+                        const normal = particle.position.clone().sub(obstacle.position).normalize();
+                        const penetration = minDistance - distance;
+                        
+                        particle.position.add(normal.multiplyScalar(penetration));
+                        particle.velocity.add(normal.multiplyScalar(-particle.velocity.dot(normal) * 1.5));
+                    }
+                });
+            }
+            
+            updateParticleMesh() {
+                const positions = this.particleGeometry.attributes.position.array;
+                const colors = this.particleGeometry.attributes.color.array;
+                
+                for (let i = 0; i < this.particles.length; i++) {
+                    const particle = this.particles[i];
+                    positions[i * 3] = particle.position.x;
+                    positions[i * 3 + 1] = particle.position.y;
+                    positions[i * 3 + 2] = particle.position.z;
+                    
+                    // Update colors based on velocity and pressure
+                    const speed = particle.velocity.length();
+                    const pressure = particle.pressure;
+                    
+                    // Velocity-based coloring (blue to red)
+                    const speedFactor = Math.min(1, speed / 10);
+                    colors[i * 3] = 0.3 + speedFactor * 0.7;     // R
+                    colors[i * 3 + 1] = 0.8 - speedFactor * 0.5; // G
+                    colors[i * 3 + 2] = 1.0 - speedFactor * 0.8; // B
+                }
+                
+                this.particleGeometry.attributes.position.needsUpdate = true;
+                this.particleGeometry.attributes.color.needsUpdate = true;
+            }
+            
+            addObstacle() {
+                const obstacle = {
+                    position: new Engine.Vector3(
+                        (Math.random() - 0.5) * 20,
+                        (Math.random() - 0.5) * 10,
+                        (Math.random() - 0.5) * 20
+                    ),
+                    radius: Math.random() * 2 + 1,
+                    velocity: new Engine.Vector3(
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2
+                    )
+                };
+                
+                // Create obstacle mesh
+                const geometry = new Engine.SphereGeometry(obstacle.radius, 16, 8);
+                const material = new Engine.MeshPhongMaterial({
+                    color: 0xff5722,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const mesh = new Engine.Mesh(geometry, material);
+                mesh.position.copy(obstacle.position);
+                mesh.castShadow = true;
+                
+                this.obstacles.push(obstacle);
+                this.obstacleMeshes.push(mesh);
+                this.scene.add(mesh);
+            }
+            
+            clearObstacles() {
+                this.obstacles = [];
+                this.obstacleMeshes.forEach(mesh => this.scene.remove(mesh));
+                this.obstacleMeshes = [];
+            }
+            
+            onMouseDown(event) {
+                this.isMouseDown = true;
+                this.updateMousePosition(event);
+            }
+            
+            onMouseMove(event) {
+                if (this.isMouseDown) {
+                    this.updateMousePosition(event);
+                }
+            }
+            
+            onMouseUp(event) {
+                this.isMouseDown = false;
+                this.mouseForce.set(0, 0, 0);
+            }
+            
+            updateMousePosition(event) {
+                const mouse = new Engine.Vector2();
+                const rect = this.canvas.getBoundingClientRect();
+                
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                const raycaster = new Engine.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                
+                // Apply force to nearby particles
+                this.mouseForce.set(0, 0, 0);
+                const forceRadius = 5;
+                
+                this.particles.forEach(particle => {
+                    const distance = particle.position.distanceTo(raycaster.ray.origin);
+                    if (distance < forceRadius) {
+                        const force = raycaster.ray.direction.clone().multiplyScalar(50 / (distance + 1));
+                        this.mouseForce.add(force);
+                    }
+                });
+            }
+            
+            updateUI() {
+                // Calculate fluid statistics
+                let totalVelocity = 0;
+                let totalPressure = 0;
+                let totalEnergy = 0;
+                
+                this.particles.forEach(particle => {
+                    totalVelocity += particle.velocity.length();
+                    totalPressure += particle.pressure;
+                    totalEnergy += 0.5 * particle.mass * particle.velocity.lengthSq();
+                });
+                
+                const avgVelocity = totalVelocity / this.particles.length;
+                const avgPressure = totalPressure / this.particles.length;
+                
+                // Update fluid panel
+                document.getElementById('active-particles').textContent = this.particles.length;
+                document.getElementById('avg-velocity').textContent = avgVelocity.toFixed(2);
+                document.getElementById('kinetic-energy').textContent = totalEnergy.toFixed(2);
+                document.getElementById('current-temp').textContent = this.temperature.toFixed(0);
+                document.getElementById('avg-pressure').textContent = avgPressure.toFixed(2);
+                document.getElementById('flow-rate').textContent = (avgVelocity * this.particleCount * 0.001).toFixed(2);
+                
+                // Calculate Reynolds number
+                const reynolds = (avgVelocity * 0.1 * this.density) / (this.viscosity * 0.001);
+                document.getElementById('reynolds').textContent = Math.round(reynolds);
+                
+                // Update particle count indicator
+                document.getElementById('particle-count-indicator').textContent = this.particles.length;
+            }
+            
+            updateTemperatureDisplay() {
+                const temp = this.temperature;
+                document.getElementById('temp-value').textContent = `${temp}°C`;
+                
+                const indicator = document.getElementById('temperature-indicator');
+                const percentage = (temp + 50) / 250 * 100;
+                indicator.style.left = `${percentage}%`;
+            }
+            
+            updateViscosityDisplay() {
+                document.getElementById('viscosity-value').textContent = this.viscosity.toFixed(1);
+                
+                const indicator = document.getElementById('viscosity-indicator');
+                const percentage = (this.viscosity / 10) * 100;
+                indicator.style.width = `${percentage}%`;
+            }
+            
+            updateDensityDisplay() {
+                document.getElementById('density-value').textContent = this.density.toFixed(1);
+            }
+            
+            updateParticleCountDisplay() {
+                document.getElementById('particle-count-value').textContent = this.particleCount;
+            }
+            
+            changeRenderMode(mode) {
+                this.renderMode = mode;
+                // Implementation would switch between particle, surface, volume, etc.
+            }
+            
+            startSimulation() {
+                this.isRunning = true;
+                document.getElementById('start-simulation').textContent = 'Running...';
+                document.getElementById('start-simulation').disabled = true;
+            }
+            
+            togglePause() {
+                this.isRunning = !this.isRunning;
+                document.getElementById('pause-simulation').textContent = this.isRunning ? 'Pause' : 'Resume';
+            }
+            
+            resetFluids() {
+                this.initializeParticles();
+                this.clearObstacles();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (this.isRunning) {
+                    // Multiple substeps for stability
+                    for (let i = 0; i < this.subSteps; i++) {
+                        this.applyFluidForces();
+                        this.integrateParticles();
+                    }
+                    
+                    this.updateParticleMesh();
+                    this.updateUI();
+                }
+                
+                // Update obstacle meshes
+                this.obstacleMeshes.forEach((mesh, index) => {
+                    const obstacle = this.obstacles[index];
+                    mesh.position.copy(obstacle.position);
+                });
+                
+                // Gentle camera rotation
+                this.camera.position.x += Math.sin(Date.now() * 0.001) * 0.02;
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer.render(this.scene, this.camera);
+                
+                // Hide hint after a few seconds
+                if (Date.now() - this.startTime > 5000) {
+                    document.getElementById('interaction-hint').style.opacity = '0';
+                }
+            }
+        }
+        
+        // Initialize the simulation
+        window.addEventListener('load', () => {
+            window.fluidSim = new FluidSimulation();
+            window.fluidSim.startTime = Date.now();
+        });
+        
+        // Resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

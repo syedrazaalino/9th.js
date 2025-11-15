@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Mapping HDR Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Environment Mapping HDR Demo</strong><br>
+        High Dynamic Range environment mapping<br>
+        - HDR textures and lighting<br>
+        - Multiple environment maps<br>
+        - Real-time reflections<br>
+        - Physically based rendering (PBR)
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setEnvironment('studio')" class="active">Studio</button>
+            <button onclick="setEnvironment('city')">City</button>
+            <button onclick="setEnvironment('nature')">Nature</button>
+            <button onclick="setEnvironment('space')">Space</button>
+        </div>
+        <div class="control-group">
+            <label>Environment Intensity: <span id="intensity-val">1.0</span></label>
+            <input type="range" id="env-intensity" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Metalness: <span id="metalness-val">0.5</span></label>
+            <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.5">
+        </div>
+        <div class="control-group">
+            <label>Roughness: <span id="roughness-val">0.1</span></label>
+            <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.1">
+        </div>
+        <div class="control-group">
+            <button onclick="toggleReflections()">Toggle Reflections</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(8, 5, 8);
+        camera.lookAt(0, 2, 0);
+
+        // Renderer with HDR support
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Environment manager
+        class EnvironmentManager {
+            constructor() {
+                this.environments = {};
+                this.currentEnv = null;
+                this.pmremGenerator = new THREE.PMREMGenerator(renderer);
+                this.pmremGenerator.compileEquirectangularShader();
+            }
+
+            async createEnvironments() {
+                // Create procedural HDR environments since we don't have actual HDR files
+                this.environments.studio = await this.createProceduralHDR('studio');
+                this.environments.city = await this.createProceduralHDR('city');
+                this.environments.nature = await this.createProceduralHDR('nature');
+                this.environments.space = await this.createProceduralHDR('space');
+            }
+
+            async createProceduralHDR(type) {
+                // Create a large sphere with procedural texture for environment
+                const size = 512;
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const context = canvas.getContext('2d');
+
+                // Create different environment types
+                switch(type) {
+                    case 'studio':
+                        // Simple gradient background
+                        const grad1 = context.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+                        grad1.addColorStop(0, '#ffffff');
+                        grad1.addColorStop(0.7, '#f0f0f0');
+                        grad1.addColorStop(1, '#d0d0d0');
+                        context.fillStyle = grad1;
+                        context.fillRect(0, 0, size, size);
+                        
+                        // Add studio lights
+                        context.fillStyle = '#ffffff';
+                        context.globalAlpha = 0.3;
+                        for(let i = 0; i < 5; i++) {
+                            const x = Math.random() * size;
+                            const y = Math.random() * size;
+                            const radius = Math.random() * 50 + 20;
+                            context.beginPath();
+                            context.arc(x, y, radius, 0, Math.PI * 2);
+                            context.fill();
+                        }
+                        break;
+                    
+                    case 'city':
+                        // Urban skyline effect
+                        const grad2 = context.createLinearGradient(0, 0, 0, size);
+                        grad2.addColorStop(0, '#87CEEB');
+                        grad2.addColorStop(0.6, '#4A90A4');
+                        grad2.addColorStop(1, '#2C3E50');
+                        context.fillStyle = grad2;
+                        context.fillRect(0, 0, size, size);
+                        
+                        // Add buildings
+                        context.fillStyle = 'rgba(0,0,0,0.3)';
+                        for(let i = 0; i < 20; i++) {
+                            const x = Math.random() * size;
+                            const width = Math.random() * 40 + 10;
+                            const height = Math.random() * 200 + 50;
+                            context.fillRect(x, size - height, width, height);
+                        }
+                        break;
+                    
+                    case 'nature':
+                        // Sky to ground gradient
+                        const grad3 = context.createLinearGradient(0, 0, 0, size);
+                        grad3.addColorStop(0, '#87CEEB');
+                        grad3.addColorStop(0.5, '#98D8E8');
+                        grad3.addColorStop(1, '#F4A460');
+                        context.fillStyle = grad3;
+                        context.fillRect(0, 0, size, size);
+                        
+                        // Add clouds
+                        context.fillStyle = 'rgba(255,255,255,0.8)';
+                        for(let i = 0; i < 8; i++) {
+                            const x = Math.random() * size;
+                            const y = Math.random() * size/2;
+                            const width = Math.random() * 100 + 50;
+                            const height = Math.random() * 40 + 20;
+                            context.beginPath();
+                            context.ellipse(x, y, width/2, height/2, 0, 0, Math.PI * 2);
+                            context.fill();
+                        }
+                        break;
+                    
+                    case 'space':
+                        // Starfield background
+                        context.fillStyle = '#000011';
+                        context.fillRect(0, 0, size, size);
+                        
+                        // Add stars
+                        for(let i = 0; i < 500; i++) {
+                            const x = Math.random() * size;
+                            const y = Math.random() * size;
+                            const brightness = Math.random() * 255;
+                            context.fillStyle = `rgb(${brightness},${brightness},${brightness})`;
+                            context.fillRect(x, y, 1, 1);
+                        }
+                        break;
+                }
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const hdrTexture = texture;
+                
+                const textureMapping = THREE.EquirectangularReflectionMapping;
+                texture.mapping = textureMapping;
+                
+                return {
+                    texture: hdrTexture,
+                    environment: this.pmremGenerator.fromEquirectangular(hdrTexture).texture
+                };
+            }
+
+            setEnvironment(type) {
+                if (this.environments[type]) {
+                    this.currentEnv = type;
+                    scene.environment = this.environments[type].environment;
+                    scene.background = this.environments[type].texture;
+                }
+            }
+
+            setIntensity(intensity) {
+                // Adjust environment intensity through scene materials
+                scene.traverse((object) => {
+                    if (object.isMesh && object.material.isMeshStandardMaterial) {
+                        object.material.envMapIntensity = intensity;
+                    }
+                });
+            }
+        }
+
+        // Create environment manager
+        const envManager = new EnvironmentManager();
+
+        // Create PBR materials with different properties
+        const createMaterial = (name, color, metalness, roughness, transmission = 0) => {
+            const material = new THREE.MeshPhysicalMaterial({
+                color: color,
+                metalness: metalness,
+                roughness: roughness,
+                transmission: transmission,
+                thickness: transmission > 0 ? 1 : 0,
+                clearcoat: 1,
+                clearcoatRoughness: roughness * 0.5,
+                envMapIntensity: 1
+            });
+            return material;
+        };
+
+        // Create objects with different materials
+        const objects = [];
+
+        // Metallic sphere
+        const metalSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 32, 16),
+            createMaterial('metal', 0x888888, 1.0, 0.1)
+        );
+        metalSphere.position.set(-4, 2, 0);
+        metalSphere.castShadow = true;
+        metalSphere.receiveShadow = true;
+        scene.add(metalSphere);
+        objects.push({ mesh: metalSphere, name: 'Metallic' });
+
+        // Glass sphere
+        const glassSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 32, 16),
+            createMaterial('glass', 0xffffff, 0, 0, 1)
+        );
+        glassSphere.position.set(4, 2, 0);
+        glassSphere.castShadow = true;
+        scene.add(glassSphere);
+        objects.push({ mesh: glassSphere, name: 'Glass' });
+
+        // Ceramic sphere
+        const ceramicSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 32, 16),
+            createMaterial('ceramic', 0xf5f5dc, 0, 0.3)
+        );
+        ceramicSphere.position.set(0, 2, -4);
+        ceramicSphere.castShadow = true;
+        ceramicSphere.receiveShadow = true;
+        scene.add(ceramicSphere);
+        objects.push({ mesh: ceramicSphere, name: 'Ceramic' });
+
+        // Plastic sphere
+        const plasticSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 32, 16),
+            createMaterial('plastic', 0xff4500, 0, 0.4)
+        );
+        plasticSphere.position.set(0, 2, 4);
+        plasticSphere.castShadow = true;
+        scene.add(plasticSphere);
+        objects.push({ mesh: plasticSphere, name: 'Plastic' });
+
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(30, 30);
+        const groundMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x808080,
+            metalness: 0.1,
+            roughness: 0.8,
+            envMapIntensity: 0.5
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -20;
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
+        scene.add(directionalLight);
+
+        // Point lights for accent
+        const pointLight1 = new THREE.PointLight(0xff6b35, 0.5, 20);
+        pointLight1.position.set(-5, 5, 5);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x4a90e2, 0.5, 20);
+        pointLight2.position.set(5, 5, -5);
+        scene.add(pointLight2);
+
+        // Initialize environments
+        await envManager.createEnvironments();
+        envManager.setEnvironment('studio');
+
+        // Global functions
+        window.setEnvironment = (type) => {
+            envManager.setEnvironment(type);
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.toggleReflections = () => {
+            const currentEnv = scene.background;
+            if (currentEnv) {
+                // Toggle environment map
+                if (scene.environment) {
+                    scene.environment = null;
+                } else {
+                    envManager.setEnvironment(envManager.currentEnv);
+                }
+            }
+        };
+
+        // Control bindings
+        const intensitySlider = document.getElementById('env-intensity');
+        const intensityDisplay = document.getElementById('intensity-val');
+        intensitySlider.addEventListener('input', (e) => {
+            const intensity = parseFloat(e.target.value);
+            envManager.setIntensity(intensity);
+            intensityDisplay.textContent = intensity.toFixed(1);
+        });
+
+        const metalnessSlider = document.getElementById('metalness');
+        const metalnessDisplay = document.getElementById('metalness-val');
+        metalnessSlider.addEventListener('input', (e) => {
+            const metalness = parseFloat(e.target.value);
+            metalSphere.material.metalness = metalness;
+            ceramicSphere.material.metalness = metalness * 0.1;
+            plasticSphere.material.metalness = metalness * 0.2;
+            metalnessDisplay.textContent = metalness.toFixed(2);
+        });
+
+        const roughnessSlider = document.getElementById('roughness');
+        const roughnessDisplay = document.getElementById('roughness-val');
+        roughnessSlider.addEventListener('input', (e) => {
+            const roughness = parseFloat(e.target.value);
+            metalSphere.material.roughness = roughness;
+            glassSphere.material.roughness = roughness * 0.1;
+            ceramicSphere.material.roughness = roughness;
+            plasticSphere.material.roughness = roughness;
+            roughnessDisplay.textContent = roughness.toFixed(2);
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // Rotate objects
+            objects.forEach((obj, index) => {
+                obj.mesh.rotation.x = elapsedTime * 0.5;
+                obj.mesh.rotation.y = elapsedTime * 0.3;
+            });
+
+            // Move lights
+            pointLight1.position.x = Math.sin(elapsedTime * 0.5) * 8;
+            pointLight1.position.z = Math.cos(elapsedTime * 0.5) * 8;
+            
+            pointLight2.position.x = Math.sin(elapsedTime * 0.8 + Math.PI / 2) * 8;
+            pointLight2.position.z = Math.cos(elapsedTime * 0.8 + Math.PI / 2) * 8;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

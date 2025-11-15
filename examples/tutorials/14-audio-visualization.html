@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>14 - Audio Visualization: Sync 3D with Sound</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 18px;
+            border-radius: 10px;
+            max-width: 280px;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        h1 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #fff;
+        }
+        
+        .step {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #fff;
+        }
+        
+        .controls {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .controls button.active {
+            background: #fff;
+            color: #1a2a6c;
+            border-color: #fff;
+        }
+        
+        .audio-controls {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .audio-controls input[type="range"] {
+            width: 100px;
+            margin: 2px;
+        }
+        
+        .audio-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            max-width: 200px;
+        }
+        
+        .visualization-mode {
+            display: inline-block;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🎵 Tutorial 14: Audio Visualization</h1>
+        <div class="step">
+            <strong>Goal:</strong> Synchronize 3D visuals with audio
+        </div>
+        <div class="step">
+            <strong>Audio Concepts:</strong>
+            <ul style="margin: 5px 0; padding-left: 15px; font-size: 11px;">
+                <li>Frequency analysis with Web Audio API</li>
+                <li>FFT data for frequency spectrum</li>
+                <li>Amplitude for volume/loudness</li>
+                <li>Beat detection algorithms</li>
+                <li>Real-time audio processing</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <strong>Visual Modes:</strong><br>
+            <button id="spectrum-btn" onclick="setVisualMode('spectrum')" class="active">Spectrum</button>
+            <button id="wave-btn" onclick="setVisualMode('wave')">Wave</button>
+            <button id="particles-btn" onclick="setVisualMode('particles')">Particles</button>
+            <button id="tunnel-btn" onclick="setVisualMode('tunnel')">Tunnel</button><br>
+            <button id="start-audio" onclick="startAudio()">Start Audio</button>
+            <button id="demo-beat" onclick="triggerDemoBeat()">Demo Beat</button>
+        </div>
+        <div class="audio-controls">
+            <strong>Audio Controls:</strong><br>
+            <label>Volume: <input type="range" id="volume" min="0" max="100" value="50"></label><br>
+            <label>Sensitivity: <input type="range" id="sensitivity" min="0" max="200" value="100"></label><br>
+            <label>Frequency Range: 
+                <select id="freq-range">
+                    <option value="low">Low (Bass)</option>
+                    <option value="mid" selected>Mid (Vocals)</option>
+                    <option value="high">High (Treble)</option>
+                    <option value="full">Full Spectrum</option>
+                </select>
+            </label>
+        </div>
+    </div>
+    
+    <div class="audio-info">
+        <strong>Audio Status:</strong> <span id="audio-status">Inactive</span><br>
+        <strong>Frequency Data:</strong> <span id="freq-data">[0, 0, 0, 0, 0]</span><br>
+        <strong>Volume:</strong> <span id="volume-level">0%</span><br>
+        <strong>BPM:</strong> <span id="bpm">0</span><br>
+        <strong>Mode:</strong> <span id="current-mode">Spectrum</span>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        /**
+         * ==========================================
+         * TUTORIAL 14: AUDIO VISUALIZATION
+         * ==========================================
+         * 
+         * Audio visualization syncs 3D graphics with sound:
+         * 
+         * 1. WEB AUDIO API:
+         *    - AudioContext for audio processing
+         *    - AnalyserNode for frequency analysis
+         *    - FFT (Fast Fourier Transform) data
+         * 
+         * 2. FREQUENCY ANALYSIS:
+         *    - Low frequencies: Bass/drums (20-250 Hz)
+         *    - Mid frequencies: Vocals (250-4000 Hz)
+         *    - High frequencies: Treble (4000-20000 Hz)
+         * 
+         * 3. VISUAL SYNCHRONIZATION:
+         *    - Object scale based on volume
+         *    - Color changes based on frequency
+         *    - Particle emission on beats
+         *    - Geometry deformation from audio data
+         */
+        
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let scene, camera, renderer;
+        let audioContext, analyser, dataArray;
+        let audioElement;
+        let visualMode = 'spectrum';
+        let animationId;
+        let audioObjects = [];
+        let lastBeatTime = 0;
+        let beatCount = 0;
+        let beatTimes = [];
+        
+        // ==========================================
+        // AUDIO SETUP
+        // ==========================================
+        async function startAudio() {
+            try {
+                // Create audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create audio element (using a demo audio file)
+                audioElement = new Audio();
+                audioElement.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+                audioElement.loop = true;
+                audioElement.crossOrigin = 'anonymous';
+                
+                // Create analyser
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                // Connect audio to analyser
+                const source = audioContext.createMediaElementSource(audioElement);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                // Start audio
+                await audioElement.play();
+                
+                updateAudioStatus('Active');
+                document.getElementById('start-audio').textContent = 'Stop Audio';
+                document.getElementById('start-audio').onclick = stopAudio;
+                
+                console.log('🎵 Audio started successfully!');
+            } catch (error) {
+                console.error('Error starting audio:', error);
+                updateAudioStatus('Error');
+            }
+        }
+        
+        function stopAudio() {
+            if (audioElement) {
+                audioElement.pause();
+                audioElement = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            updateAudioStatus('Inactive');
+            document.getElementById('start-audio').textContent = 'Start Audio';
+            document.getElementById('start-audio').onclick = startAudio;
+        }
+        
+        // ==========================================
+        // BASIC SCENE SETUP
+        // ==========================================
+        function setupScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 10);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 0, 5);
+            scene.add(directionalLight);
+            
+            createVisualizationObjects();
+        }
+        
+        // ==========================================
+        // CREATE VISUALIZATION OBJECTS
+        // ==========================================
+        function createVisualizationObjects() {
+            // Create spectrum bars
+            const barCount = 32;
+            for (let i = 0; i < barCount; i++) {
+                const geometry = new THREE.BoxGeometry(0.2, 0.2, 2);
+                const material = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(i / barCount, 0.8, 0.6)
+                });
+                const bar = new THREE.Mesh(geometry, material);
+                bar.position.x = (i - barCount / 2) * 0.3;
+                bar.position.y = -3;
+                scene.add(bar);
+                audioObjects.push({ object: bar, type: 'spectrum', index: i });
+            }
+            
+            // Create waveform ring
+            const ringGeometry = new THREE.RingGeometry(3, 3.5, 64);
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.5
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            scene.add(ring);
+            audioObjects.push({ object: ring, type: 'wave' });
+            
+            // Create particles
+            for (let i = 0; i < 50; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                particle.position.set(
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10
+                );
+                scene.add(particle);
+                audioObjects.push({ object: particle, type: 'particle', velocity: new THREE.Vector3() });
+            }
+            
+            // Create tunnel (cylinder)
+            const tunnelGeometry = new THREE.CylinderGeometry(8, 8, 20, 32, 1, true);
+            const tunnelMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4444ff,
+                side: THREE.BackSide,
+                transparent: true,
+                opacity: 0.3
+            });
+            const tunnel = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+            scene.add(tunnel);
+            audioObjects.push({ object: tunnel, type: 'tunnel' });
+        }
+        
+        // ==========================================
+        // AUDIO DATA PROCESSING
+        // ==========================================
+        function getAudioData() {
+            if (!analyser) return null;
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate volume (RMS)
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i] * dataArray[i];
+            }
+            const volume = Math.sqrt(sum / dataArray.length) / 255;
+            
+            // Get frequency ranges
+            const lowFreq = dataArray.slice(0, 10).reduce((a, b) => a + b) / 10;
+            const midFreq = dataArray.slice(10, 30).reduce((a, b) => a + b) / 20;
+            const highFreq = dataArray.slice(30, 50).reduce((a, b) => a + b) / 20;
+            
+            return { volume, lowFreq, midFreq, highFreq, dataArray };
+        }
+        
+        // ==========================================
+        // BEAT DETECTION
+        // ==========================================
+        function detectBeat(audioData) {
+            if (!audioData) return false;
+            
+            const threshold = 150; // Adjust based on music type
+            const avgFreq = audioData.dataArray.slice(0, 10).reduce((a, b) => a + b) / 10;
+            
+            if (avgFreq > threshold) {
+                const currentTime = Date.now();
+                if (currentTime - lastBeatTime > 200) { // Minimum time between beats
+                    lastBeatTime = currentTime;
+                    beatCount++;
+                    beatTimes.push(currentTime);
+                    
+                    // Keep only last 10 seconds of beat times
+                    beatTimes = beatTimes.filter(time => currentTime - time < 10000);
+                    
+                    // Calculate BPM
+                    if (beatTimes.length > 1) {
+                        const timeDiff = beatTimes[beatTimes.length - 1] - beatTimes[0];
+                        const bpm = (beatTimes.length / timeDiff) * 60000;
+                        document.getElementById('bpm').textContent = Math.round(bpm);
+                    }
+                    
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // ==========================================
+        // VISUAL MODE FUNCTIONS
+        // ==========================================
+        function setVisualMode(mode) {
+            visualMode = mode;
+            
+            // Update button states
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`${mode}-btn`).classList.add('active');
+            
+            // Show/hide objects based on mode
+            audioObjects.forEach(obj => {
+                obj.object.visible = (
+                    (mode === 'spectrum' && obj.type === 'spectrum') ||
+                    (mode === 'wave' && obj.type === 'wave') ||
+                    (mode === 'particles' && obj.type === 'particle') ||
+                    (mode === 'tunnel' && obj.type === 'tunnel')
+                );
+            });
+            
+            document.getElementById('current-mode').textContent = 
+                mode.charAt(0).toUpperCase() + mode.slice(1);
+        }
+        
+        // ==========================================
+        // AUDIO VISUALIZATION UPDATE
+        // ==========================================
+        function updateAudioVisualization() {
+            const audioData = getAudioData();
+            if (!audioData) return;
+            
+            // Update UI
+            updateAudioStatus('Active');
+            updateFrequencyDisplay(audioData);
+            
+            const sensitivity = parseFloat(document.getElementById('sensitivity').value) / 100;
+            const volume = audioData.volume * sensitivity;
+            
+            // Beat detection
+            const isBeat = detectBeat(audioData);
+            
+            // Update based on visual mode
+            switch (visualMode) {
+                case 'spectrum':
+                    updateSpectrumVisualization(audioData, volume);
+                    break;
+                case 'wave':
+                    updateWaveVisualization(audioData, volume);
+                    break;
+                case 'particles':
+                    updateParticleVisualization(audioData, volume, isBeat);
+                    break;
+                case 'tunnel':
+                    updateTunnelVisualization(audioData, volume);
+                    break;
+            }
+        }
+        
+        function updateSpectrumVisualization(audioData, volume) {
+            const spectrumBars = audioObjects.filter(obj => obj.type === 'spectrum');
+            const freqRange = document.getElementById('freq-range').value;
+            const sliceCount = Math.floor(audioData.dataArray.length / spectrumBars.length);
+            
+            spectrumBars.forEach((barObj, index) => {
+                const bar = barObj.object;
+                let height = 0;
+                
+                const start = index * sliceCount;
+                const end = start + sliceCount;
+                const barFreqs = audioData.dataArray.slice(start, end);
+                
+                if (freqRange === 'full') {
+                    height = barFreqs.reduce((a, b) => a + b) / sliceCount;
+                } else {
+                    const freqMultiplier = freqRange === 'low' ? 0.5 : freqRange === 'mid' ? 1.0 : 1.5;
+                    height = barFreqs.reduce((a, b) => a + b) / sliceCount * freqMultiplier;
+                }
+                
+                const normalizedHeight = (height / 255) * 8 * (1 + volume);
+                bar.scale.y = Math.max(0.1, normalizedHeight);
+                bar.position.y = -3 + bar.scale.y / 2;
+                
+                // Color based on frequency
+                const hue = index / spectrumBars.length;
+                bar.material.color.setHSL(hue, 0.8, 0.5 + volume * 0.3);
+            });
+        }
+        
+        function updateWaveVisualization(audioData, volume) {
+            const ring = audioObjects.find(obj => obj.type === 'wave')?.object;
+            if (!ring) return;
+            
+            // Update ring scale based on volume
+            const scale = 1 + volume * 0.5;
+            ring.scale.set(scale, scale, scale);
+            
+            // Update color based on frequency
+            const avgFreq = audioData.dataArray.reduce((a, b) => a + b) / audioData.dataArray.length;
+            const hue = avgFreq / 255;
+            ring.material.color.setHSL(hue, 0.8, 0.5 + volume * 0.3);
+        }
+        
+        function updateParticleVisualization(audioData, volume, isBeat) {
+            const particles = audioObjects.filter(obj => obj.type === 'particle');
+            
+            particles.forEach((particleObj, index) => {
+                const particle = particleObj.object;
+                const freqIndex = Math.floor(index / particles.length * audioData.dataArray.length);
+                const freqValue = audioData.dataArray[freqIndex];
+                const normalizedFreq = freqValue / 255;
+                
+                // Particle movement based on audio
+                particle.position.x += (normalizedFreq - 0.5) * 0.1;
+                particle.position.y += (normalizedFreq - 0.5) * 0.1;
+                
+                // Wrap around screen
+                if (particle.position.x > 5) particle.position.x = -5;
+                if (particle.position.x < -5) particle.position.x = 5;
+                if (particle.position.y > 5) particle.position.y = -5;
+                if (particle.position.y < -5) particle.position.y = 5;
+                
+                // Emit particles on beat
+                if (isBeat && Math.random() < 0.3) {
+                    particle.material.opacity = 1;
+                    particle.scale.setScalar(1 + volume * 2);
+                } else {
+                    particle.material.opacity = Math.max(0.1, particle.material.opacity - 0.02);
+                    particle.scale.setScalar(Math.max(0.5, particle.scale.x - 0.01));
+                }
+                
+                // Color based on frequency
+                const hue = freqIndex / audioData.dataArray.length;
+                particle.material.color.setHSL(hue, 0.8, 0.5 + normalizedFreq * 0.3);
+            });
+        }
+        
+        function updateTunnelVisualization(audioData, volume) {
+            const tunnel = audioObjects.find(obj => obj.type === 'tunnel')?.object;
+            if (!tunnel) return;
+            
+            // Rotate tunnel
+            tunnel.rotation.y += 0.01 + volume * 0.05;
+            
+            // Update scale and color
+            const scale = 1 + volume * 0.3;
+            tunnel.scale.set(scale, scale, scale);
+            
+            const avgFreq = audioData.dataArray.reduce((a, b) => a + b) / audioData.dataArray.length;
+            const hue = avgFreq / 255;
+            tunnel.material.color.setHSL(hue, 0.8, 0.5);
+            tunnel.material.opacity = 0.3 + volume * 0.4;
+        }
+        
+        // ==========================================
+        // UI UPDATE FUNCTIONS
+        // ==========================================
+        function updateAudioStatus(status) {
+            document.getElementById('audio-status').textContent = status;
+        }
+        
+        function updateFrequencyDisplay(audioData) {
+            const freqDisplay = Array.from(audioData.dataArray.slice(0, 5))
+                .map(f => Math.round(f))
+                .join(', ');
+            document.getElementById('freq-data').textContent = `[${freqDisplay}]`;
+            
+            const volumePercent = Math.round(audioData.volume * 100);
+            document.getElementById('volume-level').textContent = `${volumePercent}%`;
+        }
+        
+        function triggerDemoBeat() {
+            lastBeatTime = Date.now() - 300;
+            beatCount++;
+            document.getElementById('bpm').textContent = '120';
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            updateAudioVisualization();
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==========================================
+        // RESIZE HANDLING
+        // ==========================================
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function init() {
+            console.log('🎵 Starting Audio Visualization Demo...');
+            
+            setupScene();
+            
+            // Setup volume control
+            document.getElementById('volume').addEventListener('input', function() {
+                if (audioElement) {
+                    audioElement.volume = this.value / 100;
+                }
+            });
+            
+            window.addEventListener('resize', handleResize);
+            animate();
+            
+            console.log('✅ Audio visualization demo initialized!');
+            console.log('💡 Start audio and try different visualization modes!');
+        }
+        
+        // Make functions globally available
+        window.startAudio = startAudio;
+        window.stopAudio = stopAudio;
+        window.setVisualMode = setVisualMode;
+        window.triggerDemoBeat = triggerDemoBeat;
+        
+        init();
+    </script>
+</body>
+</html>

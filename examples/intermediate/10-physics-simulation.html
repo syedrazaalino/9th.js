@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Simulation Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Physics Simulation Demo</strong><br>
+        Rigid body dynamics engine<br>
+        - Gravity simulation<br>
+        - Collision detection<br>
+        - Force application<br>
+        - Momentum conservation
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setPhysicsMode('gravity')" class="active">Gravity</button>
+            <button onclick="setPhysicsMode('collisions')">Collisions</button>
+            <button onclick="setPhysicsMode('forces')">Forces</button>
+            <button onclick="setPhysicsMode('explosion')">Explosion</button>
+        </div>
+        <div class="control-group">
+            <label>Gravity: <span id="gravity-val">9.8</span></label>
+            <input type="range" id="gravity-strength" min="0" max="20" step="0.1" value="9.8">
+        </div>
+        <div class="control-group">
+            <label>Restitution: <span id="restitution-val">0.6</span></label>
+            <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.6">
+        </div>
+        <div class="control-group">
+            <label>Air Resistance: <span id="air-val">0.1</span></label>
+            <input type="range" id="air-resistance" min="0" max="1" step="0.01" value="0.1">
+        </div>
+        <div class="control-group">
+            <button onclick="resetObjects()">Reset</button>
+            <button onclick="spawnRandomObject()">Add Object</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x2c3e50);
+        scene.fog = new THREE.Fog(0x2c3e50, 50, 200);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 15, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 5, 0);
+        controls.enableDamping = true;
+
+        // Physics Bodies
+        class PhysicsBody {
+            constructor(mesh, mass = 1) {
+                this.mesh = mesh;
+                this.mass = mass;
+                this.velocity = new THREE.Vector3(0, 0, 0);
+                this.acceleration = new THREE.Vector3(0, 0, 0);
+                this.restitution = 0.6;
+                this.airResistance = 0.1;
+                this.isStatic = false;
+                
+                this.boundingBox = new THREE.Box3();
+                this.updateBoundingBox();
+            }
+
+            update(dt) {
+                if (this.isStatic) return;
+
+                // Apply air resistance
+                this.velocity.multiplyScalar(1 - this.airResistance * dt);
+
+                // Update position
+                this.mesh.position.add(this.velocity.clone().multiplyScalar(dt));
+
+                // Update bounding box
+                this.updateBoundingBox();
+            }
+
+            applyForce(force) {
+                if (this.isStatic) return;
+                
+                const acceleration = force.clone().divideScalar(this.mass);
+                this.acceleration.add(acceleration);
+            }
+
+            applyImpulse(impulse) {
+                if (this.isStatic) return;
+                
+                const deltaVelocity = impulse.clone().divideScalar(this.mass);
+                this.velocity.add(deltaVelocity);
+            }
+
+            updateBoundingBox() {
+                this.boundingBox.setFromObject(this.mesh);
+            }
+
+            checkCollision(other) {
+                return this.boundingBox.intersectsBox(other.boundingBox);
+            }
+
+            resolveCollision(other, restitution = 0.6) {
+                if (this.isStatic && other.isStatic) return;
+
+                // Simple collision response
+                const relativeVelocity = this.velocity.clone().sub(other.velocity);
+                const normal = other.mesh.position.clone().sub(this.mesh.position).normalize();
+                
+                const speed = relativeVelocity.dot(normal);
+                if (speed > 0) return; // Objects moving apart
+
+                const totalMass = this.mass + other.mass;
+                const impulse = - (1 + restitution) * speed / totalMass;
+
+                if (!this.isStatic) {
+                    this.velocity.add(normal.clone().multiplyScalar(impulse * other.mass));
+                }
+                if (!other.isStatic) {
+                    other.velocity.sub(normal.clone().multiplyScalar(impulse * this.mass));
+                }
+            }
+        }
+
+        // Physics World
+        class PhysicsWorld {
+            constructor() {
+                this.bodies = [];
+                this.gravity = new THREE.Vector3(0, -9.8, 0);
+                this.bounds = {
+                    min: new THREE.Vector3(-30, -10, -30),
+                    max: new THREE.Vector3(30, 30, 30)
+                };
+            }
+
+            addBody(body) {
+                this.bodies.push(body);
+            }
+
+            removeBody(body) {
+                const index = this.bodies.indexOf(body);
+                if (index > -1) {
+                    this.bodies.splice(index, 1);
+                }
+            }
+
+            update(dt) {
+                // Apply gravity and update all bodies
+                this.bodies.forEach(body => {
+                    if (!body.isStatic) {
+                        body.applyForce(this.gravity.clone().multiplyScalar(body.mass));
+                        body.velocity.add(body.acceleration.clone().multiplyScalar(dt));
+                    }
+                    body.acceleration.set(0, 0, 0);
+                    body.update(dt);
+                });
+
+                // Check collisions
+                for (let i = 0; i < this.bodies.length; i++) {
+                    for (let j = i + 1; j < this.bodies.length; j++) {
+                        const bodyA = this.bodies[i];
+                        const bodyB = this.bodies[j];
+
+                        if (bodyA.checkCollision(bodyB)) {
+                            const restitution = Math.min(bodyA.restitution, bodyB.restitution);
+                            bodyA.resolveCollision(bodyB, restitution);
+                        }
+                    }
+                }
+
+                // Check bounds
+                this.bodies.forEach(body => {
+                    if (body.isStatic) return;
+
+                    const pos = body.mesh.position;
+                    const vel = body.velocity;
+
+                    // X bounds
+                    if (pos.x < this.bounds.min.x) {
+                        pos.x = this.bounds.min.x;
+                        vel.x = -vel.x * body.restitution;
+                    } else if (pos.x > this.bounds.max.x) {
+                        pos.x = this.bounds.max.x;
+                        vel.x = -vel.x * body.restitution;
+                    }
+
+                    // Y bounds
+                    if (pos.y < this.bounds.min.y) {
+                        pos.y = this.bounds.min.y;
+                        vel.y = -vel.y * body.restitution;
+                    } else if (pos.y > this.bounds.max.y) {
+                        pos.y = this.bounds.max.y;
+                        vel.y = -vel.y * body.restitution;
+                    }
+
+                    // Z bounds
+                    if (pos.z < this.bounds.min.z) {
+                        pos.z = this.bounds.min.z;
+                        vel.z = -vel.z * body.restitution;
+                    } else if (pos.z > this.bounds.max.z) {
+                        pos.z = this.bounds.max.z;
+                        vel.z = -vel.z * body.restitution;
+                    }
+                });
+            }
+
+            setGravity(gravity) {
+                this.gravity.copy(gravity);
+            }
+
+            createExplosion(center, force, radius = 10) {
+                this.bodies.forEach(body => {
+                    const distance = body.mesh.position.distanceTo(center);
+                    if (distance < radius && !body.isStatic) {
+                        const direction = body.mesh.position.clone().sub(center).normalize();
+                        const magnitude = force * (1 - distance / radius);
+                        body.applyImpulse(direction.multiplyScalar(magnitude * body.mass));
+                    }
+                });
+            }
+
+            reset() {
+                this.bodies.forEach(body => {
+                    body.velocity.set(0, 0, 0);
+                    body.acceleration.set(0, 0, 0);
+                });
+            }
+        }
+
+        // Create physics world
+        const physicsWorld = new PhysicsWorld();
+
+        // Create ground plane
+        const groundGeometry = new THREE.PlaneGeometry(60, 60);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x34495e });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -5;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Create walls
+        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x555555, transparent: true, opacity: 0.3 });
+        
+        const wallGeometry = new THREE.BoxGeometry(60, 20, 1);
+        const wall1 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall1.position.set(0, 5, -30);
+        const wall2 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall2.position.set(0, 5, 30);
+        const wall3 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall3.rotation.y = Math.PI / 2;
+        wall3.position.set(-30, 5, 0);
+        const wall4 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall4.rotation.y = Math.PI / 2;
+        wall4.position.set(30, 5, 0);
+
+        scene.add(wall1, wall2, wall3, wall4);
+
+        // Static bodies for walls
+        const wallBodies = [
+            new PhysicsBody(wall1, Infinity),
+            new PhysicsBody(wall2, Infinity),
+            new PhysicsBody(wall3, Infinity),
+            new PhysicsBody(wall4, Infinity)
+        ];
+        
+        wallBodies.forEach(body => {
+            body.isStatic = true;
+            physicsWorld.addBody(body);
+        });
+
+        // Create random objects
+        const geometries = [
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.SphereGeometry(0.5, 16, 16),
+            new THREE.CylinderGeometry(0.3, 0.3, 1, 16),
+            new THREE.TorusGeometry(0.4, 0.2, 8, 16)
+        ];
+
+        const materials = [
+            new THREE.MeshLambertMaterial({ color: 0xe74c3c }),
+            new THREE.MeshLambertMaterial({ color: 0x3498db }),
+            new THREE.MeshLambertMaterial({ color: 0x2ecc71 }),
+            new THREE.MeshLambertMaterial({ color: 0xf39c12 }),
+            new THREE.MeshLambertMaterial({ color: 0x9b59b6 })
+        ];
+
+        function createRandomObject() {
+            const geometry = geometries[Math.floor(Math.random() * geometries.length)];
+            const material = materials[Math.floor(Math.random() * materials.length)];
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(
+                (Math.random() - 0.5) * 40,
+                Math.random() * 20 + 10,
+                (Math.random() - 0.5) * 40
+            );
+            
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            const body = new PhysicsBody(mesh, Math.random() * 2 + 0.5);
+            body.restitution = Math.random() * 0.8 + 0.2;
+            body.airResistance = 0.05 + Math.random() * 0.15;
+            
+            // Random initial velocity
+            body.velocity.set(
+                (Math.random() - 0.5) * 10,
+                Math.random() * 5,
+                (Math.random() - 0.5) * 10
+            );
+            
+            physicsWorld.addBody(body);
+            return body;
+        }
+
+        // Initial objects
+        for (let i = 0; i < 20; i++) {
+            createRandomObject();
+        }
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(20, 30, 20);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 1;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -40;
+        directionalLight.shadow.camera.right = 40;
+        directionalLight.shadow.camera.top = 40;
+        directionalLight.shadow.camera.bottom = -40;
+        scene.add(directionalLight);
+
+        // Physics mode manager
+        class PhysicsModeManager {
+            constructor() {
+                this.currentMode = 'gravity';
+            }
+
+            setMode(mode) {
+                this.currentMode = mode;
+                
+                // Update button states
+                document.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+
+                // Apply mode-specific settings
+                switch(mode) {
+                    case 'gravity':
+                        physicsWorld.setGravity(new THREE.Vector3(0, -9.8, 0));
+                        break;
+                    case 'collisions':
+                        physicsWorld.setGravity(new THREE.Vector3(0, -5, 0));
+                        break;
+                    case 'forces':
+                        physicsWorld.setGravity(new THREE.Vector3(0, 0, 0));
+                        break;
+                    case 'explosion':
+                        physicsWorld.setGravity(new THREE.Vector3(0, -2, 0));
+                        break;
+                }
+            }
+
+            update() {
+                switch(this.currentMode) {
+                    case 'forces':
+                        // Apply periodic forces
+                        const time = performance.now() * 0.001;
+                        physicsWorld.bodies.forEach((body, index) => {
+                            if (!body.isStatic) {
+                                const force = new THREE.Vector3(
+                                    Math.sin(time + index) * 5,
+                                    Math.cos(time * 2 + index) * 3,
+                                    Math.sin(time * 0.5 + index) * 5
+                                );
+                                body.applyForce(force);
+                            }
+                        });
+                        break;
+                    
+                    case 'explosion':
+                        // Periodic explosions
+                        const explosionTime = performance.now() * 0.001;
+                        if (Math.sin(explosionTime) > 0.9) {
+                            const center = new THREE.Vector3(
+                                Math.sin(explosionTime * 0.5) * 15,
+                                5,
+                                Math.cos(explosionTime * 0.5) * 15
+                            );
+                            physicsWorld.createExplosion(center, 50, 15);
+                        }
+                        break;
+                }
+            }
+        }
+
+        const physicsModeManager = new PhysicsModeManager();
+
+        // Global functions
+        window.setPhysicsMode = (mode) => {
+            physicsModeManager.setMode(mode);
+        };
+
+        window.resetObjects = () => {
+            physicsWorld.reset();
+        };
+
+        window.spawnRandomObject = () => {
+            createRandomObject();
+        };
+
+        // Control bindings
+        const gravitySlider = document.getElementById('gravity-strength');
+        const gravityDisplay = document.getElementById('gravity-val');
+        gravitySlider.addEventListener('input', (e) => {
+            const gravity = parseFloat(e.target.value);
+            physicsWorld.setGravity(new THREE.Vector3(0, -gravity, 0));
+            gravityDisplay.textContent = gravity.toFixed(1);
+        });
+
+        const restitutionSlider = document.getElementById('restitution');
+        const restitutionDisplay = document.getElementById('restitution-val');
+        restitutionSlider.addEventListener('input', (e) => {
+            const restitution = parseFloat(e.target.value);
+            physicsWorld.bodies.forEach(body => {
+                if (!body.isStatic) {
+                    body.restitution = restitution;
+                }
+            });
+            restitutionDisplay.textContent = restitution.toFixed(1);
+        });
+
+        const airSlider = document.getElementById('air-resistance');
+        const airDisplay = document.getElementById('air-val');
+        airSlider.addEventListener('input', (e) => {
+            const airResistance = parseFloat(e.target.value);
+            physicsWorld.bodies.forEach(body => {
+                if (!body.isStatic) {
+                    body.airResistance = airResistance;
+                }
+            });
+            airDisplay.textContent = airResistance.toFixed(2);
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+        let accumulator = 0;
+        const fixedTimeStep = 1 / 60; // 60 FPS fixed step
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+            accumulator += deltaTime;
+
+            // Fixed timestep physics
+            while (accumulator >= fixedTimeStep) {
+                physicsModeManager.update();
+                physicsWorld.update(fixedTimeStep);
+                accumulator -= fixedTimeStep;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

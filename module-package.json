@@ -1,0 +1,139 @@
+{
+  "name": "9th.js-module",
+  "version": "0.1.0",
+  "description": "ESM-only 3D graphics library - optimized for modern bundlers",
+  "type": "module",
+  "main": "dist/module/esm/index.js",
+  "module": "dist/module/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/module/esm/index.js",
+      "types": "./dist/module/esm/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/module/esm/core/index.js",
+      "types": "./dist/module/esm/core/index.d.ts"
+    },
+    "./geometry": {
+      "import": "./dist/module/esm/geometry/index.js",
+      "types": "./dist/module/esm/geometry/index.d.ts"
+    },
+    "./materials": {
+      "import": "./dist/module/esm/materials/index.js",
+      "types": "./dist/module/esm/materials/index.d.ts"
+    },
+    "./rendering": {
+      "import": "./dist/module/esm/rendering/index.js",
+      "types": "./dist/module/esm/rendering/index.d.ts"
+    },
+    "./animation": {
+      "import": "./dist/module/esm/animation/index.js",
+      "types": "./dist/module/esm/animation/index.d.ts"
+    },
+    "./loaders": {
+      "import": "./dist/module/esm/loaders/index.js",
+      "types": "./dist/module/esm/loaders/index.d.ts"
+    },
+    "./lights": {
+      "import": "./dist/module/esm/lights/index.js",
+      "types": "./dist/module/esm/lights/index.d.ts"
+    },
+    "./particles": {
+      "import": "./dist/module/esm/particles/index.js",
+      "types": "./dist/module/esm/particles/index.d.ts"
+    },
+    "./physics": {
+      "import": "./dist/module/esm/physics/index.js",
+      "types": "./dist/module/esm/physics/index.d.ts"
+    },
+    "./controls": {
+      "import": "./dist/module/esm/controls/index.js",
+      "types": "./dist/module/esm/controls/index.d.ts"
+    },
+    "./textures": {
+      "import": "./dist/module/esm/textures/index.js",
+      "types": "./dist/module/esm/textures/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/module",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:module",
+    "build:module": "npm run build:esm && npm run build:esm:min && npm run build:types",
+    "build:esm": "rollup -c rollup.module.config.js --filter esmModule",
+    "build:esm:min": "rollup -c rollup.module.config.js --filter esmModuleMinified",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/module/esm --project tsconfig.module.json",
+    "dev": "rollup -c rollup.module.config.js -w",
+    "test": "jest --testPathPattern=module",
+    "validate": "npm run type-check && npm run lint && npm run test",
+    "prepublishOnly": "npm run validate && npm run build",
+    "clean": "rm -rf dist/module",
+    "release:patch": "npm version patch --channel module && npm publish --tag latest-module",
+    "release:minor": "npm version minor --channel module && npm publish --tag latest-module",
+    "release:major": "npm version major --channel module && npm publish --tag latest-module",
+    "size": "npm run build && npx vite-bundle-analyzer dist/module/**/*.js"
+  },
+  "keywords": [
+    "3d",
+    "graphics",
+    "module",
+    "esm",
+    "es2015",
+    "webgl",
+    "visualization",
+    "library",
+    "javascript",
+    "typescript",
+    "bundler",
+    "tree-shaking",
+    "modern"
+  ],
+  "author": {
+    "name": "9th.js Team",
+    "email": "team@9thjs.com",
+    "url": "https://github.com/9thjs"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/9th.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/9th.js/issues"
+  },
+  "homepage": "https://github.com/username/9th.js#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "tag": "latest-module"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "not dead",
+    "not op_mini all"
+  ],
+  "size-limit": [
+    {
+      "name": "Module ES Minified",
+      "path": "dist/module/esm/9th.esm.min.js",
+      "limit": "90 KB"
+    }
+  ]
+}

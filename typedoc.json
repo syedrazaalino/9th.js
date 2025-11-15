@@ -1,0 +1,78 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": false,
+  "includeVersion": true,
+  "readme": "docs/api/README.md",
+  "name": "9th.js API Documentation",
+  "navigationLinks": {
+    "Guide": "../guides/",
+    "Examples": "../examples/",
+    "API": "./index.html"
+  },
+  "sidebarLinks": {
+    "Core API": "./modules.html",
+    "Guides": {
+      "Getting Started": "../guides/getting-started.md",
+      "Core Concepts": "../guides/core-concepts.md",
+      "Rendering": "../guides/rendering.md",
+      "Animation": "../guides/animation.md",
+      "Materials": "../guides/materials.md",
+      "Lighting": "../guides/lighting.md",
+      "Geometry": "../guides/geometry.md"
+    },
+    "Examples": {
+      "Basic Demo": "../examples/basic.html",
+      "Advanced Demo": "../examples/advanced.html",
+      "Animation Demo": "../examples/animation-system-demo.html",
+      "Lighting Demo": "../examples/light-examples.js",
+      "Material Demo": "../examples/material-examples.js"
+    }
+  },
+  "search": true,
+  "cleanOutputDir": true,
+  "plugin": [],
+  "listInvalidSymbolLinks": true,
+  "categorizeByGroup": true,
+  "kindSortOrder": [
+    "Reference",
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "EnumMember",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Variable",
+    "Function",
+    "Accessor",
+    "Method",
+    "Parameter",
+    "TypeParameter",
+    "TypeLiteral",
+    "CallSignature",
+    "ConstructorSignature",
+    "IndexSignature",
+    "GetSignature",
+    "SetSignature"
+  ],
+  "suppressCommentWarningsInDeclarationFiles": false,
+  "validation": {
+    "invalidLink": true,
+    "notExported": true,
+    "notDocumented": true
+  },
+  "externalSymbollinkMappings": {},
+  "gitRevision": "",
+  "gitRemote": "origin",
+  "includes": "docs/includes",
+  "media": "docs/media",
+  "tsconfig": "tsconfig.json"
+}

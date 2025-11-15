@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVisualSync - Complete Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .main-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 280px;
+        }
+        
+        .main-controls h3 {
+            margin: 0 0 15px 0;
+            color: #4ECDC4;
+            text-align: center;
+        }
+        
+        .file-input {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(78, 205, 196, 0.3);
+            color: white;
+            border-radius: 8px;
+            width: 100%;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .file-input:hover {
+            border-color: rgba(78, 205, 196, 0.6);
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .play-button {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(45deg, #4ECDC4, #45B7D1);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+        
+        .play-button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .slider-group {
+            margin: 15px 0;
+        }
+        
+        .slider-label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #FFEAA7;
+        }
+        
+        .slider-value {
+            float: right;
+            color: #4ECDC4;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        
+        input[type="range"]::-webkit-slider-track {
+            background: rgba(255, 255, 255, 0.2);
+            height: 6px;
+            border-radius: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            background: #4ECDC4;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .audio-spectrum {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 2px;
+            height: 100px;
+            align-items: end;
+            z-index: 100;
+        }
+        
+        .spectrum-bar {
+            width: 8px;
+            background: linear-gradient(to top, #4ECDC4, #45B7D1, #FFEAA7);
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s ease;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+        
+        .metrics-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 280px;
+        }
+        
+        .metrics-panel h4 {
+            margin: 0 0 15px 0;
+            color: #FFEAA7;
+            text-align: center;
+        }
+        
+        .metric-row {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        
+        .metric-label {
+            min-width: 100px;
+            color: #ccc;
+        }
+        
+        .metric-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-left: 15px;
+            position: relative;
+        }
+        
+        .metric-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .bass-fill { background: linear-gradient(90deg, #FF6B6B, #FF8E8E); }
+        .mid-fill { background: linear-gradient(90deg, #4ECDC4, #6DD5CE); }
+        .treble-fill { background: linear-gradient(90deg, #45B7D1, #6DD5FA); }
+        .volume-fill { background: linear-gradient(90deg, #96CEB4, #A8E6CF); }
+        .beat-fill { background: linear-gradient(90deg, #FFEAA7, #FFF3C4); }
+        .centroid-fill { background: linear-gradient(90deg, #DDA0DD, #E6B3FF); }
+        
+        .beat-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #FFEAA7, #FF6B6B);
+            animation: beat-pulse 0.5s ease-in-out;
+            margin-left: 10px;
+        }
+        
+        @keyframes beat-pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 234, 167, 0.7); }
+            50% { transform: scale(1.5); box-shadow: 0 0 20px rgba(255, 234, 167, 0.7); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 234, 167, 0.7); }
+        }
+        
+        .loading {
+            text-align: center;
+            color: #4ECDC4;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="main-controls">
+        <h3>🎵 Complete Audio Visualizer</h3>
+        <input type="file" id="audioFile" class="file-input" accept="audio/*">
+        <div class="loading" id="loading" style="display: none;">Loading audio...</div>
+        
+        <div class="control-row">
+            <button id="playButton" class="play-button" disabled>▶️ Play</button>
+            <button id="pauseButton" class="play-button" disabled>⏸️ Pause</button>
+        </div>
+        
+        <div class="slider-group">
+            <label class="slider-label">
+                Volume
+                <span class="slider-value" id="volumeValue">0.5</span>
+            </label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
+        </div>
+        
+        <div class="slider-group">
+            <label class="slider-label">
+                Sensitivity
+                <span class="slider-value" id="sensitivityValue">1.0</span>
+            </label>
+            <input type="range" id="sensitivitySlider" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        
+        <div class="slider-group">
+            <label class="slider-label">
+                Beat Detection
+                <span class="slider-value" id="beatSensitivityValue">1.3</span>
+            </label>
+            <input type="range" id="beatSensitivitySlider" min="0.8" max="2.5" step="0.1" value="1.3">
+        </div>
+    </div>
+    
+    <div class="metrics-panel">
+        <h4>📊 Real-time Audio Analysis</h4>
+        
+        <div class="metric-row">
+            <span class="metric-label">Bass (20-250Hz):</span>
+            <div class="metric-bar">
+                <div class="metric-fill bass-fill" id="bassBar"></div>
+            </div>
+        </div>
+        
+        <div class="metric-row">
+            <span class="metric-label">Mid (250-4kHz):</span>
+            <div class="metric-bar">
+                <div class="metric-fill mid-fill" id="midBar"></div>
+            </div>
+        </div>
+        
+        <div class="metric-row">
+            <span class="metric-label">Treble (4kHz+):</span>
+            <div class="metric-bar">
+                <div class="metric-fill treble-fill" id="trebleBar"></div>
+            </div>
+        </div>
+        
+        <div class="metric-row">
+            <span class="metric-label">Overall Volume:</span>
+            <div class="metric-bar">
+                <div class="metric-fill volume-fill" id="volumeBar"></div>
+            </div>
+        </div>
+        
+        <div class="metric-row">
+            <span class="metric-label">Spectral Centroid:</span>
+            <div class="metric-bar">
+                <div class="metric-fill centroid-fill" id="centroidBar"></div>
+            </div>
+        </div>
+        
+        <div class="metric-row">
+            <span class="metric-label">Beat Detection:</span>
+            <div class="metric-bar">
+                <div class="metric-fill beat-fill" id="beatBar"></div>
+            </div>
+            <div class="beat-indicator" id="beatIndicator"></div>
+        </div>
+    </div>
+    
+    <div class="audio-spectrum" id="audioSpectrum"></div>
+
+    <script type="module">
+        import { AudioVisualSync, BeatReactive, AudioReactiveMaterial } from '../src/core/AudioVisualSync.js';
+        import { Scene } from '../src/core/Scene.js';
+        import { PerspectiveCamera } from '../src/cameras/PerspectiveCamera.js';
+        import { WebGLRenderer } from '../src/core/WebGLRenderer.js';
+        import { Mesh } from '../src/core/Mesh.js';
+        import { Shader } from '../src/core/Shader.js';
+        import { BoxGeometry } from '../src/geometry/BoxGeometry.js';
+        import { SphereGeometry } from '../src/geometry/SphereGeometry.js';
+        import { ParticleSystem } from '../src/particles/ParticleSystem.js';
+        import { PointLight } from '../src/lights/PointLight.js';
+        import { AmbientLight } from '../src/lights/AmbientLight.js';
+        import { DirectionalLight } from '../src/lights/DirectionalLight.js';
+
+        class CompleteAudioVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.audioSync = new AudioVisualSync();
+                this.scene = new Scene();
+                this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new WebGLRenderer(this.canvas);
+                
+                // Visual components
+                this.particleSystem = null;
+                this.mainObject = null;
+                this.floatingObjects = [];
+                this.lights = [];
+                
+                // Control variables
+                this.isPlaying = false;
+                this.lightSensitivity = 1.0;
+                this.beatSensitivity = 1.3;
+                
+                // Animation variables
+                this.time = 0;
+                this.cameraAngle = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                // Setup high-quality renderer
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000510, 1.0);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = this.renderer.PCFSoftShadowMap;
+                
+                // Setup camera
+                this.camera.position.set(0, 5, 15);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Create visual components
+                this.createParticleSystem();
+                this.createMainVisualization();
+                this.createFloatingObjects();
+                this.createAdvancedLighting();
+                this.createAudioSpectrum();
+                
+                // Register with audio sync
+                this.audioSync.registerVisualObject(this);
+                
+                // Setup controls
+                this.setupControls();
+                
+                // Start render loop
+                this.animate();
+            }
+            
+            createParticleSystem() {
+                this.particleSystem = new ParticleSystem();
+                this.particleSystem.particleCount = 1500;
+                this.particleSystem.emissionRate = 75;
+                this.particleSystem.maxLifetime = 8.0;
+                this.particleSystem.size = 0.08;
+                this.particleSystem.emitterPosition.set(0, 0, 0);
+                
+                // Create custom audio-reactive particle shader
+                const particleShader = new Shader(`
+                    attribute vec3 position;
+                    attribute vec4 color;
+                    attribute float size;
+                    attribute float alpha;
+                    
+                    uniform mat4 modelViewMatrix;
+                    uniform mat4 projectionMatrix;
+                    uniform float audioVolume;
+                    uniform float audioBeat;
+                    uniform float time;
+                    
+                    varying vec4 vColor;
+                    varying float vAlpha;
+                    varying float vBeat;
+                    
+                    void main() {
+                        vColor = color;
+                        vAlpha = alpha;
+                        vBeat = audioBeat;
+                        
+                        vec3 pos = position;
+                        // Audio-reactive displacement
+                        pos.x += sin(time * 2.0 + pos.y * 5.0) * audioVolume * 0.5;
+                        pos.z += cos(time * 2.0 + pos.x * 5.0) * audioVolume * 0.5;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = size * (300.0 / -mvPosition.z) * (1.0 + audioVolume * 3.0);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `, `
+                    precision mediump float;
+                    
+                    varying vec4 vColor;
+                    varying float vAlpha;
+                    varying float vBeat;
+                    
+                    void main() {
+                        vec2 center = gl_PointCoord - vec2(0.5);
+                        float distance = length(center);
+                        
+                        if (distance > 0.5) {
+                            discard;
+                        }
+                        
+                        float alpha = 1.0 - (distance * 2.0);
+                        vec4 finalColor = vColor;
+                        
+                        // Beat flash effect
+                        if (vBeat > 0.5) {
+                            finalColor.rgb += vec3(0.3, 0.3, 0.3);
+                        }
+                        
+                        gl_FragColor = vec4(finalColor.rgb, finalColor.a * alpha * vAlpha);
+                    }
+                `);
+                
+                // Set initial uniform values
+                particleShader.uniforms.audioVolume = { value: 0.0 };
+                particleShader.uniforms.audioBeat = { value: 0.0 };
+                particleShader.uniforms.time = { value: 0.0 };
+                
+                this.particleSystem.material = new AudioReactiveMaterial(particleShader);
+                this.scene.add(this.particleSystem);
+            }
+            
+            createMainVisualization() {
+                // Main central object with audio-reactive material
+                const mainGeometry = new SphereGeometry(2, 32, 16);
+                const mainShader = new Shader(`
+                    attribute vec3 position;
+                    attribute vec3 normal;
+                    attribute vec2 uv;
+                    
+                    uniform mat4 modelViewMatrix;
+                    uniform mat4 projectionMatrix;
+                    uniform mat3 normalMatrix;
+                    uniform float audioVolume;
+                    uniform float audioFrequency;
+                    uniform float audioBeat;
+                    uniform float time;
+                    
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying float vAudioVolume;
+                    varying float vAudioBeat;
+                    
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        vPosition = position;
+                        vAudioVolume = audioVolume;
+                        vAudioBeat = audioBeat;
+                        
+                        vec3 pos = position;
+                        
+                        // Audio-reactive deformation
+                        float displacement = sin(time * 3.0 + position.y * 10.0) * audioVolume * 0.5;
+                        displacement += sin(time * 5.0 + position.x * 8.0) * audioFrequency * 0.3;
+                        
+                        pos += normal * displacement;
+                        
+                        if (audioBeat > 0.5) {
+                            pos += normal * (1.0 + audioVolume);
+                        }
+                        
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `, `
+                    precision mediump float;
+                    
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying float vAudioVolume;
+                    varying float vAudioBeat;
+                    
+                    uniform vec3 cameraPosition;
+                    
+                    void main() {
+                        vec3 normal = normalize(vNormal);
+                        vec3 viewDir = normalize(cameraPosition - vPosition);
+                        
+                        // Audio-reactive colors
+                        vec3 color1 = vec3(0.2, 0.8, 1.0); // Cyan
+                        vec3 color2 = vec3(1.0, 0.2, 0.8); // Magenta
+                        vec3 color3 = vec3(1.0, 0.9, 0.2); // Yellow
+                        
+                        // Mix colors based on audio data
+                        vec3 finalColor = mix(color1, color2, vAudioVolume);
+                        finalColor = mix(finalColor, color3, vAudioFrequency);
+                        
+                        // Beat flash effect
+                        if (vAudioBeat > 0.5) {
+                            finalColor = vec3(1.0, 1.0, 1.0);
+                        }
+                        
+                        // Simple lighting
+                        float diffuse = max(dot(normal, viewDir), 0.0);
+                        vec3 lighting = finalColor * (0.3 + 0.7 * diffuse);
+                        
+                        gl_FragColor = vec4(lighting, 1.0);
+                    }
+                `);
+                
+                // Set initial uniform values
+                mainShader.uniforms.audioVolume = { value: 0.0 };
+                mainShader.uniforms.audioFrequency = { value: 0.0 };
+                mainShader.uniforms.audioBeat = { value: 0.0 };
+                mainShader.uniforms.time = { value: 0.0 };
+                
+                this.mainObject = new Mesh(mainGeometry, new AudioReactiveMaterial(mainShader));
+                this.scene.add(this.mainObject);
+            }
+            
+            createFloatingObjects() {
+                // Create multiple floating objects around the main visualization
+                const geometries = [
+                    new BoxGeometry(0.5, 0.5, 0.5),
+                    new BoxGeometry(0.3, 1.0, 0.3),
+                    new BoxGeometry(0.8, 0.2, 0.8)
+                ];
+                
+                const colors = [0xFF6B6B, 0x4ECDC4, 0x45B7D1, 0xFFEAA7, 0xDDA0DD];
+                
+                for (let i = 0; i < 12; i++) {
+                    const geometry = geometries[i % geometries.length];
+                    const material = new AudioReactiveMaterial();
+                    material.shader.uniforms = {
+                        ...material.shader.uniforms,
+                        audioVolume: { value: 0.0 },
+                        audioBeat: { value: 0.0 },
+                        time: { value: 0.0 }
+                    };
+                    
+                    const mesh = new Mesh(geometry, material);
+                    
+                    // Position objects in a spiral pattern
+                    const angle = (i / 12) * Math.PI * 2;
+                    const radius = 6 + Math.sin(i * 0.5) * 2;
+                    mesh.position.set(
+                        Math.cos(angle) * radius,
+                        Math.sin(i * 0.8) * 3,
+                        Math.sin(angle) * radius
+                    );
+                    
+                    mesh.userData = {
+                        baseAngle: angle,
+                        baseRadius: radius,
+                        rotationSpeed: 0.02 + (i * 0.005),
+                        color: colors[i % colors.length]
+                    };
+                    
+                    this.floatingObjects.push(mesh);
+                    this.scene.add(mesh);
+                }
+            }
+            
+            createAdvancedLighting() {
+                // Ambient light
+                const ambient = new AmbientLight(0x111122, 0.4);
+                this.scene.add(ambient);
+                
+                // Multiple point lights with different colors
+                const lightColors = [0xFF6B6B, 0x4ECDC4, 0x45B7D1, 0xFFEAA7];
+                const lightPositions = [
+                    { x: -8, y: 0, z: 5 },
+                    { x: 8, y: 0, z: 5 },
+                    { x: 0, y: 8, z: 5 },
+                    { x: 0, y: -8, z: 5 }
+                ];
+                
+                for (let i = 0; i < 4; i++) {
+                    const light = new PointLight(lightColors[i], 3, 30);
+                    light.position.set(lightPositions[i].x, lightPositions[i].y, lightPositions[i].z);
+                    light.castShadow = true;
+                    light.userData = { color: lightColors[i] };
+                    this.lights.push(light);
+                    this.scene.add(light);
+                }
+                
+                // Central beat-reactive light
+                const beatLight = new PointLight(0xFFFFFF, 10, 50);
+                beatLight.position.set(0, 0, 0);
+                this.lights.push(beatLight);
+                this.scene.add(beatLight);
+            }
+            
+            createAudioSpectrum() {
+                const spectrumContainer = document.getElementById('audioSpectrum');
+                for (let i = 0; i < 64; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'spectrum-bar';
+                    bar.style.height = '10px';
+                    spectrumContainer.appendChild(bar);
+                }
+            }
+            
+            setupControls() {
+                const audioFile = document.getElementById('audioFile');
+                const playButton = document.getElementById('playButton');
+                const pauseButton = document.getElementById('pauseButton');
+                const volumeSlider = document.getElementById('volumeSlider');
+                const sensitivitySlider = document.getElementById('sensitivitySlider');
+                const beatSensitivitySlider = document.getElementById('beatSensitivitySlider');
+                const loading = document.getElementById('loading');
+                
+                audioFile.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        loading.style.display = 'block';
+                        try {
+                            await this.audioSync.loadAudio(file);
+                            playButton.disabled = false;
+                            pauseButton.disabled = false;
+                            loading.style.display = 'none';
+                        } catch (error) {
+                            console.error('Failed to load audio:', error);
+                            alert('Failed to load audio file. Please try a different file.');
+                            loading.style.display = 'none';
+                        }
+                    }
+                });
+                
+                playButton.addEventListener('click', async () => {
+                    await this.audioSync.playAudio();
+                    this.isPlaying = true;
+                });
+                
+                pauseButton.addEventListener('click', () => {
+                    this.audioSync.stopAudio();
+                    this.isPlaying = false;
+                });
+                
+                volumeSlider.addEventListener('input', (e) => {
+                    const volume = parseFloat(e.target.value);
+                    this.audioSync.setVolume(volume);
+                    document.getElementById('volumeValue').textContent = volume.toFixed(2);
+                });
+                
+                sensitivitySlider.addEventListener('input', (e) => {
+                    this.lightSensitivity = parseFloat(e.target.value);
+                    document.getElementById('sensitivityValue').textContent = this.lightSensitivity.toFixed(1);
+                });
+                
+                beatSensitivitySlider.addEventListener('input', (e) => {
+                    this.beatSensitivity = parseFloat(e.target.value);
+                    this.audioSync.beatThreshold = this.beatSensitivity;
+                    document.getElementById('beatSensitivityValue').textContent = this.beatSensitivity.toFixed(1);
+                });
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            update(audioData, isBeat) {
+                this.time += 0.016; // ~60fps
+                
+                // Update particle system
+                if (this.particleSystem) {
+                    this.particleSystem.emissionRate = Math.floor(30 + audioData.volume * 150);
+                    this.particleSystem.size = 0.05 + (audioData.bass * 0.1);
+                    
+                    const particleMaterial = this.particleSystem.material;
+                    if (particleMaterial.shader.uniforms) {
+                        particleMaterial.shader.uniforms.audioVolume.value = audioData.volume;
+                        particleMaterial.shader.uniforms.audioBeat.value = isBeat ? 1.0 : 0.0;
+                        particleMaterial.shader.uniforms.time.value = this.time;
+                    }
+                }
+                
+                // Update main object
+                if (this.mainObject && this.mainObject.material.shader.uniforms) {
+                    this.mainObject.material.shader.uniforms.audioVolume.value = audioData.volume;
+                    this.mainObject.material.shader.uniforms.audioFrequency.value = audioData.spectralCentroid;
+                    this.mainObject.material.shader.uniforms.audioBeat.value = isBeat ? 1.0 : 0.0;
+                    this.mainObject.material.shader.uniforms.time.value = this.time;
+                    
+                    // Beat reaction
+                    if (isBeat) {
+                        this.mainObject.scale.setScalar(1.5 + audioData.volume);
+                    } else {
+                        this.mainObject.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+                    }
+                }
+                
+                // Update floating objects
+                this.floatingObjects.forEach((obj, index) => {
+                    const userData = obj.userData;
+                    
+                    // Orbit around center
+                    const orbitSpeed = 0.01 + (audioData.mid * 0.05);
+                    const newAngle = userData.baseAngle + (this.time * orbitSpeed);
+                    obj.position.x = Math.cos(newAngle) * userData.baseRadius;
+                    obj.position.z = Math.sin(newAngle) * userData.baseRadius;
+                    
+                    // Vertical movement with bass
+                    obj.position.y = Math.sin(this.time * 2 + index) * 2 + (audioData.bass * 3);
+                    
+                    // Rotation with treble
+                    obj.rotation.x += userData.rotationSpeed + (audioData.treble * 0.1);
+                    obj.rotation.y += userData.rotationSpeed * 1.5 + (audioData.mid * 0.08);
+                    
+                    // Scale with volume
+                    const baseScale = 1 + (index * 0.1);
+                    const volumeScale = baseScale + (audioData.volume * 0.5);
+                    obj.scale.setScalar(volumeScale);
+                    
+                    // Beat flash
+                    if (isBeat) {
+                        obj.material.opacity = 1.0;
+                    } else {
+                        obj.material.opacity = 0.7 + (audioData.volume * 0.3);
+                    }
+                    
+                    // Update shader uniforms
+                    if (obj.material.shader.uniforms) {
+                        obj.material.shader.uniforms.audioVolume.value = audioData.volume;
+                        obj.material.shader.uniforms.audioBeat.value = isBeat ? 1.0 : 0.0;
+                        obj.material.shader.uniforms.time.value = this.time;
+                    }
+                });
+                
+                // Update lights
+                this.lights.forEach((light, index) => {
+                    if (index < 4) {
+                        // Colored lights react to frequency bands
+                        const intensities = [audioData.bass, audioData.mid, audioData.treble, audioData.volume];
+                        light.intensity = intensities[index] * this.lightSensitivity * 5;
+                        
+                        // Light movement
+                        const lightRadius = 8 + (audioData.volume * 2);
+                        const lightSpeed = 0.02 + (intensities[index] * 0.1);
+                        const angle = this.time * lightSpeed + (index * Math.PI / 2);
+                        light.position.x = Math.cos(angle) * lightRadius;
+                        light.position.y = Math.sin(angle * 1.5) * lightRadius * 0.5;
+                    } else if (index === 4) {
+                        // Beat-reactive central light
+                        if (isBeat) {
+                            light.intensity = 15 + (audioData.volume * 20);
+                            light.color.setHSL(Math.random(), 1, 0.8);
+                        } else {
+                            light.intensity = Math.max(0, light.intensity - 1);
+                        }
+                    }
+                });
+                
+                // Camera movement
+                this.cameraAngle += 0.005 + (audioData.mid * 0.02);
+                this.camera.position.x = Math.cos(this.cameraAngle) * 15;
+                this.camera.position.z = Math.sin(this.cameraAngle) * 15;
+                this.camera.lookAt(0, 0, 0);
+                
+                // Update audio spectrum display
+                this.updateAudioSpectrum(audioData);
+                
+                // Update metrics display
+                this.updateMetrics(audioData, isBeat);
+            }
+            
+            updateAudioSpectrum(audioData) {
+                const spectrumBars = document.querySelectorAll('.spectrum-bar');
+                const frequencyData = audioData.frequencyData || [];
+                
+                spectrumBars.forEach((bar, index) => {
+                    const dataIndex = Math.floor((index / spectrumBars.length) * frequencyData.length);
+                    const value = frequencyData[dataIndex] || 0;
+                    const normalizedValue = value / 255;
+                    bar.style.height = (normalizedValue * 80 + 10) + 'px';
+                });
+            }
+            
+            updateMetrics(audioData, isBeat) {
+                document.getElementById('bassBar').style.width = (audioData.bass * 100) + '%';
+                document.getElementById('midBar').style.width = (audioData.mid * 100) + '%';
+                document.getElementById('trebleBar').style.width = (audioData.treble * 100) + '%';
+                document.getElementById('volumeBar').style.width = (audioData.volume * 100) + '%';
+                document.getElementById('centroidBar').style.width = (audioData.spectralCentroid * 100) + '%';
+                document.getElementById('beatBar').style.width = isBeat ? '100%' : '0%';
+                
+                // Beat indicator animation
+                const beatIndicator = document.getElementById('beatIndicator');
+                if (isBeat) {
+                    beatIndicator.style.animation = 'none';
+                    beatIndicator.offsetHeight; // Trigger reflow
+                    beatIndicator.style.animation = 'beat-pulse 0.5s ease-in-out';
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update audio analysis
+                this.audioSync.update();
+                
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Add BeatReactive mixin
+        Object.assign(CompleteAudioVisualizer.prototype, BeatReactive.prototype);
+        
+        // Start the application
+        window.addEventListener('load', () => {
+            new CompleteAudioVisualizer();
+        });
+    </script>
+</body>
+</html>

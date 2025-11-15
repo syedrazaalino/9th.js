@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Building - IoT Integration Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #smart-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 360px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #smart-panel h3 {
+            margin: 0 0 12px 0;
+            color: #00bcd4;
+            font-size: 18px;
+        }
+        
+        #smart-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .control-section {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 10px 0;
+            color: #03a9f4;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 6px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .iot-sensor {
+            display: inline-block;
+            margin: 3px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 70px;
+            font-size: 11px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .iot-sensor.climate { background-color: #2196f3; }
+        .iot-sensor.security { background-color: #f44336; }
+        .iot-sensor.energy { background-color: #ff9800; }
+        .iot-sensor.occupancy { background-color: #4caf50; }
+        .iot-sensor.fire { background-color: #ff5722; }
+        .iot-sensor.water { background-color: #00bcd4; }
+        .iot-sensor.network { background-color: #9c27b0; }
+        .iot-sensor.elevator { background-color: #607d8b; }
+        
+        .iot-sensor:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.2);
+        }
+        
+        .iot-sensor.active {
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .sensor-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+            padding: 5px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.warning {
+            background-color: #ff9800;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-indicator.error {
+            background-color: #f44336;
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .building-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .metric-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00bcd4;
+        }
+        
+        .metric-label {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 2px;
+        }
+        
+        .automation-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background-color: #4caf50;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(20px);
+        }
+        
+        .data-stream {
+            height: 100px;
+            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 10px;
+            color: #00ff00;
+        }
+        
+        .stream-message {
+            margin: 2px 0;
+            padding: 2px 4px;
+            border-left: 2px solid #00ff00;
+        }
+        
+        .stream-message.warning {
+            border-left-color: #ff9800;
+            color: #ff9800;
+        }
+        
+        .stream-message.error {
+            border-left-color: #f44336;
+            color: #f44336;
+        }
+        
+        .button {
+            background-color: #00bcd4;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #0097a7;
+            transform: translateY(-1px);
+        }
+        
+        .button.secondary {
+            background-color: #607d8b;
+        }
+        
+        .button.secondary:hover {
+            background-color: #455a64;
+        }
+        
+        .button.danger {
+            background-color: #f44336;
+        }
+        
+        .button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #iot-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 10;
+            min-width: 250px;
+        }
+        
+        #iot-panel h4 {
+            margin: 0 0 10px 0;
+            color: #00bcd4;
+        }
+        
+        .network-topology {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        
+        .node {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            animation: pulse 2s infinite;
+        }
+        
+        .node.warning {
+            background-color: #ff9800;
+        }
+        
+        .node.error {
+            background-color: #f44336;
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background-color: #00bcd4;
+            opacity: 0.6;
+            animation: flow 2s infinite;
+        }
+        
+        @keyframes flow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        #control-center {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 25px;
+            z-index: 10;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .control-item {
+            text-align: center;
+        }
+        
+        .control-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00bcd4;
+        }
+        
+        .control-label {
+            font-size: 11px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="smart-panel">
+        <h3>Smart Building IoT</h3>
+        <p>Building automation and monitoring</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Network Status: <span id="network-status">Online</span></p>
+        <p>Active Sensors: <span id="sensor-count">0</span></p>
+        
+        <div class="control-section">
+            <h4>IoT Sensor Network</h4>
+            <div class="iot-sensor climate active" data-sensor="climate">Climate</div>
+            <div class="iot-sensor security active" data-sensor="security">Security</div>
+            <div class="iot-sensor energy active" data-sensor="energy">Energy</div>
+            <div class="iot-sensor occupancy active" data-sensor="occupancy">Occupancy</div>
+            <div class="iot-sensor fire" data-sensor="fire">Fire Safety</div>
+            <div class="iot-sensor water" data-sensor="water">Water</div>
+            <div class="iot-sensor network" data-sensor="network">Network</div>
+            <div class="iot-sensor elevator" data-sensor="elevator">Elevator</div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Automation Systems</h4>
+            <div class="automation-toggle">
+                <span>HVAC Control</span>
+                <div class="toggle-switch active" onclick="toggleSystem('hvac')">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+            <div class="automation-toggle">
+                <span>Lighting</span>
+                <div class="toggle-switch active" onclick="toggleSystem('lighting')">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+            <div class="automation-toggle">
+                <span>Security</span>
+                <div class="toggle-switch active" onclick="toggleSystem('security')">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+            <div class="automation-toggle">
+                <span>Energy Mgmt</span>
+                <div class="toggle-switch active" onclick="toggleSystem('energy')">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="building-metrics">
+            <div class="metric-box">
+                <div class="metric-value" id="temp-reading">22.5°C</div>
+                <div class="metric-label">Temperature</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value" id="humidity-reading">45%</div>
+                <div class="metric-label">Humidity</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value" id="energy-usage">2.8 kW</div>
+                <div class="metric-label">Energy</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value" id="occupancy-count">127</div>
+                <div class="metric-label">Occupants</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Data Streams</h4>
+            <div class="data-stream" id="data-stream">
+                <!-- Data messages will appear here -->
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Control Center</h4>
+            <button class="button" onclick="runDiagnostics()">Diagnostics</button>
+            <button class="button" onclick="exportData()">Export Log</button>
+            <button class="button secondary" onclick="testSystems()">Test All</button>
+            <button class="button danger" onclick="emergencyShutdown()">Emergency</button>
+            <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                Real-time monitoring • Predictive maintenance • Energy optimization
+            </p>
+        </div>
+    </div>
+    
+    <div id="iot-panel">
+        <h4>Network Topology</h4>
+        <div class="network-topology" id="network-grid">
+            <!-- Network nodes will be generated here -->
+        </div>
+        
+        <div style="margin-top: 15px; font-size: 11px; color: #666;">
+            <div>System Status:</div>
+            <div class="sensor-status">
+                <div class="status-indicator active" id="climate-status"></div>
+                <span>Climate Control</span>
+                <span id="climate-data">22.5°C</span>
+            </div>
+            <div class="sensor-status">
+                <div class="status-indicator active" id="security-status"></div>
+                <span>Security System</span>
+                <span id="security-data">Secure</span>
+            </div>
+            <div class="sensor-status">
+                <div class="status-indicator warning" id="energy-status"></div>
+                <span>Energy Monitor</span>
+                <span id="energy-data">2.8 kW</span>
+            </div>
+            <div class="sensor-status">
+                <div class="status-indicator active" id="occupancy-status"></div>
+                <span>Occupancy</span>
+                <span id="occupancy-data">127 people</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="control-center">
+        <div class="control-item">
+            <div class="control-value" id="system-uptime">24d 18h</div>
+            <div class="control-label">Uptime</div>
+        </div>
+        <div class="control-item">
+            <div class="control-value" id="network-latency">2.3ms</div>
+            <div class="control-label">Network</div>
+        </div>
+        <div class="control-item">
+            <div class="control-value" id="data-throughput">1.2MB/s</div>
+            <div class="control-label">Throughput</div>
+        </div>
+        <div class="control-item">
+            <div class="control-value" id="alert-count">3</div>
+            <div class="control-label">Alerts</div>
+        </div>
+    </div>
+
+    <canvas id="smart-canvas"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            SphereGeometry,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor
+        } from '../../src/index.js';
+
+        class SmartBuilding {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#1a1a1a');
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(0, 20, 25);
+                this.camera.lookAt(0, 8, 0);
+                
+                this.activeSensors = new Set(['climate', 'security', 'energy', 'occupancy']);
+                this.automationSystems = {
+                    hvac: true,
+                    lighting: true,
+                    security: true,
+                    energy: true
+                };
+                
+                this.sensorData = {
+                    temperature: 22.5,
+                    humidity: 45,
+                    energyUsage: 2.8,
+                    occupancy: 127
+                };
+                
+                this.networkNodes = [];
+                this.dataStreams = [];
+                this.iotSensors = [];
+                this.alerts = [];
+                
+                this.systemUptime = 0;
+                this.networkLatency = 2.3;
+                this.dataThroughput = 1.2;
+                this.alertCount = 0;
+                
+                this.initializeLights();
+                this.createSmartBuilding();
+                this.createNetworkTopology();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting for smart building
+                this.ambientLight = new AmbientLight(0.3, '#ffffff');
+                this.scene.add(this.ambientLight);
+
+                // Smart building accent lighting
+                this.smartLight = new DirectionalLight(0.8, '#00bcd4');
+                this.smartLight.setDirection(-1, -2, -0.5);
+                this.scene.add(this.smartLight);
+
+                // System status indicators
+                this.statusLight1 = new PointLight(0.5, '#4caf50');
+                this.statusLight1.setPosition(-8, 15, 0);
+                this.scene.add(this.statusLight1);
+
+                this.statusLight2 = new PointLight(0.5, '#2196f3');
+                this.statusLight2.setPosition(0, 15, 0);
+                this.scene.add(this.statusLight2);
+
+                this.statusLight3 = new PointLight(0.5, '#ff9800');
+                this.statusLight3.setPosition(8, 15, 0);
+                this.scene.add(this.statusLight3);
+            }
+
+            createSmartBuilding() {
+                this.buildingParts = [];
+                
+                // Smart building foundation
+                this.createFoundation();
+                
+                // Multi-story structure
+                this.createFloors();
+                
+                // IoT sensor placement
+                this.placeIoTSensors();
+                
+                // Smart infrastructure
+                this.createSmartInfrastructure();
+                
+                // Network hubs
+                this.createNetworkHubs();
+            }
+
+            createFoundation() {
+                // Smart foundation with embedded sensors
+                const foundationGeometry = new BoxGeometry(16, 2, 12);
+                const foundationMaterial = new StandardMaterial({ 
+                    color: '#37474f',
+                    roughness: 0.7,
+                    metalness: 0.3,
+                    emissive: '#00bcd4',
+                    emissiveIntensity: 0.1
+                });
+                
+                const foundation = new Mesh(foundationGeometry);
+                foundation.material = foundationMaterial.clone();
+                foundation.setPosition(0, 1, 0);
+                
+                foundation.userData = {
+                    type: 'smartFoundation',
+                    sensors: ['vibration', 'moisture', 'structural'],
+                    status: 'optimal'
+                };
+                
+                this.buildingParts.push(foundation);
+                this.scene.add(foundation);
+            }
+
+            createFloors() {
+                const numFloors = 8;
+                const floorHeight = 3;
+                
+                for (let i = 0; i < numFloors; i++) {
+                    const floorY = 2 + i * floorHeight;
+                    
+                    // Floor structure
+                    const floorGeometry = new BoxGeometry(15, 0.3, 11);
+                    const floorMaterial = new StandardMaterial({ 
+                        color: '#546e7a',
+                        roughness: 0.8,
+                        metalness: 0.2
+                    });
+                    
+                    const floor = new Mesh(floorGeometry);
+                    floor.material = floorMaterial.clone();
+                    floor.setPosition(0, floorY, 0);
+                    
+                    floor.userData = {
+                        type: 'smartFloor',
+                        floor: i + 1,
+                        sensors: ['occupancy', 'temperature', 'air-quality']
+                    };
+                    
+                    this.buildingParts.push(floor);
+                    this.scene.add(floor);
+                    
+                    // Smart walls for this floor
+                    this.createSmartWalls(floorY, i + 1);
+                }
+            }
+
+            createSmartWalls(floorY, floorNumber) {
+                const wallHeight = 2.8;
+                const wallMaterial = new StandardMaterial({ 
+                    color: '#78909c',
+                    roughness: 0.6,
+                    metalness: 0.4,
+                    emissive: '#2196f3',
+                    emissiveIntensity: 0.05
+                });
+                
+                const walls = [
+                    { pos: [0, floorY + wallHeight/2, -5.5], rot: [0, 0, 0], name: 'front' },
+                    { pos: [0, floorY + wallHeight/2, 5.5], rot: [0, Math.PI, 0], name: 'back' },
+                    { pos: [-7.5, floorY + wallHeight/2, 0], rot: [0, Math.PI / 2, 0], name: 'left' },
+                    { pos: [7.5, floorY + wallHeight/2, 0], rot: [0, -Math.PI / 2, 0], name: 'right' }
+                ];
+                
+                walls.forEach(wall => {
+                    const wallGeometry = new BoxGeometry(15, wallHeight, 0.2);
+                    const wallMesh = new Mesh(wallGeometry);
+                    wallMesh.material = wallMaterial.clone();
+                    wallMesh.setPosition(...wall.pos);
+                    wallMesh.setRotation(...wall.rot);
+                    
+                    wallMesh.userData = {
+                        type: 'smartWall',
+                        floor: floorNumber,
+                        partName: wall.name,
+                        sensors: ['temperature', 'humidity', 'air-flow']
+                    };
+                    
+                    this.buildingParts.push(wallMesh);
+                    this.scene.add(wallMesh);
+                    
+                    // Add smart windows
+                    this.createSmartWindows(wall.pos, wall.rot, floorY, floorNumber);
+                });
+            }
+
+            createSmartWindows(position, rotation, floorY, floorNumber) {
+                // Smart glass windows with tint control
+                const windowConfigs = [
+                    { offset: [-6, floorY + 1.5, position[2] + (position[2] > 0 ? -0.11 : 0.11)] },
+                    { offset: [-2, floorY + 1.5, position[2] + (position[2] > 0 ? -0.11 : 0.11)] },
+                    { offset: [2, floorY + 1.5, position[2] + (position[2] > 0 ? -0.11 : 0.11)] },
+                    { offset: [6, floorY + 1.5, position[2] + (position[2] > 0 ? -0.11 : 0.11)] }
+                ];
+                
+                windowConfigs.forEach(config => {
+                    const windowGeometry = new BoxGeometry(1.8, 2.5, 0.05);
+                    const windowMaterial = new StandardMaterial({ 
+                        color: '#87ceeb',
+                        transparency: 0.7,
+                        opacity: 0.8,
+                        metalness: 0.8,
+                        emissive: '#00bcd4',
+                        emissiveIntensity: 0.1
+                    });
+                    
+                    const window = new Mesh(windowGeometry);
+                    window.material = windowMaterial.clone();
+                    window.setPosition(...config.offset);
+                    window.setRotation(...rotation);
+                    
+                    window.userData = {
+                        type: 'smartWindow',
+                        floor: floorNumber,
+                        tintLevel: Math.random() * 0.5 + 0.3,
+                        energyEfficiency: 0.85,
+                        sensors: ['light-level', 'occupancy', 'temperature']
+                    };
+                    
+                    this.buildingParts.push(window);
+                    this.scene.add(window);
+                });
+            }
+
+            placeIoTSensors() {
+                // Climate sensors
+                for (let floor = 1; floor <= 8; floor++) {
+                    const sensorPositions = [
+                        { x: -6, z: -4 }, { x: 0, z: -4 }, { x: 6, z: -4 },
+                        { x: -6, z: 0 }, { x: 6, z: 0 },
+                        { x: -6, z: 4 }, { x: 0, z: 4 }, { x: 6, z: 4 }
+                    ];
+                    
+                    sensorPositions.forEach((pos, index) => {
+                        this.createIoTSensor('climate', pos.x, floor * 3, pos.z, floor);
+                    });
+                }
+                
+                // Security sensors
+                const securityPositions = [
+                    { x: -7.5, y: 4, z: 0, type: 'camera' },
+                    { x: 7.5, y: 4, z: 0, type: 'camera' },
+                    { x: 0, y: 4, z: -5.5, type: 'motion' },
+                    { x: 0, y: 4, z: 5.5, type: 'motion' }
+                ];
+                
+                securityPositions.forEach(pos => {
+                    this.createIoTSensor('security', pos.x, pos.y, pos.z, 1, pos.type);
+                });
+                
+                // Energy sensors
+                this.createIoTSensor('energy', 0, 25, 0, 8, 'main-panel');
+                
+                // Water sensors
+                this.createIoTSensor('water', -8, 1, -8, 1, 'main-line');
+                this.createIoTSensor('water', 8, 1, 8, 1, 'main-line');
+                
+                // Fire safety sensors
+                for (let floor = 1; floor <= 8; floor++) {
+                    this.createIoTSensor('fire', 0, floor * 3 + 2.5, 0, floor, 'smoke-detector');
+                }
+                
+                // Elevator sensors
+                this.createIoTSensor('elevator', 6, 0, 0, 1, 'elevator-system');
+            }
+
+            createIoTSensor(type, x, y, z, floor, subtype = 'generic') {
+                const sensorGeometry = new SphereGeometry(0.15);
+                let sensorColor, emissiveColor;
+                
+                switch (type) {
+                    case 'climate':
+                        sensorColor = '#2196f3';
+                        emissiveColor = '#1976d2';
+                        break;
+                    case 'security':
+                        sensorColor = '#f44336';
+                        emissiveColor = '#d32f2f';
+                        break;
+                    case 'energy':
+                        sensorColor = '#ff9800';
+                        emissiveColor = '#f57c00';
+                        break;
+                    case 'occupancy':
+                        sensorColor = '#4caf50';
+                        emissiveColor = '#388e3c';
+                        break;
+                    case 'fire':
+                        sensorColor = '#ff5722';
+                        emissiveColor = '#d84315';
+                        break;
+                    case 'water':
+                        sensorColor = '#00bcd4';
+                        emissiveColor = '#0097a7';
+                        break;
+                    case 'network':
+                        sensorColor = '#9c27b0';
+                        emissiveColor = '#7b1fa2';
+                        break;
+                    case 'elevator':
+                        sensorColor = '#607d8b';
+                        emissiveColor = '#455a64';
+                        break;
+                    default:
+                        sensorColor = '#9e9e9e';
+                        emissiveColor = '#757575';
+                }
+                
+                const sensorMaterial = new StandardMaterial({ 
+                    color: sensorColor,
+                    emissive: emissiveColor,
+                    emissiveIntensity: 0.2
+                });
+                
+                const sensor = new Mesh(sensorGeometry);
+                sensor.material = sensorMaterial.clone();
+                sensor.setPosition(x, y, z);
+                
+                sensor.userData = {
+                    type: type,
+                    subtype: subtype,
+                    floor: floor,
+                    status: 'active',
+                    lastUpdate: Date.now(),
+                    data: this.generateSensorData(type)
+                };
+                
+                this.iotSensors.push(sensor);
+                this.scene.add(sensor);
+                
+                // Add sensor connectivity indicators
+                this.createSensorConnections(sensor);
+            }
+
+            generateSensorData(type) {
+                switch (type) {
+                    case 'climate':
+                        return {
+                            temperature: 20 + Math.random() * 8,
+                            humidity: 40 + Math.random() * 20,
+                            airQuality: 80 + Math.random() * 20
+                        };
+                    case 'security':
+                        return {
+                            status: 'secure',
+                            motionDetected: Math.random() > 0.9,
+                            accessAttempts: Math.floor(Math.random() * 3)
+                        };
+                    case 'energy':
+                        return {
+                            consumption: 2 + Math.random() * 3,
+                            generation: Math.random() * 2,
+                            efficiency: 85 + Math.random() * 10
+                        };
+                    case 'occupancy':
+                        return {
+                            count: Math.floor(Math.random() * 50) + 10,
+                            density: Math.random(),
+                            movement: Math.random() > 0.7
+                        };
+                    case 'fire':
+                        return {
+                            smoke: Math.random() > 0.95,
+                            temperature: 22 + Math.random() * 5,
+                            status: 'normal'
+                        };
+                    case 'water':
+                        return {
+                            pressure: 2 + Math.random() * 2,
+                            flow: Math.random() * 10,
+                            quality: 90 + Math.random() * 10
+                        };
+                    default:
+                        return { status: 'active' };
+                }
+            }
+
+            createSmartInfrastructure() {
+                // HVAC control units
+                for (let floor = 1; floor <= 8; floor++) {
+                    this.createHVACUnit(-8, floor * 3, 6, floor);
+                }
+                
+                // Smart lighting controls
+                this.createLightingControls();
+                
+                // Energy management systems
+                this.createEnergyManagement();
+            }
+
+            createHVACUnit(x, y, z, floor) {
+                const hvacGeometry = new BoxGeometry(1, 0.8, 1.5);
+                const hvacMaterial = new StandardMaterial({ 
+                    color: '#2196f3',
+                    roughness: 0.6,
+                    metalness: 0.4,
+                    emissive: '#1976d2',
+                    emissiveIntensity: 0.1
+                });
+                
+                const hvac = new Mesh(hvacGeometry);
+                hvac.material = hvacMaterial.clone();
+                hvac.setPosition(x, y, z);
+                
+                hvac.userData = {
+                    type: 'hvac-unit',
+                    floor: floor,
+                    status: 'active',
+                    efficiency: 0.92
+                };
+                
+                this.buildingParts.push(hvac);
+                this.scene.add(hvac);
+            }
+
+            createLightingControls() {
+                for (let floor = 1; floor <= 8; floor++) {
+                    for (let x = -6; x <= 6; x += 3) {
+                        for (let z = -4; z <= 4; z += 4) {
+                            this.createLightFixture(x, floor * 3 + 2.5, z, floor);
+                        }
+                    }
+                }
+            }
+
+            createLightFixture(x, y, z, floor) {
+                const fixtureGeometry = new CylinderGeometry(0.3, 0.3, 0.1);
+                const fixtureMaterial = new StandardMaterial({ 
+                    color: '#ffffff',
+                    emissive: '#ffffff',
+                    emissiveIntensity: 0.3
+                });
+                
+                const fixture = new Mesh(fixtureGeometry);
+                fixture.material = fixtureMaterial.clone();
+                fixture.setPosition(x, y, z);
+                
+                fixture.userData = {
+                    type: 'smart-light',
+                    floor: floor,
+                    brightness: Math.random() * 0.5 + 0.5,
+                    occupancyResponse: true
+                };
+                
+                this.buildingParts.push(fixture);
+                this.scene.add(fixture);
+            }
+
+            createEnergyManagement() {
+                // Main energy panel
+                const panelGeometry = new BoxGeometry(2, 1.5, 0.3);
+                const panelMaterial = new StandardMaterial({ 
+                    color: '#ff9800',
+                    roughness: 0.5,
+                    metalness: 0.8,
+                    emissive: '#f57c00',
+                    emissiveIntensity: 0.1
+                });
+                
+                const panel = new Mesh(panelGeometry);
+                panel.material = panelMaterial.clone();
+                panel.setPosition(-10, 15, 0);
+                
+                panel.userData = {
+                    type: 'energy-panel',
+                    status: 'active',
+                    totalLoad: 25.6,
+                    efficiency: 0.94
+                };
+                
+                this.buildingParts.push(panel);
+                this.scene.add(panel);
+            }
+
+            createNetworkHubs() {
+                const hubPositions = [
+                    { x: -8, y: 15, z: -8 },
+                    { x: 8, y: 15, z: -8 },
+                    { x: -8, y: 15, z: 8 },
+                    { x: 8, y: 15, z: 8 }
+                ];
+                
+                hubPositions.forEach((pos, index) => {
+                    this.createNetworkHub(pos.x, pos.y, pos.z, index + 1);
+                });
+            }
+
+            createNetworkHub(x, y, z, hubId) {
+                const hubGeometry = new BoxGeometry(1, 1, 1);
+                const hubMaterial = new StandardMaterial({ 
+                    color: '#9c27b0',
+                    roughness: 0.4,
+                    metalness: 0.6,
+                    emissive: '#7b1fa2',
+                    emissiveIntensity: 0.2
+                });
+                
+                const hub = new Mesh(hubGeometry);
+                hub.material = hubMaterial.clone();
+                hub.setPosition(x, y, z);
+                
+                hub.userData = {
+                    type: 'network-hub',
+                    hubId: hubId,
+                    status: 'active',
+                    throughput: 1000 // Mbps
+                };
+                
+                this.networkNodes.push(hub);
+                this.scene.add(hub);
+            }
+
+            createNetworkTopology() {
+                const networkGrid = document.getElementById('network-grid');
+                networkGrid.innerHTML = '';
+                
+                // Create 3x3 grid of network nodes
+                for (let i = 0; i < 9; i++) {
+                    const node = document.createElement('div');
+                    node.className = 'node';
+                    node.title = `Node ${i + 1}`;
+                    networkGrid.appendChild(node);
+                }
+            }
+
+            createSensorConnections(sensor) {
+                // Visual connection lines to network hubs
+                this.networkNodes.forEach(hub => {
+                    const connectionGeometry = new CylinderGeometry(0.02, 0.02, 
+                        Math.sqrt(Math.pow(sensor.position.x - hub.position.x, 2) + 
+                                 Math.pow(sensor.position.y - hub.position.y, 2) + 
+                                 Math.pow(sensor.position.z - hub.position.z, 2)));
+                    const connectionMaterial = new StandardMaterial({ 
+                        color: '#00bcd4',
+                        emissive: '#00bcd4',
+                        emissiveIntensity: 0.3
+                    });
+                    
+                    const connection = new Mesh(connectionGeometry);
+                    connection.material = connectionMaterial.clone();
+                    
+                    // Position and orient the connection
+                    const midX = (sensor.position.x + hub.position.x) / 2;
+                    const midY = (sensor.position.y + hub.position.y) / 2;
+                    const midZ = (sensor.position.z + hub.position.z) / 2;
+                    connection.setPosition(midX, midY, midZ);
+                    
+                    // Calculate rotation
+                    const dx = hub.position.x - sensor.position.x;
+                    const dy = hub.position.y - sensor.position.y;
+                    const dz = hub.position.z - sensor.position.z;
+                    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    connection.setRotation(Math.atan2(dz, dx), Math.acos(dy / length), 0);
+                    
+                    this.scene.add(connection);
+                });
+            }
+
+            updateSensorData() {
+                this.iotSensors.forEach(sensor => {
+                    // Simulate real-time data updates
+                    const data = this.generateSensorData(sensor.userData.type);
+                    sensor.userData.data = data;
+                    sensor.userData.lastUpdate = Date.now();
+                    
+                    // Update sensor color based on status
+                    if (sensor.material) {
+                        const intensity = 0.1 + Math.sin(Date.now() * 0.005) * 0.1;
+                        sensor.material.emissiveIntensity = intensity;
+                    }
+                });
+            }
+
+            generateDataStream() {
+                const messages = [
+                    { type: 'climate', msg: 'Temperature update: 22.5°C', level: 'normal' },
+                    { type: 'energy', msg: 'Energy consumption: 2.8 kW', level: 'normal' },
+                    { type: 'security', msg: 'All systems secure', level: 'normal' },
+                    { type: 'occupancy', msg: 'Floor 3: 23 occupants detected', level: 'normal' },
+                    { type: 'network', msg: 'Data transmission: 1.2 MB/s', level: 'normal' },
+                    { type: 'hvac', msg: 'HVAC efficiency: 92%', level: 'normal' },
+                    { type: 'fire', msg: 'Fire detection: All clear', level: 'normal' },
+                    { type: 'water', msg: 'Water pressure: Normal', level: 'normal' }
+                ];
+                
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                this.addDataMessage(randomMessage.msg, randomMessage.level);
+            }
+
+            addDataMessage(message, level = 'normal') {
+                const stream = document.getElementById('data-stream');
+                const messageElement = document.createElement('div');
+                messageElement.className = `stream-message ${level}`;
+                messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                stream.appendChild(messageElement);
+                stream.scrollTop = stream.scrollHeight;
+                
+                // Remove old messages if too many
+                while (stream.children.length > 50) {
+                    stream.removeChild(stream.firstChild);
+                }
+            }
+
+            updateBuildingMetrics() {
+                // Update real-time metrics
+                this.sensorData.temperature += (Math.random() - 0.5) * 0.5;
+                this.sensorData.humidity += (Math.random() - 0.5) * 2;
+                this.sensorData.energyUsage += (Math.random() - 0.5) * 0.2;
+                this.sensorData.occupancy += Math.floor((Math.random() - 0.5) * 10);
+                
+                // Clamp values to realistic ranges
+                this.sensorData.temperature = Math.max(18, Math.min(26, this.sensorData.temperature));
+                this.sensorData.humidity = Math.max(30, Math.min(70, this.sensorData.humidity));
+                this.sensorData.energyUsage = Math.max(1, Math.min(5, this.sensorData.energyUsage));
+                this.sensorData.occupancy = Math.max(50, Math.min(200, this.sensorData.occupancy));
+                
+                // Update UI
+                document.getElementById('temp-reading').textContent = this.sensorData.temperature.toFixed(1) + '°C';
+                document.getElementById('humidity-reading').textContent = Math.round(this.sensorData.humidity) + '%';
+                document.getElementById('energy-usage').textContent = this.sensorData.energyUsage.toFixed(1) + ' kW';
+                document.getElementById('occupancy-count').textContent = Math.round(this.sensorData.occupancy);
+                
+                // Update system status indicators
+                document.getElementById('climate-data').textContent = this.sensorData.temperature.toFixed(1) + '°C';
+                document.getElementById('security-data').textContent = 'Secure';
+                document.getElementById('energy-data').textContent = this.sensorData.energyUsage.toFixed(1) + ' kW';
+                document.getElementById('occupancy-data').textContent = Math.round(this.sensorData.occupancy) + ' people';
+            }
+
+            checkSystemAlerts() {
+                // Generate alerts based on sensor data
+                if (Math.random() < 0.05) { // 5% chance of alert
+                    const alerts = [
+                        'Temperature spike detected on Floor 5',
+                        'Unusual energy consumption on Floor 3',
+                        'Water leak detected in basement',
+                        'HVAC efficiency drop on Floor 7',
+                        'Network latency increase detected'
+                    ];
+                    
+                    const randomAlert = alerts[Math.floor(Math.random() * alerts.length)];
+                    this.addDataMessage(`ALERT: ${randomAlert}`, 'warning');
+                    this.alertCount++;
+                }
+                
+                document.getElementById('alert-count').textContent = this.alertCount;
+            }
+
+            setupEventListeners() {
+                // IoT sensor selection
+                document.querySelectorAll('.iot-sensor').forEach(sensor => {
+                    sensor.addEventListener('click', () => {
+                        const sensorType = sensor.dataset.sensor;
+                        
+                        if (this.activeSensors.has(sensorType)) {
+                            this.activeSensors.delete(sensorType);
+                            sensor.classList.remove('active');
+                        } else {
+                            this.activeSensors.add(sensorType);
+                            sensor.classList.add('active');
+                        }
+                        
+                        this.updateSensorVisibility();
+                    });
+                });
+
+                // System status updates
+                setInterval(() => {
+                    this.updateSensorData();
+                    this.generateDataStream();
+                    this.updateBuildingMetrics();
+                    this.checkSystemAlerts();
+                }, 2000);
+
+                // System metrics updates
+                setInterval(() => {
+                    this.systemUptime += 1;
+                    this.networkLatency = 1 + Math.random() * 3;
+                    this.dataThroughput = 0.8 + Math.random() * 0.8;
+                    
+                    document.getElementById('system-uptime').textContent = 
+                        Math.floor(this.systemUptime / 86400) + 'd ' + 
+                        Math.floor((this.systemUptime % 86400) / 3600) + 'h';
+                    document.getElementById('network-latency').textContent = this.networkLatency.toFixed(1) + 'ms';
+                    document.getElementById('data-throughput').textContent = this.dataThroughput.toFixed(1) + 'MB/s';
+                }, 5000);
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            updateSensorVisibility() {
+                this.iotSensors.forEach(sensor => {
+                    const visible = this.activeSensors.has(sensor.userData.type);
+                    sensor.visible = visible;
+                });
+                
+                document.getElementById('sensor-count').textContent = this.iotSensors.filter(s => s.visible).length;
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+                document.getElementById('network-status').textContent = 'Online';
+                document.getElementById('sensor-count').textContent = this.iotSensors.filter(s => s.visible).length;
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+                
+                // Animate IoT sensors with pulse effect
+                const time = performance.now() * 0.001;
+                this.iotSensors.forEach((sensor, index) => {
+                    if (sensor.visible) {
+                        const pulse = 1 + Math.sin(time * 3 + index) * 0.2;
+                        sensor.setScale(pulse, pulse, pulse);
+                    }
+                });
+                
+                // Animate network hubs
+                this.networkNodes.forEach((hub, index) => {
+                    hub.setRotation(time * 0.5 + index, time * 0.3, time * 0.2);
+                });
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateUI();
+            };
+        }
+
+        // Global functions for UI buttons
+        let smartDemo;
+
+        function toggleSystem(system) {
+            if (smartDemo) {
+                const toggle = event.target.closest('.toggle-switch');
+                smartDemo.automationSystems[system] = !smartDemo.automationSystems[system];
+                toggle.classList.toggle('active', smartDemo.automationSystems[system]);
+                
+                const status = smartDemo.automationSystems[system] ? 'enabled' : 'disabled';
+                smartDemo.addDataMessage(`${system.toUpperCase()} system ${status}`, 'normal');
+            }
+        }
+
+        function runDiagnostics() {
+            if (smartDemo) {
+                smartDemo.addDataMessage('Running system diagnostics...', 'normal');
+                setTimeout(() => {
+                    smartDemo.addDataMessage('All systems operational', 'normal');
+                    smartDemo.addDataMessage('Network latency: 2.3ms', 'normal');
+                    smartDemo.addDataMessage('Sensor accuracy: 99.8%', 'normal');
+                }, 2000);
+            }
+        }
+
+        function exportData() {
+            if (smartDemo) {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    sensors: smartDemo.iotSensors.map(sensor => ({
+                        type: sensor.userData.type,
+                        position: sensor.position,
+                        data: sensor.userData.data,
+                        status: sensor.userData.status
+                    })),
+                    metrics: smartDemo.sensorData,
+                    systems: smartDemo.automationSystems,
+                    uptime: smartDemo.systemUptime
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'smart-building-data.json';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function testSystems() {
+            if (smartDemo) {
+                smartDemo.addDataMessage('Initiating system test sequence...', 'normal');
+                const systems = ['HVAC', 'Lighting', 'Security', 'Energy', 'Network'];
+                
+                systems.forEach((system, index) => {
+                    setTimeout(() => {
+                        smartDemo.addDataMessage(`${system} system test: PASSED`, 'normal');
+                    }, (index + 1) * 1000);
+                });
+            }
+        }
+
+        function emergencyShutdown() {
+            if (smartDemo) {
+                smartDemo.addDataMessage('EMERGENCY SHUTDOWN INITIATED', 'error');
+                smartDemo.addDataMessage('All non-essential systems shutting down...', 'error');
+                
+                // Disable non-critical systems
+                Object.keys(smartDemo.automationSystems).forEach(system => {
+                    if (system !== 'security') {
+                        smartDemo.automationSystems[system] = false;
+                    }
+                });
+                
+                // Update UI toggles
+                document.querySelectorAll('.toggle-switch').forEach((toggle, index) => {
+                    const systemName = Object.keys(smartDemo.automationSystems)[index];
+                    if (systemName !== 'security') {
+                        toggle.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('smart-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                smartDemo = new SmartBuilding(canvas);
+                console.log('Smart building demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading smart building:', error);
+                document.getElementById('smart-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

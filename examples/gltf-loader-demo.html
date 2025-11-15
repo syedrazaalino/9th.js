@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLTFLoader Demo - 9th.js</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow: hidden;
+        }
+        
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+        
+        .control-group input, .control-group select, .control-group button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+        }
+        
+        .control-group button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .control-group button:hover {
+            transform: translateY(-1px);
+        }
+        
+        .info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+        
+        .info h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .info p {
+            font-size: 12px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .drop-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(102, 126, 234, 0.1);
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 150;
+        }
+        
+        .drop-zone.show {
+            display: flex;
+        }
+        
+        .drop-zone h2 {
+            font-size: 32px;
+            text-align: center;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 GLTFLoader Demo</h1>
+        <p>Comprehensive GLTF 2.0 loader with animations, materials, cameras, and lights support</p>
+    </div>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>Load GLTF/GLB File:</label>
+            <input type="file" id="fileInput" accept=".gltf,.glb" />
+        </div>
+        
+        <div class="control-group">
+            <label>Sample Models:</label>
+            <button onclick="loadSampleModel('robot')">🤖 Robot</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="loadSampleModel('character')">👤 Character</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="loadSampleModel('vehicle')">🚗 Vehicle</button>
+        </div>
+        
+        <div class="control-group">
+            <label>Material Controls:</label>
+            <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.5" onchange="updateMaterialProperty('roughness', this.value)" />
+            <small>Roughness: <span id="roughnessValue">0.5</span></small>
+        </div>
+        
+        <div class="control-group">
+            <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.5" onchange="updateMaterialProperty('metalness', this.value)" />
+            <small>Metalness: <span id="metalnessValue">0.5</span></small>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="toggleWireframe()">Toggle Wireframe</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="toggleAnimations()">Toggle Animations</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="resetCamera()">Reset Camera</button>
+        </div>
+    </div>
+    
+    <div class="info">
+        <h3>📋 Features</h3>
+        <p><strong>✓</strong> GLTF 2.0 JSON & GLB support</p>
+        <p><strong>✓</strong> PBR materials & textures</p>
+        <p><strong>✓</strong> Animation system</p>
+        <p><strong>✓</strong> Skinned meshes</p>
+        <p><strong>✓</strong> Cameras & lights</p>
+        <p><strong>✓</strong> Drag & drop loading</p>
+        <p><strong>✓</strong> Real-time material editing</p>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading GLTF model...</p>
+        <p id="progress">0%</p>
+    </div>
+    
+    <div class="drop-zone" id="dropZone">
+        <h2>📁 Drop GLTF/GLB File Here</h2>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <script type="module">
+        // Import required modules
+        import { GLTFLoader, GLTFAsset } from '../src/loaders/GLTFLoader.js';
+        import { Scene } from '../src/core/Scene.js';
+        import { WebGLRenderer } from '../src/core/WebGLRenderer.js';
+        import { PerspectiveCamera } from '../src/cameras/PerspectiveCamera.js';
+        import { DirectionalLight } from '../src/lights/DirectionalLight.js';
+        import { AmbientLight } from '../src/lights/AmbientLight.js';
+        import { AnimationMixer } from '../src/animation/AnimationMixer.js';
+        import { OrbitControls } from '../src/controls/OrbitControls.js';
+        
+        // Global variables
+        let canvas, gl, scene, camera, renderer, loader, mixer, controls;
+        let gltfAsset = null;
+        let models = [];
+        let animationEnabled = true;
+        
+        // Initialize the demo
+        init();
+        
+        function init() {
+            // Setup canvas
+            canvas = document.getElementById('canvas');
+            gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            
+            if (!gl) {
+                alert('WebGL not supported');
+                return;
+            }
+            
+            // Setup scene
+            scene = new Scene();
+            
+            // Setup camera
+            camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 5);
+            
+            // Setup renderer
+            renderer = new WebGLRenderer(canvas, gl);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio || 1);
+            renderer.shadowMap.enabled = true;
+            
+            // Setup lights
+            const ambientLight = new AmbientLight();
+            ambientLight.color = { r: 0.4, g: 0.4, b: 0.4 };
+            ambientLight.intensity = 0.6;
+            scene.add(ambientLight);
+            
+            const directionalLight = new DirectionalLight();
+            directionalLight.color = { r: 1, g: 1, b: 1 };
+            directionalLight.intensity = 1.0;
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Setup controls
+            controls = new OrbitControls(camera, canvas);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Setup loader
+            loader = new GLTFLoader();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Load default model
+            loadSampleModel('robot');
+            
+            // Start render loop
+            animate();
+            
+            // Setup drag and drop
+            setupDragAndDrop();
+        }
+        
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize);
+            
+            // File input
+            document.getElementById('fileInput').addEventListener('change', onFileSelected);
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', onKeyDown);
+            
+            // Update material control labels
+            document.getElementById('roughness').addEventListener('input', function() {
+                document.getElementById('roughnessValue').textContent = this.value;
+            });
+            
+            document.getElementById('metalness').addEventListener('input', function() {
+                document.getElementById('metalnessValue').textContent = this.value;
+            });
+        }
+        
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                canvas.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            // Highlight drop zone
+            ['dragenter', 'dragover'].forEach(eventName => {
+                canvas.addEventListener(eventName, highlight, false);
+                document.body.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                canvas.addEventListener(eventName, unhighlight, false);
+                document.body.addEventListener(eventName, unhighlight, false);
+            });
+            
+            // Handle drop
+            canvas.addEventListener('drop', handleDrop, false);
+            document.body.addEventListener('drop', handleDrop, false);
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            function highlight() {
+                dropZone.classList.add('show');
+            }
+            
+            function unhighlight() {
+                dropZone.classList.remove('show');
+            }
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                handleFiles(files);
+            }
+        }
+        
+        function onFileSelected(event) {
+            const file = event.target.files[0];
+            if (file && (file.name.toLowerCase().endsWith('.gltf') || file.name.toLowerCase().endsWith('.glb'))) {
+                const url = URL.createObjectURL(file);
+                loadModel(url);
+            }
+        }
+        
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'Space':
+                    toggleAnimations();
+                    break;
+                case 'KeyR':
+                    resetCamera();
+                    break;
+                case 'KeyL':
+                    toggleWireframe();
+                    break;
+            }
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function loadModel(url) {
+            showLoading(true);
+            
+            loader.load(url, 
+                (asset) => {
+                    onModelLoaded(asset, url);
+                    showLoading(false);
+                },
+                (progress) => {
+                    updateProgress(progress.loaded / progress.total * 100);
+                },
+                (error) => {
+                    console.error('Failed to load model:', error);
+                    showLoading(false);
+                    alert('Failed to load model. Please check the file format and try again.');
+                }
+            );
+        }
+        
+        function onModelLoaded(asset, url) {
+            // Clear previous models
+            models.forEach(model => scene.remove(model));
+            models = [];
+            
+            // Add new model
+            const model = asset.scene;
+            model.position.set(0, 0, 0);
+            models.push(model);
+            scene.add(model);
+            
+            // Store asset reference
+            gltfAsset = asset;
+            
+            // Setup animation mixer
+            if (asset.animations.length > 0) {
+                mixer = new AnimationMixer(model);
+                
+                // Play first animation
+                const action = mixer.clipAction(asset.animations[0]);
+                action.play();
+            }
+            
+            // Update info
+            updateInfo(asset);
+            
+            console.log('Model loaded:', {
+                nodes: asset.nodes.length,
+                meshes: asset.meshes.length,
+                materials: asset.materials.length,
+                animations: asset.animations.length,
+                cameras: asset.cameras.length,
+                lights: asset.lights.length
+            });
+        }
+        
+        function updateInfo(asset) {
+            const info = document.querySelector('.info');
+            info.innerHTML = `
+                <h3>📊 Model Info</h3>
+                <p><strong>Nodes:</strong> ${asset.nodes.length}</p>
+                <p><strong>Meshes:</strong> ${asset.meshes.length}</p>
+                <p><strong>Materials:</strong> ${asset.materials.length}</p>
+                <p><strong>Animations:</strong> ${asset.animations.length}</p>
+                <p><strong>Cameras:</strong> ${asset.cameras.length}</p>
+                <p><strong>Lights:</strong> ${asset.lights.length}</p>
+                ${asset.animations.length > 0 ? `<p><strong>Animation:</strong> ${asset.animations[0].name}</p>` : ''}
+            `;
+        }
+        
+        function updateProgress(percentage) {
+            document.getElementById('progress').textContent = `${percentage.toFixed(1)}%`;
+        }
+        
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            loading.classList.toggle('show', show);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update animations
+            if (mixer && animationEnabled) {
+                mixer.update(1/60); // Assuming 60 FPS
+            }
+            
+            // Update controls
+            controls.update();
+            
+            // Render
+            renderer.render(scene, camera);
+        }
+        
+        // Global functions for UI controls
+        window.loadSampleModel = function(type) {
+            const sampleUrls = {
+                robot: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/RobotExpressive/glTF-Binary/RobotExpressive.glb',
+                character: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Binary/CesiumMan.glb',
+                vehicle: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb'
+            };
+            
+            if (sampleUrls[type]) {
+                loadModel(sampleUrls[type]);
+            } else {
+                // Create a simple placeholder model
+                createPlaceholderModel();
+            }
+        };
+        
+        function createPlaceholderModel() {
+            // This would create a simple placeholder geometry
+            // since we can't load actual external models in this demo
+            console.log('Creating placeholder model...');
+            
+            // Create a simple cube as placeholder
+            const { BoxGeometry } = await import('../src/geometry/BoxGeometry.js');
+            const { MeshStandardMaterial } = await import('../src/materials/MeshStandardMaterial.js');
+            const { Mesh } = await import('../src/core/Mesh.js');
+            
+            const geometry = new BoxGeometry(1, 1, 1);
+            const material = new MeshStandardMaterial({
+                color: [0.8, 0.3, 0.3],
+                wireframe: true
+            });
+            
+            const placeholder = new Mesh(geometry, material);
+            placeholder.position.set(0, 0, 0);
+            models.push(placeholder);
+            scene.add(placeholder);
+            
+            // Update info
+            const info = document.querySelector('.info');
+            info.innerHTML = `
+                <h3>📊 Placeholder Model</h3>
+                <p>This is a placeholder cube.</p>
+                <p>Load a GLTF/GLB file to see the real loader in action.</p>
+            `;
+        }
+        
+        window.updateMaterialProperty = function(property, value) {
+            if (gltfAsset) {
+                gltfAsset.materials.forEach(material => {
+                    if (material[property] !== undefined) {
+                        material[property] = parseFloat(value);
+                    }
+                });
+            }
+        };
+        
+        window.toggleWireframe = function() {
+            if (gltfAsset) {
+                gltfAsset.materials.forEach(material => {
+                    material.wireframe = !material.wireframe;
+                });
+            }
+        };
+        
+        window.toggleAnimations = function() {
+            animationEnabled = !animationEnabled;
+            if (mixer) {
+                mixer.paused = !animationEnabled;
+            }
+        };
+        
+        window.resetCamera = function() {
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0, 0);
+            controls.reset();
+        };
+        
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.toLowerCase().endsWith('.gltf') || file.name.toLowerCase().endsWith('.glb')) {
+                    const url = URL.createObjectURL(file);
+                    loadModel(url);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

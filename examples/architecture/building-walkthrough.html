@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Walkthrough - Architecture Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #ui-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 320px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #ui-panel h3 {
+            margin: 0 0 10px 0;
+            color: #4fc3f7;
+            font-size: 18px;
+        }
+        
+        #ui-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #444;
+        }
+        
+        .control-group {
+            margin: 8px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 4px;
+        }
+        
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 4px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .button {
+            background-color: #4fc3f7;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #29b6f6;
+        }
+        
+        .button.active {
+            background-color: #ff9800;
+        }
+        
+        #measurement-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #floor-plan {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 150px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 2px solid #4fc3f7;
+            border-radius: 5px;
+            padding: 5px;
+            z-index: 10;
+        }
+        
+        #floor-plan h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 12px;
+        }
+        
+        #current-room {
+            color: #ff4444;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-panel">
+        <h3>Building Walkthrough</h3>
+        <p>Virtual building tour with CAD features</p>
+        <p>FPS: <span id="fps">0</span></p>
+        <p>Current Room: <span id="current-room">Lobby</span></p>
+        <p>Measurements: <span id="measurements">0 active</span></p>
+        
+        <div class="control-group">
+            <label>Tour Mode:</label>
+            <select id="tour-mode">
+                <option value="free">Free Navigation</option>
+                <option value="guided">Guided Tour</option>
+                <option value="measurement">Measurement Mode</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>View Mode:</label>
+            <select id="view-mode">
+                <option value="realistic">Realistic</option>
+                <option value="wireframe">Wireframe</option>
+                <option value="technical">Technical</option>
+            </select>
+        </div>
+        
+        <div id="controls">
+            <p><strong>Controls:</strong></p>
+            <button class="button" onclick="previousRoom()">← Previous</button>
+            <button class="button" onclick="nextRoom()">Next →</button>
+            <button class="button" onclick="toggleMeasurements()">Measure</button>
+            <button class="button" onclick="toggleGrid()">Grid</button>
+            <button class="button" onclick="resetView()">Reset</button>
+            <p style="margin-top: 10px; font-size: 11px; color: #aaa;">
+                WASD: Move • Mouse: Look • Click: Measure • R: Reset tour
+            </p>
+        </div>
+    </div>
+    
+    <div id="floor-plan">
+        <h4>Floor Plan - Level 1</h4>
+        <svg width="190" height="120" id="floorplan-svg">
+            <!-- Floor plan will be drawn here -->
+        </svg>
+    </div>
+
+    <canvas id="building-canvas"></canvas>
+    <canvas id="measurement-overlay"></canvas>
+
+    <script type="module">
+        import { 
+            Engine, 
+            Scene, 
+            Renderer, 
+            PerspectiveCamera, 
+            OrthographicCamera,
+            BoxGeometry, 
+            PlaneGeometry,
+            CylinderGeometry,
+            BasicMaterial, 
+            PhongMaterial,
+            StandardMaterial,
+            AmbientLight, 
+            DirectionalLight, 
+            PointLight,
+            Mesh,
+            Vec3,
+            MathUtils,
+            PerformanceMonitor,
+            Line3,
+            LineMaterial,
+            GridHelper
+        } from '../../src/index.js';
+
+        class BuildingWalkthrough {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.measurementCanvas = document.getElementById('measurement-overlay');
+                this.ctx = this.measurementCanvas.getContext('2d');
+                this.engine = new Engine(canvas, {
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+
+                this.scene = new Scene();
+                this.scene.setBackground('#87ceeb'); // Sky blue
+                
+                this.renderer = new Renderer(canvas);
+                this.performanceMonitor = new PerformanceMonitor();
+                this.camera = new PerspectiveCamera(75, 1, 0.1, 1000);
+                this.camera.setPosition(0, 1.7, 5);
+                this.camera.lookAt(0, 1.7, 0);
+                
+                this.isMeasurementMode = false;
+                this.showGrid = false;
+                this.tourMode = 'free';
+                this.viewMode = 'realistic';
+                this.measurements = [];
+                this.currentRoom = 0;
+                this.rooms = [
+                    { name: 'Lobby', position: new Vec3(0, 1.7, 5) },
+                    { name: 'Conference Room', position: new Vec3(-8, 1.7, 0) },
+                    { name: 'Office', position: new Vec3(8, 1.7, 0) },
+                    { name: 'Kitchen', position: new Vec3(0, 1.7, -8) },
+                    { name: 'Server Room', position: new Vec3(-8, 1.7, -8) }
+                ];
+                
+                this.isMouseDown = false;
+                this.lastMouseX = 0;
+                this.lastMouseY = 0;
+                
+                this.initializeLights();
+                this.createBuilding();
+                this.createFloorPlan();
+                this.setupEventListeners();
+                this.updateUI();
+                this.animate();
+            }
+
+            initializeLights() {
+                // Ambient lighting for overall illumination
+                const ambientLight = new AmbientLight(0.3, '#ffffff');
+                this.scene.add(ambientLight);
+
+                // Main directional light (sun)
+                const sunLight = new DirectionalLight(1.0, '#ffffff');
+                sunLight.setDirection(-1, -2, -1);
+                this.scene.add(sunLight);
+
+                // Interior lights for each room
+                const roomLights = [
+                    { pos: [0, 3, 5], color: '#ffeb3b' }, // Lobby
+                    { pos: [-8, 3, 0], color: '#ffffff' }, // Conference
+                    { pos: [8, 3, 0], color: '#ffffff' }, // Office
+                    { pos: [0, 3, -8], color: '#ff9800' }, // Kitchen
+                    { pos: [-8, 3, -8], color: '#4fc3f7' } // Server
+                ];
+
+                roomLights.forEach(light => {
+                    const pointLight = new PointLight(0.6, light.color);
+                    pointLight.setPosition(...light.pos);
+                    this.scene.add(pointLight);
+                });
+            }
+
+            createBuilding() {
+                // Building floor (concrete)
+                const floorGeometry = new PlaneGeometry(30, 30);
+                const floorMaterial = new StandardMaterial({ 
+                    color: '#8d8d8d',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const floor = new Mesh(floorGeometry);
+                floor.setPosition(0, 0, 0);
+                floor.setRotation(-Math.PI / 2, 0, 0);
+                this.scene.add(floor);
+
+                // Room configurations
+                const rooms = [
+                    // Lobby (entrance)
+                    { pos: [0, 1.5, 5], size: [6, 3, 4], color: '#f5f5f5', name: 'Lobby' },
+                    // Conference Room
+                    { pos: [-8, 1.5, 0], size: [4, 3, 6], color: '#e8f5e8', name: 'Conference' },
+                    // Office
+                    { pos: [8, 1.5, 0], size: [4, 3, 4], color: '#fff3e0', name: 'Office' },
+                    // Kitchen
+                    { pos: [0, 1.5, -8], size: [6, 3, 4], color: '#fff8e1', name: 'Kitchen' },
+                    // Server Room
+                    { pos: [-8, 1.5, -8], size: [4, 3, 4], color: '#e3f2fd', name: 'Server' }
+                ];
+
+                // Create walls and rooms
+                this.createWallsAndRooms(rooms);
+                
+                // Add doors
+                this.addDoors();
+                
+                // Add furniture and fixtures
+                this.addFurniture();
+                
+                // Add windows
+                this.addWindows();
+            }
+
+            createWallsAndRooms(roomConfigs) {
+                roomConfigs.forEach(room => {
+                    const [x, y, z] = room.pos;
+                    const [width, height, depth] = room.size;
+                    
+                    // Create walls
+                    const wallThickness = 0.2;
+                    
+                    // North wall
+                    this.createWall(x, y + height/2, z - depth/2, width, height, wallThickness, room.color);
+                    // South wall
+                    this.createWall(x, y + height/2, z + depth/2, width, height, wallThickness, room.color);
+                    // East wall
+                    this.createWall(x + width/2, y + height/2, z, wallThickness, height, depth, room.color);
+                    // West wall
+                    this.createWall(x - width/2, y + height/2, z, wallThickness, height, depth, room.color);
+                    
+                    // Room floor (carpet/tile)
+                    const roomFloorGeometry = new PlaneGeometry(width - 0.4, depth - 0.4);
+                    const roomFloorMaterial = new StandardMaterial({ 
+                        color: room.color,
+                        roughness: 0.9,
+                        metalness: 0.1
+                    });
+                    const roomFloor = new Mesh(roomFloorGeometry);
+                    roomFloor.setPosition(x, y + 0.01, z);
+                    roomFloor.setRotation(-Math.PI / 2, 0, 0);
+                    this.scene.add(roomFloor);
+                });
+            }
+
+            createWall(x, y, z, width, height, thickness, color) {
+                const wallGeometry = new BoxGeometry(width, height, thickness);
+                const wallMaterial = new StandardMaterial({ 
+                    color: color,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                const wall = new Mesh(wallGeometry);
+                wall.setPosition(x, y, z);
+                this.scene.add(wall);
+            }
+
+            addDoors() {
+                const doorConfigs = [
+                    { pos: [0, 1, 3.2], size: [1, 2, 0.1], rot: [0, 0, 0] }, // Lobby entrance
+                    { pos: [-5, 1, 0], size: [1, 2, 0.1], rot: [0, Math.PI/2, 0] }, // To conference
+                    { pos: [5, 1, 0], size: [1, 2, 0.1], rot: [0, Math.PI/2, 0] }, // To office
+                    { pos: [0, 1, -5.2], size: [1, 2, 0.1], rot: [0, Math.PI, 0] }, // To kitchen
+                    { pos: [-5, 1, -5.2], size: [1, 2, 0.1], rot: [0, Math.PI/2, 0] } // To server
+                ];
+
+                doorConfigs.forEach(door => {
+                    const doorGeometry = new BoxGeometry(...door.size);
+                    const doorMaterial = new StandardMaterial({ 
+                        color: '#8d451a',
+                        roughness: 0.7,
+                        metalness: 0.3
+                    });
+                    const doorMesh = new Mesh(doorGeometry);
+                    doorMesh.setPosition(...door.pos);
+                    doorMesh.setRotation(...door.rot);
+                    this.scene.add(doorMesh);
+                });
+            }
+
+            addFurniture() {
+                // Conference room table
+                const tableGeometry = new BoxGeometry(2, 0.1, 1);
+                const tableMaterial = new StandardMaterial({ color: '#8b4513' });
+                const table = new Mesh(tableGeometry);
+                table.setPosition(-8, 0.7, 0);
+                this.scene.add(table);
+
+                // Conference chairs
+                for (let i = 0; i < 6; i++) {
+                    const chairGeometry = new BoxGeometry(0.5, 0.8, 0.5);
+                    const chairMaterial = new StandardMaterial({ color: '#333333' });
+                    const chair = new Mesh(chairGeometry);
+                    const angle = (i * Math.PI * 2) / 6;
+                    chair.setPosition(-8 + Math.cos(angle) * 1.5, 0.4, 0 + Math.sin(angle) * 1.5);
+                    this.scene.add(chair);
+                }
+
+                // Office desk
+                const deskGeometry = new BoxGeometry(1.5, 0.1, 0.8);
+                const deskMaterial = new StandardMaterial({ color: '#a0522d' });
+                const desk = new Mesh(deskGeometry);
+                desk.setPosition(8, 0.7, 0);
+                this.scene.add(desk);
+
+                // Kitchen island
+                const islandGeometry = new BoxGeometry(2, 0.9, 1);
+                const islandMaterial = new StandardMaterial({ color: '#708090' });
+                const island = new Mesh(islandGeometry);
+                island.setPosition(0, 0.45, -8);
+                this.scene.add(island);
+
+                // Server racks
+                for (let i = 0; i < 3; i++) {
+                    const rackGeometry = new BoxGeometry(0.6, 2, 0.8);
+                    const rackMaterial = new StandardMaterial({ color: '#2c2c2c' });
+                    const rack = new Mesh(rackGeometry);
+                    rack.setPosition(-8 + i * 0.8, 1, -8);
+                    this.scene.add(rack);
+                }
+            }
+
+            addWindows() {
+                const windowConfigs = [
+                    { pos: [0, 2, 6.9], size: [3, 1.5, 0.05] }, // Lobby front
+                    { pos: [-10.1, 2, 0], size: [0.05, 1.5, 3] }, // Conference east
+                    { pos: [10.1, 2, 0], size: [0.05, 1.5, 3] }, // Office west
+                    { pos: [0, 2, -10.1], size: [3, 1.5, 0.05] } // Kitchen back
+                ];
+
+                windowConfigs.forEach(window => {
+                    const windowGeometry = new BoxGeometry(...window.size);
+                    const windowMaterial = new StandardMaterial({ 
+                        color: '#87ceeb',
+                        transparency: 0.3,
+                        opacity: 0.5
+                    });
+                    const windowMesh = new Mesh(windowGeometry);
+                    windowMesh.setPosition(...window.pos);
+                    this.scene.add(windowMesh);
+                });
+            }
+
+            createFloorPlan() {
+                const svg = document.getElementById('floorplan-svg');
+                svg.innerHTML = `
+                    <rect x="5" y="10" width="20" height="15" fill="#f5f5f5" stroke="#333" stroke-width="1"/>
+                    <rect x="30" y="15" width="15" height="20" fill="#e8f5e8" stroke="#333" stroke-width="1"/>
+                    <rect x="50" y="15" width="15" height="15" fill="#fff3e0" stroke="#333" stroke-width="1"/>
+                    <rect x="70" y="30" width="20" height="15" fill="#fff8e1" stroke="#333" stroke-width="1"/>
+                    <rect x="95" y="30" width="15" height="15" fill="#e3f2fd" stroke="#333" stroke-width="1"/>
+                    
+                    <!-- Doors -->
+                    <rect x="14" y="5" width="2" height="5" fill="#8d451a"/>
+                    <rect x="25" y="22" width="5" height="2" fill="#8d451a"/>
+                    <rect x="45" y="22" width="5" height="2" fill="#8d451a"/>
+                    <rect x="79" y="30" width="2" height="5" fill="#8d451a"/>
+                    <rect x="90" y="37" width="5" height="2" fill="#8d451a"/>
+                    
+                    <!-- Current room indicator -->
+                    <circle id="room-indicator" cx="15" cy="17" r="3" fill="#ff4444" stroke="#fff" stroke-width="2"/>
+                    
+                    <!-- Labels -->
+                    <text x="15" y="18" text-anchor="middle" font-size="8" font-weight="bold">L</text>
+                    <text x="37" y="25" text-anchor="middle" font-size="8">C</text>
+                    <text x="57" y="22" text-anchor="middle" font-size="8">O</text>
+                    <text x="80" y="37" text-anchor="middle" font-size="8">K</text>
+                    <text x="102" y="37" text-anchor="middle" font-size="8">S</text>
+                `;
+            }
+
+            setupEventListeners() {
+                // Mouse controls
+                this.canvas.addEventListener('mousedown', (event) => {
+                    this.isMouseDown = true;
+                    this.lastMouseX = event.clientX;
+                    this.lastMouseY = event.clientY;
+                });
+
+                this.canvas.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                });
+
+                this.canvas.addEventListener('mousemove', (event) => {
+                    if (!this.isMouseDown) return;
+
+                    const deltaX = event.clientX - this.lastMouseX;
+                    const deltaY = event.clientY - this.lastMouseY;
+
+                    const radius = Math.sqrt(
+                        this.camera.position.x ** 2 + 
+                        this.camera.position.y ** 2 + 
+                        this.camera.position.z ** 2
+                    );
+
+                    const angle = Math.atan2(this.camera.position.z, this.camera.position.x);
+                    const height = Math.atan2(this.camera.position.y, Math.sqrt(this.camera.position.x ** 2 + this.camera.position.z ** 2));
+
+                    const newAngle = angle - deltaX * 0.01;
+                    const newHeight = MathUtils.clamp(height - deltaY * 0.01, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
+
+                    this.camera.setPosition(
+                        radius * Math.cos(newAngle) * Math.cos(newHeight),
+                        radius * Math.sin(newHeight),
+                        radius * Math.sin(newAngle) * Math.cos(newHeight)
+                    );
+                    this.camera.lookAt(0, 1.7, 0);
+
+                    this.lastMouseX = event.clientX;
+                    this.lastMouseY = event.clientY;
+                });
+
+                // Keyboard controls
+                window.addEventListener('keydown', (event) => {
+                    switch (event.key.toLowerCase()) {
+                        case 'w':
+                            this.moveCamera(0, 0, -0.2);
+                            break;
+                        case 's':
+                            this.moveCamera(0, 0, 0.2);
+                            break;
+                        case 'a':
+                            this.moveCamera(-0.2, 0, 0);
+                            break;
+                        case 'd':
+                            this.moveCamera(0.2, 0, 0);
+                            break;
+                        case 'r':
+                            this.resetTour();
+                            break;
+                    }
+                });
+
+                // UI controls
+                document.getElementById('tour-mode').addEventListener('change', (e) => {
+                    this.tourMode = e.target.value;
+                });
+
+                document.getElementById('view-mode').addEventListener('change', (e) => {
+                    this.viewMode = e.target.value;
+                    this.updateViewMode();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+
+            moveCamera(x, y, z) {
+                const speed = 0.2;
+                const direction = new Vec3(x * speed, y * speed, z * speed);
+                this.camera.setPosition(
+                    this.camera.position.x + direction.x,
+                    this.camera.position.y + direction.y,
+                    this.camera.position.z + direction.z
+                );
+                this.camera.lookAt(0, 1.7, 0);
+            }
+
+            updateViewMode() {
+                // Toggle between realistic, wireframe, and technical views
+                const allMeshes = this.scene.getObjects();
+                allMeshes.forEach(mesh => {
+                    if (mesh.material) {
+                        switch (this.viewMode) {
+                            case 'wireframe':
+                                mesh.material.wireframe = true;
+                                break;
+                            case 'technical':
+                                mesh.material.color = '#cccccc';
+                                mesh.material.wireframe = false;
+                                break;
+                            default:
+                                mesh.material.wireframe = false;
+                        }
+                    }
+                });
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.measurementCanvas.width = window.innerWidth;
+                this.measurementCanvas.height = window.innerHeight;
+
+                this.camera.aspect = this.canvas.width / this.canvas.height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            updateUI() {
+                document.getElementById('fps').textContent = Math.round(this.performanceMonitor.fps).toString();
+                document.getElementById('current-room').textContent = this.rooms[this.currentRoom].name;
+                document.getElementById('measurements').textContent = `${this.measurements.length} active`;
+                
+                // Update floor plan indicator
+                const indicator = document.getElementById('room-indicator');
+                const positions = [
+                    { x: 15, y: 17 }, // Lobby
+                    { x: 37, y: 25 }, // Conference
+                    { x: 57, y: 22 }, // Office
+                    { x: 80, y: 37 }, // Kitchen
+                    { x: 102, y: 37 } // Server
+                ];
+                indicator.setAttribute('cx', positions[this.currentRoom].x);
+                indicator.setAttribute('cy', positions[this.currentRoom].y);
+            }
+
+            animate = () => {
+                requestAnimationFrame(this.animate);
+
+                this.performanceMonitor.update(performance.now());
+
+                this.renderer.render(this.scene, this.camera);
+                this.drawMeasurements();
+
+                this.updateUI();
+            };
+
+            drawMeasurements() {
+                this.ctx.clearRect(0, 0, this.measurementCanvas.width, this.measurementCanvas.height);
+                
+                if (this.measurements.length > 0) {
+                    this.ctx.strokeStyle = '#ff4444';
+                    this.ctx.fillStyle = '#ff4444';
+                    this.ctx.lineWidth = 2;
+                    
+                    this.measurements.forEach(measurement => {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(measurement.start.x, measurement.start.y);
+                        this.ctx.lineTo(measurement.end.x, measurement.end.y);
+                        this.ctx.stroke();
+                        
+                        // Draw measurement text
+                        const midX = (measurement.start.x + measurement.end.x) / 2;
+                        const midY = (measurement.start.y + measurement.end.y) / 2;
+                        this.ctx.fillText(`${measurement.distance.toFixed(2)}m`, midX, midY);
+                    });
+                }
+            }
+        }
+
+        // Global functions for UI buttons
+        let buildingDemo;
+
+        function nextRoom() {
+            if (buildingDemo) {
+                buildingDemo.currentRoom = (buildingDemo.currentRoom + 1) % buildingDemo.rooms.length;
+                const room = buildingDemo.rooms[buildingDemo.currentRoom];
+                buildingDemo.camera.setPosition(room.position.x, room.position.y, room.position.z);
+                buildingDemo.camera.lookAt(room.position.x, room.position.y, room.position.z - 1);
+            }
+        }
+
+        function previousRoom() {
+            if (buildingDemo) {
+                buildingDemo.currentRoom = (buildingDemo.currentRoom - 1 + buildingDemo.rooms.length) % buildingDemo.rooms.length;
+                const room = buildingDemo.rooms[buildingDemo.currentRoom];
+                buildingDemo.camera.setPosition(room.position.x, room.position.y, room.position.z);
+                buildingDemo.camera.lookAt(room.position.x, room.position.y, room.position.z - 1);
+            }
+        }
+
+        function toggleMeasurements() {
+            if (buildingDemo) {
+                buildingDemo.isMeasurementMode = !buildingDemo.isMeasurementMode;
+            }
+        }
+
+        function toggleGrid() {
+            if (buildingDemo) {
+                buildingDemo.showGrid = !buildingDemo.showGrid;
+                // Implementation for grid toggle
+            }
+        }
+
+        function resetView() {
+            if (buildingDemo) {
+                buildingDemo.camera.setPosition(0, 1.7, 5);
+                buildingDemo.camera.lookAt(0, 1.7, 0);
+                buildingDemo.currentRoom = 0;
+            }
+        }
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('building-canvas');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            try {
+                buildingDemo = new BuildingWalkthrough(canvas);
+                console.log('Building walkthrough demo loaded successfully');
+            } catch (error) {
+                console.error('Error loading building walkthrough:', error);
+                document.getElementById('ui-panel').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

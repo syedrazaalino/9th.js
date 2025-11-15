@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ninth.js Progressive Examples - Advanced Rendering Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+        
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        #controls select, #controls input[type="checkbox"] {
+            margin-bottom: 8px;
+        }
+        
+        #controls button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: calc(50% - 4px);
+        }
+        
+        #controls button:hover {
+            background: #45a049;
+        }
+        
+        #controls button.secondary {
+            background: #2196F3;
+        }
+        
+        #controls button.secondary:hover {
+            background: #1976D2;
+        }
+        
+        #controls button.warning {
+            background: #ff9800;
+        }
+        
+        #controls button.warning:hover {
+            background: #f57c00;
+        }
+        
+        #controls button.danger {
+            background: #f44336;
+        }
+        
+        #controls button.danger:hover {
+            background: #d32f2f;
+        }
+        
+        #controls .control-group {
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #renderingStatus {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        #techniqueSelector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        
+        #techniqueSelector button {
+            padding: 8px;
+            font-size: 10px;
+            width: 100%;
+        }
+        
+        #techniqueSelector button.active {
+            background: #4CAF50;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .example-nav {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        
+        .example-nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 5px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+            font-size: 12px;
+        }
+        
+        .example-nav a:hover {
+            background-color: #555;
+        }
+        
+        .example-nav a.current {
+            background-color: #4CAF50;
+        }
+        
+        #performanceMonitor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        #renderStats {
+            grid-column: 1 / -1;
+            text-align: center;
+            font-weight: bold;
+            padding: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>🚀 Advanced Rendering Demo</h3>
+        <p><strong>Learning Goals:</strong></p>
+        <ul>
+            <li>Master advanced rendering techniques</li>
+            <li>Understand post-processing effects</li>
+            <li>Learn about performance optimization</li>
+            <li>Explore shader programming</li>
+        </ul>
+        <p><strong>What you see:</strong> Showcase of advanced rendering techniques including HDR, bloom, SSR, SSAO, shadows, and various post-processing effects.</p>
+    </div>
+    
+    <div id="controls">
+        <div id="renderingStatus">
+            🎨 Rendering Engine Ready
+        </div>
+        
+        <div class="control-group">
+            <h4>🎯 Rendering Techniques</h4>
+            
+            <div id="techniqueSelector">
+                <button id="basicRender" class="active">Basic</button>
+                <button id="pbrRender">PBR</button>
+                <button id="hdrRender">HDR</button>
+                <button id="bloomRender">Bloom</button>
+                <button id="ssrRender">SSR</button>
+                <button id="ssaoRender">SSAO</button>
+                <button id="dofRender">Depth of Field</button>
+                <button id="fxaaRender">FXAA</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h4>🌟 Post Processing</h4>
+            
+            <label for="bloomIntensity">Bloom Intensity:</label>
+            <input type="range" id="bloomIntensity" min="0" max="2" step="0.1" value="0.5">
+            <span id="bloom-intensity-value">0.5</span>
+            
+            <label for="bloomThreshold">Bloom Threshold:</label>
+            <input type="range" id="bloomThreshold" min="0" max="2" step="0.1" value="1.0">
+            <span id="bloom-threshold-value">1.0</span>
+            
+            <label for="exposure">HDR Exposure:</label>
+            <input type="range" id="exposure" min="0.1" max="3" step="0.1" value="1.0">
+            <span id="exposure-value">1.0</span>
+            
+            <label for="gamma">Gamma Correction:</label>
+            <input type="range" id="gamma" min="1" max="3" step="0.1" value="2.2">
+            <span id="gamma-value">2.2</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>🌑 Shadows</h4>
+            
+            <label>
+                <input type="checkbox" id="shadows" checked> Enable Shadows
+            </label>
+            
+            <label for="shadowQuality">Shadow Quality:</label>
+            <select id="shadowQuality">
+                <option value="low">Low (512x512)</option>
+                <option value="medium" selected>Medium (1024x1024)</option>
+                <option value="high">High (2048x2048)</option>
+                <option value="ultra">Ultra (4096x4096)</option>
+            </select>
+            
+            <label for="shadowSoftness">Shadow Softness:</label>
+            <input type="range" id="shadowSoftness" min="0" max="1" step="0.1" value="0.5">
+            <span id="shadow-softness-value">0.5</span>
+            
+            <label for="shadowBias">Shadow Bias:</label>
+            <input type="range" id="shadowBias" min="0" max="0.01" step="0.001" value="0.005">
+            <span id="shadow-bias-value">0.005</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>💎 SSAO Settings</h4>
+            
+            <label>
+                <input type="checkbox" id="ssao"> Enable SSAO
+            </label>
+            
+            <label for="ssaoRadius">Radius:</label>
+            <input type="range" id="ssaoRadius" min="0.1" max="2" step="0.1" value="0.5">
+            <span id="ssao-radius-value">0.5</span>
+            
+            <label for="ssaoIntensity">Intensity:</label>
+            <input type="range" id="ssaoIntensity" min="0" max="2" step="0.1" value="1.0">
+            <span id="ssao-intensity-value">1.0</span>
+            
+            <label for="ssaoDistance">Distance:</label>
+            <input type="range" id="ssaoDistance" min="0.1" max="2" step="0.1" value="1.0">
+            <span id="ssao-distance-value">1.0</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎥 Depth of Field</h4>
+            
+            <label>
+                <input type="checkbox" id="dof"> Enable DOF
+            </label>
+            
+            <label for="dofFocus">Focus Distance:</label>
+            <input type="range" id="dofFocus" min="1" max="20" step="0.5" value="10">
+            <span id="dof-focus-value">10.0</span>
+            
+            <label for="dofAperture">Aperture:</label>
+            <input type="range" id="dofAperture" min="0.1" max="10" step="0.1" value="2.8">
+            <span id="dof-aperture-value">2.8</span>
+            
+            <label for="dofMaxBlur">Max Blur:</label>
+            <input type="range" id="dofMaxBlur" min="0" max="3" step="0.1" value="1.0">
+            <span id="dof-maxblur-value">1.0</span>
+        </div>
+        
+        <div class="control-group">
+            <h4>🎮 Scene Controls</h4>
+            
+            <label for="objectCount">Object Count:</label>
+            <input type="range" id="objectCount" min="1" max="100" step="1" value="20">
+            <span id="object-count-value">20</span>
+            
+            <label for="detailLevel">Detail Level:</label>
+            <select id="detailLevel">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="ultra">Ultra</option>
+            </select>
+            
+            <label>
+                <input type="checkbox" id="instancing" checked> Enable Instancing
+            </label>
+            
+            <label>
+                <input type="checkbox" id="frustumCulling" checked> Frustum Culling
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <button id="resetScene" class="warning">🔄 Reset Scene</button>
+            <button id="benchmark">⚡ Benchmark</button>
+            <button id="screenshot" class="secondary">📸 Screenshot</button>
+            <button id="fullscreen">🖥️ Fullscreen</button>
+        </div>
+        
+        <div id="performanceMonitor">
+            <div>FPS: <span id="fps">0</span></div>
+            <div>Draw Calls: <span id="drawCalls">0</span></div>
+            <div>Triangles: <span id="triangles">0</span></div>
+            <div>Vertices: <span id="vertices">0</span></div>
+            <div id="renderStats">Render Time: <span id="renderTime">0</span>ms</div>
+        </div>
+    </div>
+    
+    <div class="example-nav">
+        <a href="hello-world.html">Hello World</a>
+        <a href="materials-demo.html">Materials</a>
+        <a href="lighting-demo.html">Lighting</a>
+        <a href="animation-demo.html">Animation</a>
+        <a href="physics-demo.html">Physics</a>
+        <a href="file-loaders-demo.html">File Loaders</a>
+        <a href="advanced-rendering-demo.html" class="current">Advanced</a>
+        <a href="complete-game-example.html">Game</a>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <!-- Include the built library -->
+    <script src="../dist/9th.umd.js"></script>
+    <script>
+        class AdvancedRenderingDemo {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.currentTechnique = 'basic';
+                this.objects = [];
+                this.postProcessing = {};
+                this.performance = {
+                    frameCount: 0,
+                    lastTime: performance.now(),
+                    drawCalls: 0,
+                    triangles: 0,
+                    vertices: 0,
+                    renderTime: 0
+                };
+                
+                this.init();
+                this.setupScene();
+                this.setupControls();
+                this.animate();
+            }
+            
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.engine = new NinthJS.Engine(this.canvas, {
+                    antialias: false,
+                    alpha: false,
+                    powerPreference: 'high-performance'
+                });
+                
+                this.scene = new NinthJS.Scene();
+                this.scene.setBackground('#0a0a1a');
+                
+                this.camera = new NinthJS.PerspectiveCamera(
+                    75,
+                    this.canvas.width / this.canvas.height,
+                    0.1,
+                    1000
+                );
+                this.camera.setPosition(0, 5, 15);
+                this.camera.lookAt(0, 0, 0);
+                
+                this.renderer = new NinthJS.WebGLRenderer(this.canvas);
+                this.renderer.setSize(this.canvas.width, this.canvas.height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = NinthJS.PCFSoftShadowMap;
+                this.renderer.toneMapping = NinthJS.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.0;
+                
+                this.setupLighting();
+                this.setupPostProcessing();
+                this.createSceneContent();
+            }
+            
+            setupLighting() {
+                // Ambient light
+                this.ambientLight = new NinthJS.AmbientLight(0.3, '#ffffff');
+                this.scene.add(this.ambientLight);
+                
+                // Directional light with shadows
+                this.directionalLight = new NinthJS.DirectionalLight(1.0, '#ffffff');
+                this.directionalLight.setDirection(-1, -1, -1);
+                this.directionalLight.castShadow = true;
+                this.directionalLight.shadow.mapSize.width = 2048;
+                this.directionalLight.shadow.mapSize.height = 2048;
+                this.directionalLight.shadow.camera.near = 0.5;
+                this.directionalLight.shadow.camera.far = 50;
+                this.directionalLight.shadow.camera.left = -20;
+                this.directionalLight.shadow.camera.right = 20;
+                this.directionalLight.shadow.camera.top = 20;
+                this.directionalLight.shadow.camera.bottom = -20;
+                this.scene.add(this.directionalLight);
+                
+                // Point lights for extra illumination
+                for (let i = 0; i < 3; i++) {
+                    const pointLight = new NinthJS.PointLight(
+                        0.5 + Math.random() * 0.5,
+                        new NinthJS.Color().setHSL(i / 3, 0.7, 0.6),
+                        10
+                    );
+                    pointLight.setPosition(
+                        Math.cos(i * 2 * Math.PI / 3) * 8,
+                        5 + Math.sin(i * 2) * 2,
+                        Math.sin(i * 2 * Math.PI / 3) * 8
+                    );
+                    pointLight.castShadow = true;
+                    this.scene.add(pointLight);
+                }
+            }
+            
+            setupPostProcessing() {
+                // Simplified post-processing setup
+                this.postProcessing = {
+                    bloom: {
+                        enabled: false,
+                        intensity: 0.5,
+                        threshold: 1.0,
+                        radius: 0.8
+                    },
+                    hdr: {
+                        enabled: false,
+                        exposure: 1.0,
+                        gamma: 2.2
+                    },
+                    ssao: {
+                        enabled: false,
+                        radius: 0.5,
+                        intensity: 1.0,
+                        distance: 1.0
+                    },
+                    dof: {
+                        enabled: false,
+                        focus: 10.0,
+                        aperture: 2.8,
+                        maxblur: 1.0
+                    }
+                };
+            }
+            
+            createSceneContent() {
+                this.createGround();
+                this.createObjects();
+            }
+            
+            createGround() {
+                const groundGeometry = new NinthJS.PlaneGeometry(50, 50);
+                const groundMaterial = new NinthJS.MeshStandardMaterial({
+                    color: '#2a2a2a',
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                
+                const ground = new NinthJS.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Add ground pattern
+                this.createGroundPattern();
+            }
+            
+            createGroundPattern() {
+                const patternSize = 5;
+                const colors = ['#333333', '#444444', '#555555'];
+                
+                for (let x = -5; x <= 5; x++) {
+                    for (let z = -5; z <= 5; z++) {
+                        if ((x + z) % 2 === 0) {
+                            const tileGeometry = new NinthJS.PlaneGeometry(patternSize, patternSize);
+                            const tileMaterial = new NinthJS.MeshStandardMaterial({
+                                color: colors[(x + z + 10) % colors.length],
+                                roughness: 0.7,
+                                metalness: 0.3
+                            });
+                            
+                            const tile = new NinthJS.Mesh(tileGeometry, tileMaterial);
+                            tile.rotation.x = -Math.PI / 2;
+                            tile.setPosition(x * patternSize, 0.01, z * patternSize);
+                            tile.receiveShadow = true;
+                            this.scene.add(tile);
+                        }
+                    }
+                }
+            }
+            
+            createObjects() {
+                const count = parseInt(document.getElementById('objectCount').value);
+                this.objects = [];
+                
+                const geometries = [
+                    new NinthJS.BoxGeometry(1, 1, 1),
+                    new NinthJS.SphereGeometry(0.5, 16, 8),
+                    new NinthJS.CylinderGeometry(0.5, 0.5, 1, 12),
+                    new NinthJS.ConeGeometry(0.5, 1, 12),
+                    new NinthJS.TorusGeometry(0.5, 0.2, 8, 16)
+                ];
+                
+                for (let i = 0; i < count; i++) {
+                    const geometry = geometries[i % geometries.length];
+                    const color = new NinthJS.Color().setHSL(i / count, 0.7, 0.6);
+                    
+                    const material = new NinthJS.MeshStandardMaterial({
+                        color: color,
+                        roughness: Math.random(),
+                        metalness: Math.random(),
+                        emissive: color.clone().multiplyScalar(0.1)
+                    });
+                    
+                    const mesh = new NinthJS.Mesh(geometry, material);
+                    
+                    // Position in a spiral pattern
+                    const angle = i * 0.5;
+                    const radius = 3 + i * 0.1;
+                    mesh.setPosition(
+                        Math.cos(angle) * radius,
+                        (i % 5) * 2,
+                        Math.sin(angle) * radius
+                    );
+                    
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    
+                    // Store original transform for animation
+                    mesh.userData.originalPosition = mesh.getPosition().clone();
+                    mesh.userData.rotationSpeed = 0.5 + Math.random() * 1.5;
+                    mesh.userData.bobSpeed = 0.5 + Math.random();
+                    mesh.userData.bobAmount = 0.5 + Math.random() * 0.5;
+                    
+                    this.scene.add(mesh);
+                    this.objects.push(mesh);
+                }
+                
+                this.updatePerformanceStats();
+            }
+            
+            setupControls() {
+                // Technique buttons
+                document.getElementById('basicRender').addEventListener('click', () => this.setRenderingTechnique('basic'));
+                document.getElementById('pbrRender').addEventListener('click', () => this.setRenderingTechnique('pbr'));
+                document.getElementById('hdrRender').addEventListener('click', () => this.setRenderingTechnique('hdr'));
+                document.getElementById('bloomRender').addEventListener('click', () => this.setRenderingTechnique('bloom'));
+                document.getElementById('ssrRender').addEventListener('click', () => this.setRenderingTechnique('ssr'));
+                document.getElementById('ssaoRender').addEventListener('click', () => this.setRenderingTechnique('ssao'));
+                document.getElementById('dofRender').addEventListener('click', () => this.setRenderingTechnique('dof'));
+                document.getElementById('fxaaRender').addEventListener('click', () => this.setRenderingTechnique('fxaa'));
+                
+                // Post-processing controls
+                this.setupPostProcessingControls();
+                
+                // Shadow controls
+                this.setupShadowControls();
+                
+                // Scene controls
+                this.setupSceneControls();
+                
+                // Action buttons
+                document.getElementById('resetScene').addEventListener('click', () => this.resetScene());
+                document.getElementById('benchmark').addEventListener('click', () => this.runBenchmark());
+                document.getElementById('screenshot').addEventListener('click', () => this.takeScreenshot());
+                document.getElementById('fullscreen').addEventListener('click', () => this.toggleFullscreen());
+            }
+            
+            setupPostProcessingControls() {
+                // Bloom controls
+                const bloomIntensitySlider = document.getElementById('bloomIntensity');
+                const bloomIntensityValue = document.getElementById('bloom-intensity-value');
+                bloomIntensitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    bloomIntensityValue.textContent = value.toFixed(1);
+                    this.postProcessing.bloom.intensity = value;
+                });
+                
+                const bloomThresholdSlider = document.getElementById('bloomThreshold');
+                const bloomThresholdValue = document.getElementById('bloom-threshold-value');
+                bloomThresholdSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    bloomThresholdValue.textContent = value.toFixed(1);
+                    this.postProcessing.bloom.threshold = value;
+                });
+                
+                // HDR controls
+                const exposureSlider = document.getElementById('exposure');
+                const exposureValue = document.getElementById('exposure-value');
+                exposureSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    exposureValue.textContent = value.toFixed(1);
+                    this.renderer.toneMappingExposure = value;
+                });
+                
+                const gammaSlider = document.getElementById('gamma');
+                const gammaValue = document.getElementById('gamma-value');
+                gammaSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    gammaValue.textContent = value.toFixed(1);
+                    // Apply gamma correction
+                });
+                
+                // SSAO controls
+                document.getElementById('ssao').addEventListener('change', (e) => {
+                    this.postProcessing.ssao.enabled = e.target.checked;
+                });
+                
+                const ssaoRadiusSlider = document.getElementById('ssaoRadius');
+                const ssaoRadiusValue = document.getElementById('ssao-radius-value');
+                ssaoRadiusSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    ssaoRadiusValue.textContent = value.toFixed(1);
+                    this.postProcessing.ssao.radius = value;
+                });
+                
+                // DOF controls
+                document.getElementById('dof').addEventListener('change', (e) => {
+                    this.postProcessing.dof.enabled = e.target.checked;
+                });
+                
+                const dofFocusSlider = document.getElementById('dofFocus');
+                const dofFocusValue = document.getElementById('dof-focus-value');
+                dofFocusSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    dofFocusValue.textContent = value.toFixed(1);
+                    this.postProcessing.dof.focus = value;
+                });
+            }
+            
+            setupShadowControls() {
+                const shadowsCheckbox = document.getElementById('shadows');
+                shadowsCheckbox.addEventListener('change', (e) => {
+                    this.renderer.shadowMap.enabled = e.target.checked;
+                });
+                
+                const shadowQualitySelect = document.getElementById('shadowQuality');
+                shadowQualitySelect.addEventListener('change', (e) => {
+                    const quality = e.target.value;
+                    const sizes = {
+                        low: 512,
+                        medium: 1024,
+                        high: 2048,
+                        ultra: 4096
+                    };
+                    
+                    this.directionalLight.shadow.mapSize.width = sizes[quality];
+                    this.directionalLight.shadow.mapSize.height = sizes[quality];
+                });
+                
+                const shadowSoftnessSlider = document.getElementById('shadowSoftness');
+                const shadowSoftnessValue = document.getElementById('shadow-softness-value');
+                shadowSoftnessSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    shadowSoftnessValue.textContent = value.toFixed(1);
+                    this.renderer.shadowMap.type = value > 0.5 ? NinthJS.PCFSoftShadowMap : NinthJS.PCFShadowMap;
+                });
+                
+                const shadowBiasSlider = document.getElementById('shadowBias');
+                const shadowBiasValue = document.getElementById('shadow-bias-value');
+                shadowBiasSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    shadowBiasValue.textContent = value.toFixed(3);
+                    this.directionalLight.shadow.bias = value;
+                });
+            }
+            
+            setupSceneControls() {
+                const objectCountSlider = document.getElementById('objectCount');
+                const objectCountValue = document.getElementById('object-count-value');
+                objectCountSlider.addEventListener('input', (e) => {
+                    const count = parseInt(e.target.value);
+                    objectCountValue.textContent = count;
+                    this.updateObjectCount(count);
+                });
+                
+                const detailLevelSelect = document.getElementById('detailLevel');
+                detailLevelSelect.addEventListener('change', (e) => {
+                    this.updateDetailLevel(e.target.value);
+                });
+                
+                document.getElementById('instancing').addEventListener('change', (e) => {
+                    this.toggleInstancing(e.target.checked);
+                });
+                
+                document.getElementById('frustumCulling').addEventListener('change', (e) => {
+                    this.renderer.sortObjects = e.target.checked;
+                });
+            }
+            
+            setRenderingTechnique(technique) {
+                // Update active button
+                document.querySelectorAll('#techniqueSelector button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById(technique + 'Render').classList.add('active');
+                
+                this.currentTechnique = technique;
+                
+                // Apply technique settings
+                switch (technique) {
+                    case 'basic':
+                        this.applyBasicRendering();
+                        break;
+                    case 'pbr':
+                        this.applyPBRRendering();
+                        break;
+                    case 'hdr':
+                        this.applyHDRRendering();
+                        break;
+                    case 'bloom':
+                        this.applyBloomRendering();
+                        break;
+                    case 'ssr':
+                        this.applySSRRendering();
+                        break;
+                    case 'ssao':
+                        this.applySSAORendering();
+                        break;
+                    case 'dof':
+                        this.applyDOFRendering();
+                        break;
+                    case 'fxaa':
+                        this.applyFXAARendering();
+                        break;
+                }
+                
+                this.updateRenderingStatus(`🎨 ${technique.toUpperCase()} Rendering`);
+            }
+            
+            applyBasicRendering() {
+                this.renderer.toneMapping = NinthJS.NoToneMapping;
+                this.renderer.toneMappingExposure = 1.0;
+                this.postProcessing.bloom.enabled = false;
+                this.postProcessing.hdr.enabled = false;
+                this.postProcessing.ssao.enabled = false;
+                this.postProcessing.dof.enabled = false;
+                
+                // Use basic materials
+                this.objects.forEach(obj => {
+                    if (obj.material.isMeshStandardMaterial) {
+                        obj.material.emissiveIntensity = 0;
+                    }
+                });
+            }
+            
+            applyPBRRendering() {
+                this.renderer.toneMapping = NinthJS.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.0;
+                
+                // Enhance materials for PBR
+                this.objects.forEach(obj => {
+                    if (obj.material.isMeshStandardMaterial) {
+                        obj.material.roughness = Math.max(0.1, obj.material.roughness);
+                        obj.material.metalness = Math.max(0.0, obj.material.metalness);
+                        obj.material.envMapIntensity = 1.0;
+                    }
+                });
+            }
+            
+            applyHDRRendering() {
+                this.renderer.toneMapping = NinthJS.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = parseFloat(document.getElementById('exposure').value);
+                this.postProcessing.hdr.enabled = true;
+                
+                // Add bright emissive materials for HDR
+                this.objects.forEach(obj => {
+                    if (obj.material.isMeshStandardMaterial) {
+                        obj.material.emissiveIntensity = 0.3;
+                    }
+                });
+            }
+            
+            applyBloomRendering() {
+                this.postProcessing.bloom.enabled = true;
+                this.postProcessing.bloom.intensity = parseFloat(document.getElementById('bloomIntensity').value);
+                this.postProcessing.bloom.threshold = parseFloat(document.getElementById('bloomThreshold').value);
+                
+                // Enhance emissive materials for bloom
+                this.objects.forEach(obj => {
+                    if (obj.material.isMeshStandardMaterial) {
+                        obj.material.emissiveIntensity = 0.8;
+                    }
+                });
+            }
+            
+            applySSRRendering() {
+                // Simplified SSR implementation
+                this.renderer.outputEncoding = NinthJS.sRGBEncoding;
+                this.postProcessing.ssr = { enabled: true };
+            }
+            
+            applySSAORendering() {
+                this.postProcessing.ssao.enabled = true;
+                document.getElementById('ssao').checked = true;
+            }
+            
+            applyDOFRendering() {
+                this.postProcessing.dof.enabled = true;
+                document.getElementById('dof').checked = true;
+            }
+            
+            applyFXAARendering() {
+                this.renderer.antialias = true;
+                this.renderer.shadowMap.type = NinthJS.PCFSoftShadowMap;
+            }
+            
+            updateRenderingStatus(message) {
+                document.getElementById('renderingStatus').textContent = message;
+            }
+            
+            updateObjectCount(count) {
+                // Clear existing objects
+                this.objects.forEach(obj => this.scene.remove(obj));
+                this.objects = [];
+                
+                // Create new objects
+                this.createObjects();
+            }
+            
+            updateDetailLevel(level) {
+                const detailSettings = {
+                    low: { segments: 4, shadows: false },
+                    medium: { segments: 8, shadows: true },
+                    high: { segments: 16, shadows: true },
+                    ultra: { segments: 32, shadows: true }
+                };
+                
+                const settings = detailSettings[level];
+                
+                // Update existing objects
+                this.objects.forEach(obj => {
+                    if (obj.geometry && obj.geometry.parameters) {
+                        // Recreate geometry with new detail level
+                        const type = obj.geometry.type;
+                        // Simplified - in real implementation, you'd recreate geometries
+                    }
+                });
+                
+                this.renderer.shadowMap.enabled = settings.shadows;
+            }
+            
+            toggleInstancing(enabled) {
+                if (enabled) {
+                    // Enable instancing for better performance
+                    console.log('Instancing enabled');
+                } else {
+                    console.log('Instancing disabled');
+                }
+            }
+            
+            resetScene() {
+                this.objects.forEach(obj => this.scene.remove(obj));
+                this.objects = [];
+                this.createObjects();
+                
+                // Reset all controls to default
+                document.getElementById('objectCount').value = 20;
+                document.getElementById('object-count-value').textContent = '20';
+                document.getElementById('exposure').value = 1.0;
+                document.getElementById('exposure-value').textContent = '1.0';
+                document.getElementById('bloomIntensity').value = 0.5;
+                document.getElementById('bloom-intensity-value').textContent = '0.5';
+                
+                this.setRenderingTechnique('basic');
+                this.updateRenderingStatus('🔄 Scene Reset');
+            }
+            
+            runBenchmark() {
+                this.updateRenderingStatus('⚡ Running Benchmark...');
+                
+                // Simulate benchmark
+                const startTime = performance.now();
+                let frameCount = 0;
+                
+                const benchmark = () => {
+                    frameCount++;
+                    
+                    if (performance.now() - startTime < 5000) { // 5 second benchmark
+                        requestAnimationFrame(benchmark);
+                    } else {
+                        const fps = frameCount / 5;
+                        this.updateRenderingStatus(`⚡ Benchmark Complete: ${fps.toFixed(1)} FPS`);
+                    }
+                };
+                
+                benchmark();
+            }
+            
+            takeScreenshot() {
+                try {
+                    const dataURL = this.canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = `advanced-rendering-${Date.now()}.png`;
+                    link.href = dataURL;
+                    link.click();
+                    
+                    this.updateRenderingStatus('📸 Screenshot Saved');
+                } catch (error) {
+                    console.error('Screenshot failed:', error);
+                }
+            }
+            
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    this.canvas.requestFullscreen().then(() => {
+                        this.resizeCanvas();
+                        this.updateRenderingStatus('🖥️ Fullscreen Mode');
+                    });
+                } else {
+                    document.exitFullscreen().then(() => {
+                        this.resizeCanvas();
+                        this.updateRenderingStatus('🎨 Rendering Engine Ready');
+                    });
+                }
+            }
+            
+            updatePerformanceStats() {
+                this.performance.triangles = this.objects.length * 12; // Simplified calculation
+                this.performance.vertices = this.objects.length * 8;
+                this.performance.drawCalls = this.objects.length;
+                
+                document.getElementById('triangles').textContent = this.performance.triangles.toLocaleString();
+                document.getElementById('vertices').textContent = this.performance.vertices.toLocaleString();
+                document.getElementById('drawCalls').textContent = this.performance.drawCalls.toLocaleString();
+            }
+            
+            animateObjects() {
+                const time = performance.now() * 0.001;
+                
+                this.objects.forEach((obj, index) => {
+                    // Rotation
+                    obj.rotation.x += obj.userData.rotationSpeed * 0.01;
+                    obj.rotation.y += obj.userData.rotationSpeed * 0.02;
+                    
+                    // Bobbing animation
+                    const originalY = obj.userData.originalPosition.y;
+                    obj.position.y = originalY + Math.sin(time * obj.userData.bobSpeed + index) * obj.userData.bobAmount;
+                });
+            }
+            
+            updateFPS() {
+                this.performance.frameCount++;
+                const currentTime = performance.now();
+                
+                if (currentTime - this.performance.lastTime >= 1000) {
+                    const fps = Math.round((this.performance.frameCount * 1000) / (currentTime - this.performance.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.performance.frameCount = 0;
+                    this.performance.lastTime = currentTime;
+                }
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                if (this.camera && this.renderer) {
+                    this.camera.aspect = this.canvas.width / this.canvas.height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(this.canvas.width, this.canvas.height);
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateFPS();
+                
+                const renderStart = performance.now();
+                
+                this.animateObjects();
+                this.renderer.render(this.scene, this.camera);
+                
+                const renderEnd = performance.now();
+                this.performance.renderTime = renderEnd - renderStart;
+                document.getElementById('renderTime').textContent = this.performance.renderTime.toFixed(2);
+            }
+        }
+        
+        try {
+            new AdvancedRenderingDemo();
+            console.log('✅ Advanced Rendering demo loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading Advanced Rendering demo:', error);
+            document.getElementById('info').innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

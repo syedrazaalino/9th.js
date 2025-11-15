@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=devicewidth, initial-scale=1.0">
+    <title>Collision Detection Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            max-width: 250px;
+        }
+        .control-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; }
+        input[type="range"] { width: 100%; }
+        button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #666; }
+        button.active { background: #007acc; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <strong>Collision Detection Demo</strong><br>
+        Real-time collision detection system<br>
+        - Bounding box/ sphere<br>
+        - Spatial partitioning<br>
+        - Broad phase culling<br>
+        - Collision response
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <button onclick="setCollisionMode('aabb')" class="active">AABB</button>
+            <button onclick="setCollisionMode('sphere')">Sphere</button>
+            <button onclick="setCollisionMode('ray')">Raycast</button>
+            <button onclick="setCollisionMode('spatial')">Spatial Hash</button>
+        </div>
+        <div class="control-group">
+            <label>Object Count: <span id="count-val">50</span></label>
+            <input type="range" id="object-count" min="10" max="200" step="10" value="50">
+        </div>
+        <div class="control-group">
+            <label>Speed: <span id="speed-val">1.0</span></label>
+            <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <button onclick="resetObjects()">Reset</button>
+            <button onclick="spawnObjects()">Spawn</button>
+            <button onclick="toggleHelpers()">Helpers</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "../node_modules/three/build/three.module.js",
+            "three/addons/": "../node_modules/three/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.Fog(0x1a1a2e, 20, 100);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 15, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Collision Detection System
+        class CollisionDetectionSystem {
+            constructor() {
+                this.colliders = [];
+                this.collisionMode = 'aabb';
+                this.showHelpers = false;
+                this.raycaster = new THREE.Raycaster();
+                this.spatialGrid = new Map();
+                this.gridSize = 5;
+                this.speed = 1.0;
+
+                this.createObjects();
+            }
+
+            createObjects() {
+                this.clearObjects();
+                
+                const objectCount = 50;
+                const geometries = [
+                    new THREE.BoxGeometry(1, 1, 1),
+                    new THREE.SphereGeometry(0.5, 16, 16),
+                    new THREE.CylinderGeometry(0.5, 0.5, 2, 16),
+                    new THREE.TorusGeometry(0.7, 0.3, 8, 16)
+                ];
+
+                const materials = [
+                    new THREE.MeshLambertMaterial({ color: 0xe74c3c }),
+                    new THREE.MeshLambertMaterial({ color: 0x3498db }),
+                    new THREE.MeshLambertMaterial({ color: 0x2ecc71 }),
+                    new THREE.MeshLambertMaterial({ color: 0xf39c12 }),
+                    new THREE.MeshLambertMaterial({ color: 0x9b59b6 })
+                ];
+
+                for (let i = 0; i < objectCount; i++) {
+                    const geometry = geometries[Math.floor(Math.random() * geometries.length)];
+                    const material = materials[Math.floor(Math.random() * materials.length)].clone();
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 40,
+                        Math.random() * 20,
+                        (Math.random() - 0.5) * 40
+                    );
+                    
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    
+                    scene.add(mesh);
+
+                    const collider = {
+                        mesh: mesh,
+                        velocity: new THREE.Vector3(
+                            (Math.random() - 0.5) * 10,
+                            (Math.random() - 0.5) * 5,
+                            (Math.random() - 0.5) * 10
+                        ),
+                        aabb: new THREE.Box3(),
+                        boundingSphere: new THREE.Sphere(),
+                        colliding: false,
+                        collisionCount: 0
+                    };
+
+                    this.colliders.push(collider);
+                }
+            }
+
+            clearObjects() {
+                this.colliders.forEach(collider => {
+                    scene.remove(collider.mesh);
+                });
+                this.colliders = [];
+            }
+
+            setCollisionMode(mode) {
+                this.collisionMode = mode;
+            }
+
+            setObjectCount(count) {
+                this.createObjects();
+            }
+
+            setSpeed(speed) {
+                this.speed = speed;
+            }
+
+            toggleHelpers() {
+                this.showHelpers = !this.showHelpers;
+            }
+
+            update(deltaTime) {
+                const dt = deltaTime * this.speed;
+
+                // Update positions and bounds
+                this.colliders.forEach(collider => {
+                    collider.mesh.position.add(collider.velocity.clone().multiplyScalar(dt));
+
+                    // Boundary collision
+                    const pos = collider.mesh.position;
+                    const bounds = { min: new THREE.Vector3(-20, 0, -20), max: new THREE.Vector3(20, 30, 20) };
+
+                    if (pos.x < bounds.min.x || pos.x > bounds.max.x) {
+                        collider.velocity.x *= -1;
+                        pos.x = THREE.MathUtils.clamp(pos.x, bounds.min.x, bounds.max.x);
+                    }
+                    if (pos.y < bounds.min.y || pos.y > bounds.max.y) {
+                        collider.velocity.y *= -1;
+                        pos.y = THREE.MathUtils.clamp(pos.y, bounds.min.y, bounds.max.y);
+                    }
+                    if (pos.z < bounds.min.z || pos.z > bounds.max.z) {
+                        collider.velocity.z *= -1;
+                        pos.z = THREE.MathUtils.clamp(pos.z, bounds.min.z, bounds.max.z);
+                    }
+
+                    // Update collision bounds
+                    collider.mesh.updateMatrixWorld();
+                    collider.aabb.setFromObject(collider.mesh);
+                    collider.boundingSphere.setFromObject(collider.mesh);
+                });
+
+                // Perform collision detection based on mode
+                switch(this.collisionMode) {
+                    case 'aabb':
+                        this.checkAABBCollisions();
+                        break;
+                    case 'sphere':
+                        this.checkSphereCollisions();
+                        break;
+                    case 'ray':
+                        this.performRaycast();
+                        break;
+                    case 'spatial':
+                        this.checkSpatialCollisions();
+                        break;
+                }
+
+                // Visual feedback for collisions
+                this.colliders.forEach(collider => {
+                    if (collider.colliding) {
+                        collider.mesh.material.emissive.setHex(0xff0000);
+                        collider.mesh.material.emissiveIntensity = 0.5;
+                    } else {
+                        collider.mesh.material.emissive.setHex(0x000000);
+                        collider.mesh.material.emissiveIntensity = 0;
+                    }
+                    collider.colliding = false;
+                });
+            }
+
+            checkAABBCollisions() {
+                for (let i = 0; i < this.colliders.length; i++) {
+                    for (let j = i + 1; j < this.colliders.length; j++) {
+                        const a = this.colliders[i];
+                        const b = this.colliders[j];
+
+                        if (a.aabb.intersectsBox(b.aabb)) {
+                            a.colliding = true;
+                            b.colliding = true;
+                            a.collisionCount++;
+                            b.collisionCount++;
+                            this.resolveCollision(a, b);
+                        }
+                    }
+                }
+            }
+
+            checkSphereCollisions() {
+                for (let i = 0; i < this.colliders.length; i++) {
+                    for (let j = i + 1; j < this.colliders.length; j++) {
+                        const a = this.colliders[i];
+                        const b = this.colliders[j];
+
+                        const distance = a.mesh.position.distanceTo(b.mesh.position);
+                        if (distance < a.boundingSphere.radius + b.boundingSphere.radius) {
+                            a.colliding = true;
+                            b.colliding = true;
+                            a.collisionCount++;
+                            b.collisionCount++;
+                            this.resolveCollision(a, b);
+                        }
+                    }
+                }
+            }
+
+            performRaycast() {
+                // Ray from camera to mouse position would go here
+                // For demo, cast ray from center
+                const origin = new THREE.Vector3(0, 15, 0);
+                const direction = new THREE.Vector3(1, -1, 0).normalize();
+                
+                this.raycaster.set(origin, direction);
+                const intersects = this.raycaster.intersectObjects(this.colliders.map(c => c.mesh));
+
+                // Highlight intersected objects
+                intersects.forEach(intersection => {
+                    const collider = this.colliders.find(c => c.mesh === intersection.object);
+                    if (collider) {
+                        collider.colliding = true;
+                        collider.mesh.material.emissive.setHex(0x00ff00);
+                        collider.mesh.material.emissiveIntensity = 0.8;
+                    }
+                });
+            }
+
+            checkSpatialCollisions() {
+                // Spatial hash grid
+                this.spatialGrid.clear();
+                
+                // Insert objects into grid
+                this.colliders.forEach((collider, index) => {
+                    const pos = collider.mesh.position;
+                    const gridX = Math.floor(pos.x / this.gridSize);
+                    const gridZ = Math.floor(pos.z / this.gridSize);
+                    const key = `${gridX},${gridZ}`;
+                    
+                    if (!this.spatialGrid.has(key)) {
+                        this.spatialGrid.set(key, []);
+                    }
+                    this.spatialGrid.get(key).push(index);
+                });
+
+                // Check collisions only within neighboring cells
+                this.colliders.forEach((collider, i) => {
+                    const pos = collider.mesh.position;
+                    const gridX = Math.floor(pos.x / this.gridSize);
+                    const gridZ = Math.floor(pos.z / this.gridSize);
+
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dz = -1; dz <= 1; dz++) {
+                            const key = `${gridX + dx},${gridZ + dz}`;
+                            const cell = this.spatialGrid.get(key);
+                            
+                            if (cell) {
+                                cell.forEach(j => {
+                                    if (j > i) {
+                                        const other = this.colliders[j];
+                                        if (collider.aabb.intersectsBox(other.aabb)) {
+                                            collider.colliding = true;
+                                            other.colliding = true;
+                                            collider.collisionCount++;
+                                            other.collisionCount++;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+
+            resolveCollision(a, b) {
+                // Simple elastic collision resolution
+                const normal = b.mesh.position.clone().sub(a.mesh.position).normalize();
+                const relativeVelocity = a.velocity.clone().sub(b.velocity);
+                const velocityAlongNormal = relativeVelocity.dot(normal);
+
+                if (velocityAlongNormal > 0) return; // Moving apart
+
+                const restitution = 0.8;
+                const impulse = -(1 + restitution) * velocityAlongNormal / 2; // Equal mass
+
+                const impulseVector = normal.clone().multiplyScalar(impulse);
+                a.velocity.add(impulseVector);
+                b.velocity.sub(impulseVector);
+            }
+
+            createHelpers() {
+                // Remove existing helpers
+                this.helpers?.forEach(helper => scene.remove(helper));
+                
+                if (!this.showHelpers) {
+                    this.helpers = [];
+                    return;
+                }
+
+                this.helpers = [];
+
+                this.colliders.forEach(collider => {
+                    if (this.collisionMode === 'aabb') {
+                        const helper = new THREE.Box3Helper(collider.aabb, 0x00ff00);
+                        scene.add(helper);
+                        this.helpers.push(helper);
+                    } else if (this.collisionMode === 'sphere') {
+                        const geometry = new THREE.SphereGeometry(collider.boundingSphere.radius, 16, 8);
+                        const material = new THREE.MeshBasicMaterial({ 
+                            color: 0x00ff00, 
+                            wireframe: true, 
+                            transparent: true, 
+                            opacity: 0.3 
+                        });
+                        const helper = new THREE.Mesh(geometry, material);
+                        helper.position.copy(collider.mesh.position);
+                        scene.add(helper);
+                        this.helpers.push(helper);
+                    }
+                });
+            }
+
+            reset() {
+                this.createObjects();
+            }
+        }
+
+        // Create collision system
+        const collisionSystem = new CollisionDetectionSystem();
+
+        // Ground plane
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x34495e });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Wall boundaries
+        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x555555, transparent: true, opacity: 0.3 });
+        
+        const wallGeometry = new THREE.BoxGeometry(1, 30, 50);
+        const wall1 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall1.position.set(-20, 15, 0);
+        const wall2 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall2.position.set(20, 15, 0);
+        
+        const wall3 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall3.rotation.y = Math.PI / 2;
+        wall3.position.set(0, 15, -20);
+        const wall4 = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall4.rotation.y = Math.PI / 2;
+        wall4.position.set(0, 15, 20);
+
+        scene.add(wall1, wall2, wall3, wall4);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(20, 30, 20);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 1;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -30;
+        directionalLight.shadow.camera.right = 30;
+        directionalLight.shadow.camera.top = 30;
+        directionalLight.shadow.camera.bottom = -30;
+        scene.add(directionalLight);
+
+        // Global functions
+        window.setCollisionMode = (mode) => {
+            collisionSystem.setCollisionMode(mode);
+            collisionSystem.createHelpers();
+            
+            // Update button states
+            document.querySelectorAll('button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.resetObjects = () => {
+            collisionSystem.reset();
+        };
+
+        window.spawnObjects = () => {
+            collisionSystem.createObjects();
+        };
+
+        window.toggleHelpers = () => {
+            collisionSystem.toggleHelpers();
+            collisionSystem.createHelpers();
+        };
+
+        // Control bindings
+        const countSlider = document.getElementById('object-count');
+        const countDisplay = document.getElementById('count-val');
+        countSlider.addEventListener('input', (e) => {
+            const count = parseInt(e.target.value);
+            collisionSystem.setObjectCount(count);
+            countDisplay.textContent = count;
+        });
+
+        const speedSlider = document.getElementById('speed');
+        const speedDisplay = document.getElementById('speed-val');
+        speedSlider.addEventListener('input', (e) => {
+            const speed = parseFloat(e.target.value);
+            collisionSystem.setSpeed(speed);
+            speedDisplay.textContent = speed.toFixed(1);
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+
+            collisionSystem.update(deltaTime);
+            collisionSystem.createHelpers();
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
