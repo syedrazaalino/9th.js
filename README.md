@@ -345,8 +345,6 @@ npm run docs:build-all
 - [GitHub Repository](https://github.com/syedrazaalino/9th.js)
 - [Documentation Website](https://digitalcloud.no/docs)
 - [Examples Gallery](https://digitalcloud.no/examples)
-- [Discord Community](https://discord.gg/9thjs)
-- [Twitter Updates](https://twitter.com/9thjs)
 
 ## 🤝 Contributing
 
@@ -381,8 +379,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📞 Support
 
-- 📧 **Email**: hei@digitalcloud.no
-- 💬 **Discord**: [Join our community](https://discord.gg/9thjs)
 - 🐛 **Issues**: [GitHub Issues](https://github.com/syedrazaalino/9th.js/issues)
 - 📖 **Documentation**: [Full Documentation](https://digitalcloud.no/docs)
 
@@ -392,9 +388,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **[Website](https://digitalcloud.no)** • 
 **[Documentation](https://digitalcloud.no/docs)** • 
-**[Examples](https://digitalcloud.no/examples)** • 
-**[Discord](https://discord.gg/9thjs)** • 
-**[Twitter](https://twitter.com/9thjs)**
+**[Examples](https://digitalcloud.no/examples)**
 
 Made with ❤️ by the 9th.js team
 
