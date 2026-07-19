@@ -1,29 +1,30 @@
-# Roadmap — Three.js API parity
+# Roadmap
 
-9th.js aims for practical Three.js-compatible APIs for common WebGL apps. Full feature parity with Three.js r1xx+ is a long-term goal, shipped in versions.
+Product direction for **9th.js** — what we’re shipping next on the library itself.
 
-## Shipped in 1.0.0
+## Done (1.0.x)
 
-- Working hello-cube path: BoxGeometry → Mesh → WebGLRenderer
-- Object3D / Scene / Camera Three.js-shaped basics
-- Package/exports/types health + CI
+- Scene graph, cameras, meshes, primitives → `BufferGeometry`
+- Unlit and lit materials (`MeshBasicMaterial`, `MeshStandardMaterial` + lights)
+- `OrbitControls`
+- GLTF scene wiring (meshes, materials, nodes)
+- ESM / UMD builds, typings, CI, npm package
 
-## Next (1.1 – 1.x)
+## Next
 
-1. **Scene graph hardening** — matrixWorld edge cases, layers, Groups, fog/background Three-compat
-2. **Renderer + materials** — verified lit MeshStandardMaterial with scene lights; minimal shadow maps
-3. **Loaders** — GLTF/OBJ → renderable Mesh trees with verified demos
-4. **Animation + OrbitControls** — mixer clip path + controls smoke tests
-5. **Effects** — Bloom/FXAA pipeline demo; particles demo; physics either integrated or clearly marked optional
+1. **Hardening** — matrix edge cases, groups, fog/background, layers
+2. **Shadows** — directional shadow maps with a verified demo
+3. **Loaders** — more GLTF coverage (skins, animations), OBJ polish
+4. **Animation** — clip / mixer path with examples
+5. **Effects** — post-FX and particles marked clearly and demoed
 
-## Later (2.0+)
+## Later
 
+- Smaller publish size / better tree-shaking
 - WebGPU backend
-- WebXR productization
-- Visual editor / tooling
-- Size budgets and broader browser matrix
+- WebXR
+- Editor / tooling
 
-## Non-goals (for now)
+## Notes
 
-- Claiming drop-in replacement for every Three.js example
-- Shipping unfinished physics/XR as production-ready
+Physics, full post-processing, and XR modules exist in the tree but are still experimental until they have stable demos and docs.

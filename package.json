@@ -1,7 +1,7 @@
 {
   "name": "9th.js",
-  "version": "1.0.3",
-  "description": "A modern 3D JavaScript library for creating interactive graphics and visualizations",
+  "version": "1.0.4",
+  "description": "WebGL 3D library for interactive scenes — scene graph, materials, lights, loaders, and controls",
   "type": "module",
   "main": "dist/esm/main.js",
   "module": "dist/esm/main.js",
@@ -58,8 +58,10 @@
     "javascript",
     "typescript",
     "rendering",
-    "game-engine",
-    "three.js"
+    "scene-graph",
+    "gltf",
+    "mesh",
+    "pbr"
   ],
   "author": "9th.js Team <hei@digitalcloud.no> (https://digitalcloud.no)",
   "license": "MIT",
@@ -125,11 +127,12 @@
     "not dead"
   ],
   "files": [
-    "dist/",
-    "package.json",
+    "dist/esm/main.js",
+    "dist/esm/index.d.ts",
+    "dist/umd/9th.umd.js",
+    "dist/umd/9th.umd.min.js",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md",
-    "CONTRIBUTING.md"
+    "CHANGELOG.md"
   ]
 }

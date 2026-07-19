@@ -50,7 +50,7 @@ function assert(cond, msg) {
   }
 }
 
-assert(VERSION === '1.0.3', `VERSION is ${VERSION}`);
+assert(VERSION === '1.0.4', `VERSION is ${VERSION}`);
 assert(typeof Engine.prototype.enable === 'function', 'Engine.enable');
 assert(typeof Engine.prototype.getPerformance === 'function', 'Engine.getPerformance');
 assert(typeof Engine.prototype.pause === 'function', 'Engine.pause');

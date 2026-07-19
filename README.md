@@ -1,11 +1,25 @@
 # 9th.js
 
-A WebGL 3D library for the web, inspired by Three.js.
+A WebGL library for building interactive 3D scenes in the browser.
 
 [![npm](https://img.shields.io/npm/v/9th.js.svg)](https://www.npmjs.com/package/9th.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/syedrazaalino/9th.js/blob/master/LICENSE)
 
-Build interactive 3D scenes with a familiar scene-graph API (`Scene`, `Mesh`, `PerspectiveCamera`, lights, materials). Core rendering works today; advanced modules (physics, particles, post-FX) are experimental.
+**9th.js** gives you a scene graph, cameras, meshes, lights, materials, loaders, and controls — so you can render 3D content with a clear, object-oriented API and ship it to the web.
+
+Maintained by [digitalcloud](https://digitalcloud.no).
+
+## Features
+
+- **Scene graph** — `Scene`, `Object3D`, `Mesh`, hierarchy, transforms
+- **Cameras** — perspective and orthographic
+- **Geometry** — box, sphere, plane, and more → `BufferGeometry`
+- **Materials** — unlit and PBR (`MeshBasicMaterial`, `MeshStandardMaterial`)
+- **Lights** — ambient, directional, point, spot
+- **Controls** — `OrbitControls` for explore / inspect UIs
+- **Loaders** — GLTF, OBJ, and related asset pipelines
+- **Engine helper** — optional loop, pause/resume, and performance hooks
+- **Builds** — ESM + UMD, TypeScript typings on npm
 
 ## Install
 
@@ -15,11 +29,10 @@ npm install 9th.js
 
 ```bash
 yarn add 9th.js
-# or
 pnpm add 9th.js
 ```
 
-## Hello cube (ESM)
+## Quick start
 
 ```js
 import {
@@ -54,7 +67,7 @@ function frame() {
 frame();
 ```
 
-## Lit cube + OrbitControls
+## Lit scene + orbit
 
 ```js
 import {
@@ -74,18 +87,15 @@ const sun = new DirectionalLight(0xffffff, 1.2);
 sun.position.set(3, 5, 2);
 scene.add(sun);
 
-const cube = new Mesh(
+scene.add(new Mesh(
   new BoxGeometry(1, 1, 1),
   new MeshStandardMaterial({ color: '#4fc3f7', metalness: 0.2, roughness: 0.4 })
-);
-scene.add(cube);
+));
 
 const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = false;
 
 function frame() {
   requestAnimationFrame(frame);
-  cube.rotation.y += 0.01;
   controls.update();
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
@@ -95,36 +105,31 @@ function frame() {
 frame();
 ```
 
-## CDN (UMD)
+## CDN
 
 ```html
-<script src="https://unpkg.com/9th.js@1.0.3/dist/umd/9th.umd.min.js"></script>
-<script>
-  // Global name depends on build — prefer ESM for apps
-</script>
+<script src="https://unpkg.com/9th.js@1.0.4/dist/umd/9th.umd.min.js"></script>
 ```
 
-Or via jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.3/dist/umd/9th.umd.min.js`
+Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.4/dist/umd/9th.umd.min.js`
 
-## What’s included
+## Examples
 
-| Area | Status |
-|------|--------|
-| Scene graph, cameras, primitives → `BufferGeometry` | Working |
-| `MeshBasicMaterial` / `MeshStandardMaterial` + lights | Working (lit path) |
-| `OrbitControls` | Working |
-| `Engine` helper | Working |
-| Loaders (GLTF, OBJ, …) | Improving — GLTF scene wiring fixed in 1.0.3 |
-| Post-processing / particles / physics | Experimental |
+Working demos in the repo (serve the project root after `npm run build`):
 
-Not a drop-in Three.js replacement yet. See the [roadmap](https://github.com/syedrazaalino/9th.js/blob/master/ROADMAP.md) and [migration notes](https://github.com/syedrazaalino/9th.js/blob/master/docs/api/migration-guide-from-threejs.md).
+| Demo | Path |
+|------|------|
+| Hello cube | [examples/hello-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/hello-cube.html) |
+| Lit cube + orbit | [examples/lit-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/lit-cube.html) |
+| GLTF triangle | [examples/gltf-triangle.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/gltf-triangle.html) |
 
-## Examples & source
+## Docs & roadmap
 
-- Repo: [github.com/syedrazaalino/9th.js](https://github.com/syedrazaalino/9th.js)
-- Hello cube: [examples/hello-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/hello-cube.html)
-- Lit + orbit: [examples/lit-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/lit-cube.html)
+- [Getting started](https://github.com/syedrazaalino/9th.js/blob/master/docs/guides/getting-started.md)
+- [API overview](https://github.com/syedrazaalino/9th.js/blob/master/docs/api/README.md)
+- [Roadmap](https://github.com/syedrazaalino/9th.js/blob/master/ROADMAP.md)
+- [Changelog](https://github.com/syedrazaalino/9th.js/blob/master/CHANGELOG.md)
 
 ## License
 
-MIT — [digitalcloud](https://digitalcloud.no)
+MIT © [digitalcloud](https://digitalcloud.no)

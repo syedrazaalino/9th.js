@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.4] - 2026-07-19
+
+### Changed
+- README rewritten around 9th.js itself (features, install, examples)
+- npm package ships only runtime builds + README / LICENSE / CHANGELOG (no source maps, bundle analysis, or contributor docs)
+- Roadmap reframed as product direction for 9th.js
+- Removed Three.js migration guides from the repo
+
+## [1.0.3] - 2026-07-19
+
+### Added
+- Lit `MeshStandardMaterial` path with scene lights
+- `OrbitControls` demo (`examples/lit-cube.html`)
+- GLTF scene/node/mesh wiring + `examples/gltf-triangle.html`
+
 ## [1.0.2] - 2026-07-19
 
 ### Fixed
@@ -12,37 +27,26 @@
 
 ## [1.0.0] - 2026-07-19
 
-Foundation release toward Three.js API parity.
+Foundation release: scene graph, materials, lights, package health.
 
 ### Added
 - `BufferGeometry.fromArrays`, optional WebGL context, `setAttribute`, `ensureGPU`
-- Primitive → BufferGeometry bridge (`GeometryUtils`, Mesh auto-convert)
-- Three.js-shaped `Object3D` (`position.set`, `add`/`remove`/`children`, `traverse`, `updateMatrixWorld`)
+- Primitive → BufferGeometry bridge; Mesh auto-convert
+- `Object3D` with `position.set`, `add`/`remove`/`children`, `traverse`, `updateMatrixWorld`
 - `Scene.children` getter; multi-object `scene.add(...)`
 - Public `Engine` export; `Renderer` alias for `WebGLRenderer`
 - `WebGLRenderer.setPixelRatio`, `getSize`, improved `setClearColor`
-- Lights accept Three.js `(color, intensity)` constructor order
+- Lights accept `(color, intensity)` constructor order
 - `MeshStandardMaterial.initShader(gl)` for real WebGL compilation
 - Canonical example: `examples/hello-cube.html`
-- GitHub Actions CI (build + verify-exports + parity unit tests)
-- Parity unit tests: `tests/unit/core/Object3D.parity.test.ts`
+- GitHub Actions CI (build + verify-exports + unit tests)
 
 ### Fixed
 - Package `types` / `exports` aligned to `dist/esm/index.d.ts`
 - Removed install-time `os`/`cpu` restrictions
 - `VERSION` / homepage / repository URLs synced to `syedrazaalino/9th.js`
-- Stub light re-exports from `directional.ts` removed from public API
 - Cross-platform `clean` via `rimraf`; `verify-exports` on `prepublishOnly`
-
-### Changed
-- Honest README: documents working APIs vs experimental modules
-- ROADMAP rewritten as phased Three.js parity plan
-- Hand-written broken `types/` folder no longer published (generated `dist` declarations used)
-
-### Honest status
-- Physics, full post-processing pipelines, and WebXR remain experimental / incomplete
-- Not a drop-in Three.js replacement; migration guide lists verified mappings only
 
 ## [0.1.26] - 2025-11-15
 
-Previous npm release (pre-parity foundation work).
+Previous npm release.

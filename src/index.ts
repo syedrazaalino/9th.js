@@ -35,15 +35,15 @@ export { MeshBasicMaterial, MeshStandardMaterial } from './materials/index.js';
 import { WebGLRenderer, Scene, Camera, Mesh, Engine } from './core/index.js';
 import { PerspectiveCamera } from './cameras/PerspectiveCamera.js';
 
-export const VERSION = '1.0.3';
+export const VERSION = '1.0.4';
 
 export const LIBRARY_INFO = {
   name: '9th.js',
   version: VERSION,
-  description: 'A modern 3D JavaScript library for creating interactive graphics and visualizations',
+  description: 'WebGL 3D library for interactive scenes — scene graph, materials, lights, loaders, and controls',
   homepage: 'https://github.com/syedrazaalino/9th.js',
   repository: 'https://github.com/syedrazaalino/9th.js.git',
-  keywords: ['3d', 'graphics', 'webgl', 'visualization', 'javascript', 'typescript', 'three.js']
+  keywords: ['3d', 'graphics', 'webgl', 'visualization', 'javascript', 'typescript', 'gltf', 'pbr']
 };
 
 export const createRenderer = (canvas, options) => {
