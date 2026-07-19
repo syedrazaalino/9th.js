@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.1] - 2026-07-19
+
+### Fixed
+- Restored full `Engine` API (enable/disable features, performance metrics, debug mode, pause/resume, error handling). 1.0.0 had temporarily shipped a reduced Engine during a build workaround.
+
 ## [1.0.0] - 2026-07-19
 
 Foundation release toward Three.js API parity.

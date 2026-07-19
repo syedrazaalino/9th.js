@@ -43,7 +43,11 @@ function assert(cond, msg) {
   }
 }
 
-assert(VERSION === '1.0.0', `VERSION is ${VERSION}`);
+assert(VERSION === '1.0.1', `VERSION is ${VERSION}`);
+assert(typeof Engine.prototype.enable === 'function', 'Engine.enable');
+assert(typeof Engine.prototype.getPerformance === 'function', 'Engine.getPerformance');
+assert(typeof Engine.prototype.pause === 'function', 'Engine.pause');
+assert(typeof Engine.prototype.setDebugMode === 'function', 'Engine.setDebugMode');
 
 const obj = new Object3D();
 obj.position.set(1, 2, 3);

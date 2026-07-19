@@ -188,6 +188,16 @@ export class Engine {
   setCamera(camera: Camera): void;
   getCamera(): Camera | null;
   resize(width: number, height: number): void;
+  enable(feature: string, enabled?: boolean): void;
+  setMaxDistance(distance: number): void;
+  getPerformance(): any;
+  clearPerformanceMetrics(): void;
+  setDebugMode(enabled: boolean): void;
+  pause(): void;
+  resume(): void;
+  isEngineRunning(): boolean;
+  on(event: string, callback: (...args: any[]) => void): void;
+  off(event: string, callback: (...args: any[]) => void): void;
   dispose(): void;
 }
 
