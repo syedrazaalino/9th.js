@@ -135,7 +135,10 @@ export class BufferGeometry {
 
     if (arrayOrAttribute && arrayOrAttribute.array) {
       data = arrayOrAttribute.array;
-      size = arrayOrAttribute.itemSize || itemSize;
+      size = arrayOrAttribute.itemSize || arrayOrAttribute.size || itemSize;
+    } else if (arrayOrAttribute && typeof arrayOrAttribute.size === 'number' && arrayOrAttribute._cpuData) {
+      data = arrayOrAttribute._cpuData;
+      size = arrayOrAttribute.size;
     }
 
     if (!(data instanceof Float32Array) && Array.isArray(data)) {

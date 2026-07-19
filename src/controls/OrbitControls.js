@@ -92,14 +92,10 @@ export class OrbitControls {
         this._onTouchEnd = this._onTouchEnd.bind(this);
         this._onKeyDown = this._onKeyDown.bind(this);
         
-        // Initialize
+        // Initialize (default target stays at origin — typical orbit look-at)
         this.connect();
-        
-        // Set initial target to camera position if not set
-        if (this.target.x === 0 && this.target.y === 0 && this.target.z === 0) {
-            const cameraPos = this.camera.getWorldPosition();
-            this.target = { x: cameraPos.x, y: cameraPos.y, z: cameraPos.z };
-        }
+        this._updateDistance();
+        this.needsUpdate = true;
     }
     
     /**

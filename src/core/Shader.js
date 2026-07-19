@@ -217,7 +217,21 @@ export class Shader {
    * @returns {WebGLUniformLocation|null} The uniform location
    */
   getUniformLocation(name) {
-    return this.uniformLocations.get(name) || null;
+    if (this.uniformLocations.has(name)) {
+      return this.uniformLocations.get(name);
+    }
+    // Array uniforms are reported as name[0]
+    if (this.uniformLocations.has(`${name}[0]`)) {
+      return this.uniformLocations.get(`${name}[0]`);
+    }
+    if (this.gl && this.program) {
+      const loc = this.gl.getUniformLocation(this.program, name);
+      if (loc !== null && loc !== undefined) {
+        this.uniformLocations.set(name, loc);
+        return loc;
+      }
+    }
+    return null;
   }
 
   /**

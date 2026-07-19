@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9th.js — GLTF Triangle</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0d10; overflow: hidden; font-family: system-ui, sans-serif; }
+    #info { position: absolute; top: 12px; left: 12px; color: #e8eaed; background: rgba(0,0,0,.45); padding: 10px 14px; border-radius: 6px; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <strong>9th.js GLTF</strong><br />
+    Inline triangle via GLTFLoader · v1.0.3
+  </div>
+  <canvas id="canvas"></canvas>
+
+  <script type="module">
+    import {
+      WebGLRenderer,
+      Scene,
+      PerspectiveCamera,
+      AmbientLight,
+      DirectionalLight,
+      GLTFLoader,
+      VERSION
+    } from '../dist/esm/main.js';
+
+    // Minimal glTF 2.0 triangle with embedded buffer (POSITION + indices + PBR material)
+    const positions = new Float32Array([
+      0, 0.8, 0,
+      -0.8, -0.6, 0,
+      0.8, -0.6, 0
+    ]);
+    const normals = new Float32Array([
+      0, 0, 1,
+      0, 0, 1,
+      0, 0, 1
+    ]);
+    const indices = new Uint16Array([0, 1, 2]);
+
+    function concatBuffers(...parts) {
+      const total = parts.reduce((n, p) => n + p.byteLength, 0);
+      const out = new Uint8Array(total);
+      let offset = 0;
+      for (const p of parts) {
+        out.set(new Uint8Array(p.buffer, p.byteOffset, p.byteLength), offset);
+        offset += p.byteLength;
+      }
+      return out;
+    }
+
+    const bin = concatBuffers(positions, normals, indices);
+    let binary = '';
+    for (let i = 0; i < bin.length; i++) binary += String.fromCharCode(bin[i]);
+    const dataUri = 'data:application/octet-stream;base64,' + btoa(binary);
+
+    const gltf = {
+      asset: { version: '2.0' },
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+      nodes: [{ mesh: 0 }],
+      meshes: [{
+        primitives: [{
+          attributes: { POSITION: 0, NORMAL: 1 },
+          indices: 2,
+          material: 0
+        }]
+      }],
+      materials: [{
+        pbrMetallicRoughness: {
+          baseColorFactor: [0.31, 0.76, 0.97, 1],
+          metallicFactor: 0.1,
+          roughnessFactor: 0.4
+        }
+      }],
+      accessors: [
+        { bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', max: [0.8, 0.8, 0], min: [-0.8, -0.6, 0] },
+        { bufferView: 1, componentType: 5126, count: 3, type: 'VEC3' },
+        { bufferView: 2, componentType: 5123, count: 3, type: 'SCALAR' }
+      ],
+      bufferViews: [
+        { buffer: 0, byteOffset: 0, byteLength: positions.byteLength },
+        { buffer: 0, byteOffset: positions.byteLength, byteLength: normals.byteLength },
+        { buffer: 0, byteOffset: positions.byteLength + normals.byteLength, byteLength: indices.byteLength }
+      ],
+      buffers: [{ byteLength: bin.byteLength, uri: dataUri }]
+    };
+
+    const canvas = document.getElementById('canvas');
+    const renderer = new WebGLRenderer({ canvas, antialias: true });
+    renderer.setClearColor({ r: 0.04, g: 0.05, b: 0.07 }, 1);
+    renderer.enableFrustumCulling = false;
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(60, 1, 0.1, 100);
+    camera.position.set(0, 0.2, 3);
+    camera.lookAt(0, 0, 0);
+
+    scene.add(new AmbientLight(0xffffff, 0.4));
+    const sun = new DirectionalLight(0xffffff, 1.1);
+    sun.position.set(2, 3, 4);
+    scene.add(sun);
+
+    const loader = new GLTFLoader();
+    loader.parse(gltf, (asset) => {
+      if (asset.scene) scene.add(asset.scene);
+      console.log('9th.js', VERSION, 'gltf meshes', asset.meshes.length,
+        'geo', asset.meshes[0]?.geometry?.getAttribute?.('position') ? 'ok' : 'missing');
+    }, (err) => console.error(err));
+
+    function resize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

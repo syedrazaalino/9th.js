@@ -119,10 +119,27 @@ export class Scene {
         this.objects.set(object.id, object);
         this.objectsByName.set(object.name, object);
 
+        // Register lights for the lit material pipeline
+        if (object.isLight ||
+            object.type === 'AmbientLight' ||
+            object.type === 'DirectionalLight' ||
+            object.type === 'PointLight' ||
+            object.type === 'SpotLight') {
+            this.addLight(object);
+        }
+
         // Notify listeners
         this.emit('objectAdded', { object });
 
         return object;
+    }
+
+    /**
+     * Lights registered via add() / addLight()
+     * @returns {Array}
+     */
+    getLights() {
+        return this.lights.slice();
     }
 
     /**
@@ -143,6 +160,10 @@ export class Scene {
         // Remove from parent
         if (object.parent) {
             object.parent.removeChild(object);
+        }
+
+        if (object.isLight || this.lights.includes(object)) {
+            this.removeLight(object);
         }
 
         // Unregister

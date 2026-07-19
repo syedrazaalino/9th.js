@@ -1,9 +1,11 @@
 # 9th.js
 
-A WebGL 3D library for the web, inspired by Three.js. Version **1.0.0**.
+A WebGL 3D library for the web, inspired by Three.js.
 
 [![npm](https://img.shields.io/npm/v/9th.js.svg)](https://www.npmjs.com/package/9th.js)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/syedrazaalino/9th.js/blob/master/LICENSE)
+
+Build interactive 3D scenes with a familiar scene-graph API (`Scene`, `Mesh`, `PerspectiveCamera`, lights, materials). Core rendering works today; advanced modules (physics, particles, post-FX) are experimental.
 
 ## Install
 
@@ -11,7 +13,13 @@ A WebGL 3D library for the web, inspired by Three.js. Version **1.0.0**.
 npm install 9th.js
 ```
 
-## Hello cube
+```bash
+yarn add 9th.js
+# or
+pnpm add 9th.js
+```
+
+## Hello cube (ESM)
 
 ```js
 import {
@@ -46,32 +54,76 @@ function frame() {
 frame();
 ```
 
-Open [`examples/hello-cube.html`](examples/hello-cube.html) after `npm run build`.
+## Lit cube + OrbitControls
 
-## What works today
+```js
+import {
+  WebGLRenderer, Scene, PerspectiveCamera,
+  BoxGeometry, MeshStandardMaterial, Mesh,
+  AmbientLight, DirectionalLight, OrbitControls
+} from '9th.js';
+
+const canvas = document.querySelector('#canvas');
+const renderer = new WebGLRenderer({ canvas, antialias: true });
+const scene = new Scene();
+const camera = new PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(2, 2, 4);
+
+scene.add(new AmbientLight(0xffffff, 0.35));
+const sun = new DirectionalLight(0xffffff, 1.2);
+sun.position.set(3, 5, 2);
+scene.add(sun);
+
+const cube = new Mesh(
+  new BoxGeometry(1, 1, 1),
+  new MeshStandardMaterial({ color: '#4fc3f7', metalness: 0.2, roughness: 0.4 })
+);
+scene.add(cube);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = false;
+
+function frame() {
+  requestAnimationFrame(frame);
+  cube.rotation.y += 0.01;
+  controls.update();
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+}
+frame();
+```
+
+## CDN (UMD)
+
+```html
+<script src="https://unpkg.com/9th.js@1.0.3/dist/umd/9th.umd.min.js"></script>
+<script>
+  // Global name depends on build — prefer ESM for apps
+</script>
+```
+
+Or via jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.3/dist/umd/9th.umd.min.js`
+
+## What’s included
 
 | Area | Status |
 |------|--------|
-| Scene graph (`Object3D`, `Scene`, `Mesh`) | Working — Three.js-style `position.set`, `add`/`children`, `traverse` |
-| Cameras | `PerspectiveCamera`, `OrthographicCamera` |
-| Geometries | Box, Sphere, Plane, Cylinder, Cone, Circle → auto-converted to `BufferGeometry` |
-| Materials | `MeshBasicMaterial` (unlit), `MeshStandardMaterial` (PBR shaders, lighting uniforms) |
-| Lights | Ambient, Directional, Point, Spot |
-| Renderer | `WebGLRenderer` / `Renderer` alias, `setSize`, `setPixelRatio`, `render` |
-| Controls | `OrbitControls` |
-| Loaders | GLTF, OBJ/MTL, STL, PLY, Texture, Draco (use with BufferGeometry meshes) |
-| Engine helper | `Engine` — optional canvas + scene + loop wrapper |
-| Post-processing / particles / physics | Present as modules; treat as experimental until demos are verified |
+| Scene graph, cameras, primitives → `BufferGeometry` | Working |
+| `MeshBasicMaterial` / `MeshStandardMaterial` + lights | Working (lit path) |
+| `OrbitControls` | Working |
+| `Engine` helper | Working |
+| Loaders (GLTF, OBJ, …) | Improving — GLTF scene wiring fixed in 1.0.3 |
+| Post-processing / particles / physics | Experimental |
 
-This is **not** a drop-in Three.js replacement yet. APIs are converging (see [ROADMAP.md](ROADMAP.md) and [docs/api/migration-guide-from-threejs.md](docs/api/migration-guide-from-threejs.md)).
+Not a drop-in Three.js replacement yet. See the [roadmap](https://github.com/syedrazaalino/9th.js/blob/master/ROADMAP.md) and [migration notes](https://github.com/syedrazaalino/9th.js/blob/master/docs/api/migration-guide-from-threejs.md).
 
-## Build
+## Examples & source
 
-```bash
-npm install
-npm run build
-npm run verify-exports
-```
+- Repo: [github.com/syedrazaalino/9th.js](https://github.com/syedrazaalino/9th.js)
+- Hello cube: [examples/hello-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/hello-cube.html)
+- Lit + orbit: [examples/lit-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/lit-cube.html)
 
 ## License
 

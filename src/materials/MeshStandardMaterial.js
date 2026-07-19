@@ -10,6 +10,9 @@ export class MeshStandardMaterial extends Material {
   constructor(options = {}) {
     super(null);
 
+    this.type = 'MeshStandardMaterial';
+    this.isMeshStandardMaterial = true;
+
     // Color properties — accept hex string/number like MeshBasicMaterial
     if (options.color !== undefined) {
       if (typeof options.color === 'number') {
@@ -120,13 +123,14 @@ export class MeshStandardMaterial extends Material {
         vAoUv = uv;
         vEmissiveUv = uv;
         
-        // Transform normal to view space
-        vec3 N = normalize(normalMatrix * normal);
+        // World-space normal (matches world-space light uniforms)
+        mat3 worldNormalMatrix = mat3(modelMatrix);
+        vec3 N = normalize(worldNormalMatrix * normal);
         vNormal = N;
         
-        // Calculate TBN matrix for normal mapping
-        vec3 T = normalize(normalMatrix * tangent);
-        vec3 B = normalize(normalMatrix * bitangent);
+        // Calculate TBN matrix for normal mapping (world space)
+        vec3 T = normalize(worldNormalMatrix * tangent);
+        vec3 B = normalize(worldNormalMatrix * bitangent);
         vTBN = mat3(T, B, N);
         
         // Calculate view position
@@ -347,10 +351,10 @@ export class MeshStandardMaterial extends Material {
         // Apply normal mapping
         vec3 N = normalize(vNormal);
         #ifdef USE_NORMAL_MAP
-          N = perturbNormal(N, normalize(vViewPosition), vNormalUv);
+          N = perturbNormal(N, normalize(uCameraPosition - vWorldPosition), vNormalUv);
         #endif
         
-        vec3 V = normalize(vViewPosition);
+        vec3 V = normalize(uCameraPosition - vWorldPosition);
         
         // Calculate lighting
         vec3 lighting = vec3(0.0);

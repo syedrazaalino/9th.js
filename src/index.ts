@@ -35,7 +35,7 @@ export { MeshBasicMaterial, MeshStandardMaterial } from './materials/index.js';
 import { WebGLRenderer, Scene, Camera, Mesh, Engine } from './core/index.js';
 import { PerspectiveCamera } from './cameras/PerspectiveCamera.js';
 
-export const VERSION = '1.0.2';
+export const VERSION = '1.0.3';
 
 export const LIBRARY_INFO = {
   name: '9th.js',

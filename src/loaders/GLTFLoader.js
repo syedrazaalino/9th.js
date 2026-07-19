@@ -201,17 +201,17 @@ export class GLTFLoader extends Loader {
             // Load external resources
             await this._loadExternalResources();
             
-            // Parse all components
+            // Parse in dependency order: buffers → materials → meshes → nodes → scenes
             this._parseAsset(asset);
-            this._parseScenes(asset);
-            this._parseNodes(asset);
-            this._parseMeshes(asset);
-            this._parseMaterials(asset);
-            this._parseTextures(asset);
-            this._parseImages(asset);
-            this._parseAccessors(asset);
-            this._parseBufferViews(asset);
             this._parseBuffers(asset);
+            this._parseBufferViews(asset);
+            this._parseAccessors(asset);
+            this._parseImages(asset);
+            this._parseTextures(asset);
+            this._parseMaterials(asset);
+            this._parseMeshes(asset);
+            this._parseNodes(asset);
+            this._parseScenes(asset);
             this._parseAnimations(asset);
             this._parseCameras(asset);
             this._parseLights(asset);
@@ -232,12 +232,22 @@ export class GLTFLoader extends Loader {
     async _loadExternalResources() {
         const promises = [];
         
-        // Load external buffers
+        // Load buffers (external URI or data URI)
         if (this.json.buffers) {
             this.json.buffers.forEach((buffer, index) => {
-                if (buffer.uri && !this._isDataUri(buffer.uri)) {
-                    promises.push(this._loadBuffer(buffer.uri, index));
+                if (!buffer.uri) {
+                    // Embedded GLB bin — already in this.bin
+                    if (this.bin) {
+                        this.bufferCache.set(index, this.bin instanceof Uint8Array ? this.bin : new Uint8Array(this.bin));
+                    }
+                    return;
                 }
+                if (this._isDataUri(buffer.uri)) {
+                    const ab = this._loadDataUri(buffer.uri);
+                    if (ab) this.bufferCache.set(index, new Uint8Array(ab));
+                    return;
+                }
+                promises.push(this._loadBuffer(buffer.uri, index));
             });
         }
         
@@ -356,55 +366,132 @@ export class GLTFLoader extends Loader {
     }
 
     /**
-     * Parse scenes
+     * Map glTF attribute semantics to engine attribute names
+     */
+    _mapAttributeName(attrName) {
+        const map = {
+            POSITION: 'position',
+            NORMAL: 'normal',
+            TANGENT: 'tangent',
+            TEXCOORD_0: 'uv',
+            TEXCOORD_1: 'uv2',
+            COLOR_0: 'color',
+            JOINTS_0: 'skinIndex',
+            WEIGHTS_0: 'skinWeight'
+        };
+        return map[attrName] || attrName.toLowerCase();
+    }
+
+    /**
+     * Parse scenes (after nodes exist)
      */
     _parseScenes(asset) {
-        if (this.json.scenes) {
-            this.json.scenes.forEach((sceneData, index) => {
-                const scene = new Object3D();
-                scene.name = sceneData.name || `Scene_${index}`;
-                scene.extras = sceneData.extras || {};
-                
-                asset.scenes.push(scene);
-                if (!asset.scene && index === (this.json.scene || 0)) {
-                    asset.scene = scene;
-                }
-            });
+        if (!this.json.scenes) return;
+
+        this.json.scenes.forEach((sceneData, index) => {
+            const scene = new Object3D();
+            scene.name = sceneData.name || `Scene_${index}`;
+            scene.extras = sceneData.extras || {};
+
+            if (sceneData.nodes) {
+                sceneData.nodes.forEach((nodeIndex) => {
+                    const node = asset.nodes[nodeIndex];
+                    if (node) scene.add(node);
+                });
+            }
+
+            asset.scenes.push(scene);
+            if (index === (this.json.scene || 0)) {
+                asset.scene = scene;
+            }
+        });
+
+        if (!asset.scene && asset.scenes.length > 0) {
+            asset.scene = asset.scenes[0];
         }
     }
 
     /**
-     * Parse nodes
+     * Parse nodes — create all, then wire hierarchy + meshes
      */
     _parseNodes(asset) {
         if (!this.json.nodes) return;
-        
+
+        // Pass 1: create nodes + transforms
         this.json.nodes.forEach((nodeData, index) => {
             const node = new Object3D();
             node.name = nodeData.name || `Node_${index}`;
-            
-            // Transform
+
             if (nodeData.matrix) {
                 this._setMatrixFromArray(node, nodeData.matrix);
             } else {
-                if (nodeData.translation) node.position = { x: nodeData.translation[0], y: nodeData.translation[1], z: nodeData.translation[2] };
-                if (nodeData.rotation) {
-                    node.rotation = { x: nodeData.rotation[0], y: nodeData.rotation[1], z: nodeData.rotation[2] };
-                    node.rotation.w = nodeData.rotation[3];
+                if (nodeData.translation && node.position.set) {
+                    node.position.set(
+                        nodeData.translation[0],
+                        nodeData.translation[1],
+                        nodeData.translation[2]
+                    );
                 }
-                if (nodeData.scale) node.scale = { x: nodeData.scale[0], y: nodeData.scale[1], z: nodeData.scale[2] };
+                if (nodeData.rotation && node.rotation.set) {
+                    // Store quaternion components; euler conversion is best-effort
+                    node.rotation.set(
+                        nodeData.rotation[0],
+                        nodeData.rotation[1],
+                        nodeData.rotation[2]
+                    );
+                    node.quaternion = {
+                        x: nodeData.rotation[0],
+                        y: nodeData.rotation[1],
+                        z: nodeData.rotation[2],
+                        w: nodeData.rotation[3]
+                    };
+                }
+                if (nodeData.scale && node.scale.set) {
+                    node.scale.set(
+                        nodeData.scale[0],
+                        nodeData.scale[1],
+                        nodeData.scale[2]
+                    );
+                }
             }
-            
-            // Hierarchy
-            if (nodeData.children) {
-                node.children = nodeData.children.map(childIndex => 
-                    asset.nodes[childIndex]
-                ).filter(child => child !== undefined);
-            }
-            
+
             node.extras = nodeData.extras || {};
             asset.nodes.push(node);
         });
+
+        // Pass 2: hierarchy + mesh instances
+        this.json.nodes.forEach((nodeData, index) => {
+            const node = asset.nodes[index];
+            if (!node) return;
+
+            if (nodeData.children) {
+                nodeData.children.forEach((childIndex) => {
+                    const child = asset.nodes[childIndex];
+                    if (child) node.add(child);
+                });
+            }
+
+            if (nodeData.mesh !== undefined) {
+                const srcMesh = asset.meshes[nodeData.mesh];
+                if (srcMesh) {
+                    const instance = this._instantiateMesh(srcMesh);
+                    node.add(instance);
+                }
+            }
+        });
+    }
+
+    /**
+     * Instantiate a renderable mesh from a parsed GLTF mesh template
+     */
+    _instantiateMesh(srcMesh) {
+        const mesh = new Mesh(srcMesh.geometry, srcMesh.material);
+        mesh.name = srcMesh.name;
+        mesh.primitives = srcMesh.primitives;
+        if (srcMesh.weights) mesh.weights = srcMesh.weights;
+        if (srcMesh.morphTargetNames) mesh.morphTargetNames = srcMesh.morphTargetNames;
+        mesh.extras = srcMesh.extras || {};
+        return mesh;
     }
 
     /**
@@ -440,6 +527,12 @@ export class GLTFLoader extends Loader {
                     indices: primitiveData.indices
                 };
             });
+
+            // Promote first primitive so Mesh.render has geometry/material
+            if (mesh.primitives.length > 0) {
+                mesh.geometry = mesh.primitives[0].geometry;
+                mesh.material = mesh.primitives[0].material;
+            }
         }
         
         // Parse morph targets
@@ -465,9 +558,10 @@ export class GLTFLoader extends Loader {
             Object.entries(primitiveData.attributes).forEach(([attrName, accessorIndex]) => {
                 const accessor = this.json.accessors[accessorIndex];
                 const bufferView = this.json.bufferViews[accessor.bufferView];
+                const mappedName = this._mapAttributeName(attrName);
                 
-                const attribute = this._createVertexAttribute(attrName, accessor, bufferView);
-                geometry.setAttribute(attrName, attribute);
+                const attribute = this._createVertexAttribute(mappedName, accessor, bufferView);
+                geometry.setAttribute(mappedName, attribute);
             });
         }
         
@@ -489,17 +583,20 @@ export class GLTFLoader extends Loader {
         const data = this._getAccessorData(accessor, bufferView);
         const componentType = this._getComponentType(accessor.componentType);
         const normalized = accessor.normalized || false;
+        const itemSize =
+            accessor.type === 'VEC2' ? 2 :
+            accessor.type === 'VEC3' ? 3 :
+            accessor.type === 'VEC4' ? 4 : 1;
         
         const attribute = new VertexAttribute(
             attrName,
-            accessor.type === 'VEC2' ? 2 :
-            accessor.type === 'VEC3' ? 3 :
-            accessor.type === 'VEC4' ? 4 : 1,
+            itemSize,
             componentType,
             normalized
         );
         
         attribute.array = data;
+        attribute.itemSize = itemSize;
         return attribute;
     }
 

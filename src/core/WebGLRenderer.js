@@ -777,9 +777,10 @@ export class WebGLRenderer {
             // Mesh.render expects (gl, overrideMaterial)
             // Other objects might have different render signatures
             if (object.render.length === 2) {
-                // Store camera and renderer on object temporarily for matrix setup
+                // Store camera, scene, and renderer for matrix + light setup
                 object._renderer = this;
                 object._camera = camera;
+                object._scene = scene;
                 
                 // Mesh-style render: render(gl, overrideMaterial)
                 object.render(this.gl, null);
@@ -787,6 +788,7 @@ export class WebGLRenderer {
                 // Clean up
                 delete object._renderer;
                 delete object._camera;
+                delete object._scene;
             } else {
                 // Generic render: render(renderer, camera, scene)
                 object.render(this, camera, scene);

@@ -1,5 +1,5 @@
 /**
- * 9th.js public API typings (1.0.0)
+ * 9th.js public API typings (1.0.3)
  * Hand-maintained surface matching the ESM/UMD builds.
  */
 

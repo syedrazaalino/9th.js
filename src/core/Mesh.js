@@ -8,6 +8,11 @@ import { BufferGeometry } from './BufferGeometry.js';
 import { Material } from './Material.js';
 import { Object3D } from './Object3D.js';
 import { normalizeGeometry, isPrimitiveGeometry } from '../geometry/PrimitiveBridge.js';
+import {
+  collectSceneLights,
+  applyStandardMaterialLights,
+  computeNormalMatrix
+} from '../lights/StandardLightUniforms.js';
 
 /**
  * Mesh configuration options
@@ -445,8 +450,8 @@ export class Mesh extends Object3D {
     this.isMesh = true;
 
     // Auto-convert primitive geometries (BoxGeometry etc.) to BufferGeometry
-    this._rawGeometry = geometry;
-    this.geometry = normalizeGeometry(geometry, null);
+    this._rawGeometry = geometry || null;
+    this.geometry = geometry ? normalizeGeometry(geometry, null) : null;
     this.material = material;
     this.config = config instanceof MeshConfig ? config : Object.assign(new MeshConfig(), config || {});
     
@@ -714,11 +719,30 @@ export class Mesh extends Object3D {
       const viewLoc = shader.getUniformLocation('viewMatrix');
       const projLoc = shader.getUniformLocation('projectionMatrix');
       const mvLoc = shader.getUniformLocation('modelViewMatrix');
+      const normalLoc = shader.getUniformLocation('normalMatrix');
       
       if (modelLoc) gl.uniformMatrix4fv(modelLoc, false, model);
       if (viewLoc) gl.uniformMatrix4fv(viewLoc, false, view);
       if (projLoc) gl.uniformMatrix4fv(projLoc, false, proj);
       if (mvLoc) gl.uniformMatrix4fv(mvLoc, false, modelView);
+      if (normalLoc) {
+        gl.uniformMatrix3fv(normalLoc, false, computeNormalMatrix(modelView));
+      }
+
+      // Lit materials: upload scene lights
+      const wantsLights = material.isMeshStandardMaterial ||
+        material.isMeshPhongMaterial ||
+        material.type === 'MeshStandardMaterial' ||
+        material.type === 'MeshPhongMaterial' ||
+        (material.metalness !== undefined && material.roughness !== undefined);
+      if (wantsLights && this._scene) {
+        applyStandardMaterialLights(
+          gl,
+          shader,
+          collectSceneLights(this._scene),
+          camera
+        );
+      }
     }
 
     // Enable geometry attributes
