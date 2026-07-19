@@ -6,7 +6,7 @@ import { Scene } from '../../../src/core/Scene.js';
 import { Mesh } from '../../../src/core/Mesh.js';
 import { BoxGeometry } from '../../../src/geometry/BoxGeometry.js';
 import { BufferGeometry } from '../../../src/core/BufferGeometry.js';
-import { toBufferGeometry, isPrimitiveGeometry } from '../../../src/geometry/GeometryUtils.js';
+import { toBufferGeometry, isPrimitiveGeometry } from '../../../src/geometry/PrimitiveBridge.js';
 
 describe('Object3D Three.js-shaped API', () => {
   test('position.set updates coordinates and dirties matrix', () => {

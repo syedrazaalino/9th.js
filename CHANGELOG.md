@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.2] - 2026-07-19
+
+### Fixed
+- Restored full `GeometryUtils.js` (LOD, spatial partition, merge/optimize, normals/tangents, profiler). It had been accidentally overwritten in 1.0.0 by the primitive→BufferGeometry bridge; that bridge now lives in `PrimitiveBridge.js`.
+
 ## [1.0.1] - 2026-07-19
 
 ### Fixed

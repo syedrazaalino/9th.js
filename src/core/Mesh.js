@@ -7,7 +7,7 @@
 import { BufferGeometry } from './BufferGeometry.js';
 import { Material } from './Material.js';
 import { Object3D } from './Object3D.js';
-import { normalizeGeometry, isPrimitiveGeometry } from '../geometry/GeometryUtils.js';
+import { normalizeGeometry, isPrimitiveGeometry } from '../geometry/PrimitiveBridge.js';
 
 /**
  * Mesh configuration options

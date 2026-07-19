@@ -6,7 +6,7 @@ const { Scene } = require('../../../src/core/Scene.js');
 const { Mesh } = require('../../../src/core/Mesh.js');
 const { BoxGeometry } = require('../../../src/geometry/BoxGeometry.js');
 const { BufferGeometry } = require('../../../src/core/BufferGeometry.js');
-const { toBufferGeometry, isPrimitiveGeometry } = require('../../../src/geometry/GeometryUtils.js');
+const { toBufferGeometry, isPrimitiveGeometry } = require('../../../src/geometry/PrimitiveBridge.js');
 
 describe('Object3D Three.js-shaped API', () => {
   test('position.set updates coordinates and dirties matrix', () => {

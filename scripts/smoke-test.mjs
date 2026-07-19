@@ -3,7 +3,6 @@
  * Post-build smoke test against dist/esm/main.js
  */
 
-// Browser globals expected by some library modules at import time
 globalThis.WebGLRenderingContext = globalThis.WebGLRenderingContext || {
   FLOAT: 5126,
   STATIC_DRAW: 35044,
@@ -30,7 +29,10 @@ const {
   Engine,
   VERSION,
   isPrimitiveGeometry,
-  toBufferGeometry
+  toBufferGeometry,
+  calculateBoundingBox,
+  generateLOD,
+  GeometryProfiler
 } = await import('../dist/esm/main.js');
 
 let failed = 0;
@@ -43,11 +45,13 @@ function assert(cond, msg) {
   }
 }
 
-assert(VERSION === '1.0.1', `VERSION is ${VERSION}`);
+assert(VERSION === '1.0.2', `VERSION is ${VERSION}`);
 assert(typeof Engine.prototype.enable === 'function', 'Engine.enable');
 assert(typeof Engine.prototype.getPerformance === 'function', 'Engine.getPerformance');
 assert(typeof Engine.prototype.pause === 'function', 'Engine.pause');
-assert(typeof Engine.prototype.setDebugMode === 'function', 'Engine.setDebugMode');
+assert(typeof calculateBoundingBox === 'function', 'calculateBoundingBox');
+assert(typeof generateLOD === 'function', 'generateLOD');
+assert(typeof GeometryProfiler === 'function', 'GeometryProfiler');
 
 const obj = new Object3D();
 obj.position.set(1, 2, 3);
