@@ -9,27 +9,35 @@ import { Color, Vec3 } from '../extras/helpers.ts';
 export class AmbientLight {
   /**
    * Create a new AmbientLight
-   * @param {number|Color} intensity - Light intensity or Color instance
-   * @param {Color|string|number} color - Light color
+   * Three.js-compatible: new AmbientLight(color = 0xffffff, intensity = 1)
+   * Also accepts legacy: new AmbientLight(intensity, color) when first arg is 0–1
    */
-  constructor(intensity = 0.5, color = 0xffffff) {
+  constructor(color = 0xffffff, intensity = 1.0) {
     this.type = 'AmbientLight';
-    this.castShadow = false; // Ambient light doesn't cast shadows
-    
-    // Handle different parameter formats
-    if (intensity instanceof Color) {
-      this.color = intensity;
-      this.intensity = 1.0;
+    this.isLight = true;
+    this.isAmbientLight = true;
+    this.castShadow = false;
+    this.visible = true;
+    this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
+
+    // Detect legacy (intensity, color) when first arg is a small number
+    if (typeof color === 'number' && color >= 0 && color <= 1 && typeof intensity !== 'number') {
+      this.intensity = color;
+      this.color = this._parseColor(0xffffff);
+    } else if (typeof color === 'number' && color >= 0 && color <= 1 && typeof intensity === 'number' && intensity > 1) {
+      // legacy AmbientLight(0.5, 0xffffff)
+      this.intensity = color;
+      this.color = this._parseColor(intensity);
+    } else if (color && typeof color === 'object' && color.r !== undefined) {
+      this.color = color;
+      this.intensity = typeof intensity === 'number' ? intensity : 1.0;
     } else {
-      this.intensity = typeof intensity === 'number' ? intensity : 0.5;
       this.color = this._parseColor(color);
+      this.intensity = typeof intensity === 'number' ? intensity : 1.0;
     }
 
-    // Uniform lighting characteristics
     this.isUniform = true;
     this.affectedObjects = new Set();
-    
-    // Shader integration
     this._shaderUniforms = {};
     this._needsShaderUpdate = true;
   }

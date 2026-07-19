@@ -17,6 +17,8 @@ export class Camera extends Object3D {
         this.projectionMatrix = this.createIdentityMatrix();
         this.viewProjectionMatrix = this.createIdentityMatrix();
         this.inverseViewMatrix = this.createIdentityMatrix();
+        // Three.js alias
+        this.matrixWorldInverse = this.viewMatrix;
 
         // Matrix update flags
         this.viewMatrixDirty = true;
@@ -166,6 +168,7 @@ export class Camera extends Object3D {
     updateViewMatrix() {
         // View matrix is the inverse of the camera's world matrix
         this.viewMatrix = this.invertMatrix(this.worldMatrix);
+        this.matrixWorldInverse = this.viewMatrix;
     }
 
     /**

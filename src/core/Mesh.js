@@ -7,6 +7,7 @@
 import { BufferGeometry } from './BufferGeometry.js';
 import { Material } from './Material.js';
 import { Object3D } from './Object3D.js';
+import { normalizeGeometry, isPrimitiveGeometry } from '../geometry/GeometryUtils.js';
 
 /**
  * Mesh configuration options
@@ -439,17 +440,24 @@ export class Mesh extends Object3D {
    */
   constructor(geometry, material = null, config = new MeshConfig()) {
     super();
-    
-    this.geometry = geometry;
+
+    this.type = 'Mesh';
+    this.isMesh = true;
+
+    // Auto-convert primitive geometries (BoxGeometry etc.) to BufferGeometry
+    this._rawGeometry = geometry;
+    this.geometry = normalizeGeometry(geometry, null);
     this.material = material;
-    this.config = config;
+    this.config = config instanceof MeshConfig ? config : Object.assign(new MeshConfig(), config || {});
     
     // Mesh properties
-    this.castShadows = config.castShadows;
-    this.receiveShadows = config.receiveShadows;
-    this.frustumCulled = config.frustumCulled;
-    this.layer = config.layer;
-    this.priority = config.priority;
+    this.castShadows = this.config.castShadows;
+    this.receiveShadows = this.config.receiveShadows;
+    this.castShadow = this.castShadows;
+    this.receiveShadow = this.receiveShadows;
+    this.frustumCulled = this.config.frustumCulled;
+    this.layer = this.config.layer;
+    this.priority = this.config.priority;
     
     // Optimization
     this.optimizer = new MeshOptimizer();
@@ -476,6 +484,25 @@ export class Mesh extends Object3D {
     };
     
     this.id = Mesh._generateId();
+  }
+
+  /**
+   * Ensure geometry GPU buffers are ready for the given context
+   * @param {WebGLRenderingContext} gl
+   */
+  ensureGeometryReady(gl) {
+    if (!gl) return;
+
+    if (isPrimitiveGeometry(this.geometry) || isPrimitiveGeometry(this._rawGeometry)) {
+      const source = isPrimitiveGeometry(this.geometry) ? this.geometry : this._rawGeometry;
+      this.geometry = normalizeGeometry(source, gl);
+      this._rawGeometry = null;
+      return;
+    }
+
+    if (this.geometry && typeof this.geometry.ensureGPU === 'function') {
+      this.geometry.ensureGPU(gl);
+    }
   }
 
   /**
@@ -634,12 +661,22 @@ export class Mesh extends Object3D {
    * @param {Material} overrideMaterial - Material to use instead of mesh material
    */
   render(gl, overrideMaterial = null) {
-    if (!this.visible || !this.geometry || (!this.material && !overrideMaterial)) {
+    if (!this.visible || (!this.geometry && !this._rawGeometry) || (!this.material && !overrideMaterial)) {
       return;
     }
 
+    this.ensureGeometryReady(gl);
+    this.updateMatrix();
+
     const material = overrideMaterial || this.material;
-    if (!material || !material.shader || !material.shader.isReady()) {
+    if (!material) return;
+
+    // Lazy-init material shader
+    if (typeof material.initShader === 'function' && (!material.shader || !material.shader.isReady || !material.shader.isReady())) {
+      material.initShader(gl);
+    }
+
+    if (!material.shader || !material.shader.isReady()) {
       return;
     }
 
@@ -649,12 +686,11 @@ export class Mesh extends Object3D {
     // Set matrix uniforms after shader is active (if camera is available from renderer)
     if (material.shader && material.shader.isReady() && this._camera && this._renderer) {
       const shader = material.shader;
-      const gl = this._renderer.gl;
       const camera = this._camera;
       
       // Get matrices
       const modelMatrix = this.worldMatrix || this.matrix || this.localMatrix;
-      const viewMatrix = camera.matrixWorldInverse || camera.matrix;
+      const viewMatrix = camera.matrixWorldInverse || camera.viewMatrix || camera.matrix;
       const projectionMatrix = camera.projectionMatrix;
       
       // Convert to arrays if needed
@@ -690,7 +726,7 @@ export class Mesh extends Object3D {
 
     // Render with current LOD
     const renderGeometry = this.getCurrentLODGeometry();
-    const indexBuffer = renderGeometry.getIndexBuffer();
+    const indexBuffer = renderGeometry.getIndexBuffer ? renderGeometry.getIndexBuffer() : null;
 
     if (indexBuffer) {
       indexBuffer.bind();
@@ -706,8 +742,8 @@ export class Mesh extends Object3D {
 
     // Update render statistics
     this.renderStats.drawCalls++;
-    this.renderStats.triangles += renderGeometry.getIndexCount() / 3;
-    this.renderStats.vertices += renderGeometry.getVertexCount();
+    this.renderStats.triangles += (renderGeometry.getIndexCount ? renderGeometry.getIndexCount() : 0) / 3;
+    this.renderStats.vertices += renderGeometry.getVertexCount ? renderGeometry.getVertexCount() : 0;
   }
 
   /**

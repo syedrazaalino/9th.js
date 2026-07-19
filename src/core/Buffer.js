@@ -6,18 +6,22 @@
 /**
  * Buffer usage types for performance optimization
  */
+const GL = (typeof WebGLRenderingContext !== 'undefined')
+  ? WebGLRenderingContext
+  : { STATIC_DRAW: 35044, DYNAMIC_DRAW: 35048, STREAM_DRAW: 35040, ARRAY_BUFFER: 34962, ELEMENT_ARRAY_BUFFER: 34963 };
+
 export const BufferUsage = {
-  STATIC_DRAW: WebGLRenderingContext.STATIC_DRAW,
-  DYNAMIC_DRAW: WebGLRenderingContext.DYNAMIC_DRAW,
-  STREAM_DRAW: WebGLRenderingContext.STREAM_DRAW
+  STATIC_DRAW: GL.STATIC_DRAW,
+  DYNAMIC_DRAW: GL.DYNAMIC_DRAW,
+  STREAM_DRAW: GL.STREAM_DRAW
 };
 
 /**
  * Buffer types
  */
 export const BufferType = {
-  ARRAY_BUFFER: WebGLRenderingContext.ARRAY_BUFFER,
-  ELEMENT_ARRAY_BUFFER: WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
+  ARRAY_BUFFER: GL.ARRAY_BUFFER,
+  ELEMENT_ARRAY_BUFFER: GL.ELEMENT_ARRAY_BUFFER
 };
 
 /**

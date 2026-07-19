@@ -9,28 +9,30 @@ import { Color, Vec3, MathUtils } from '../extras/helpers.ts';
 export class DirectionalLight {
   /**
    * Create a new DirectionalLight
-   * @param {number|Color} intensity - Light intensity or Color instance
-   * @param {Color|string|number} color - Light color
-   * @param {Vec3|Object} direction - Light direction vector
+   * Three.js-compatible: new DirectionalLight(color = 0xffffff, intensity = 1)
    */
-  constructor(intensity = 1.0, color = 0xffffff, direction = new Vec3(-1, -1, -1)) {
+  constructor(color = 0xffffff, intensity = 1.0, direction = new Vec3(-1, -1, -1)) {
     this.type = 'DirectionalLight';
-    this.castShadow = true; // Directional lights can cast shadows
-    
-    // Handle different parameter formats
-    if (intensity instanceof Color) {
-      this.color = intensity;
-      this.intensity = 1.0;
-    } else {
+    this.isLight = true;
+    this.isDirectionalLight = true;
+    this.castShadow = true;
+    this.visible = true;
+
+    // Legacy: DirectionalLight(intensity, color) when first arg is 0–1
+    if (typeof color === 'number' && color >= 0 && color <= 1 && typeof intensity === 'number' && intensity > 1) {
+      this.intensity = color;
+      this.color = this._parseColor(intensity);
+    } else if (color instanceof Color) {
+      this.color = color;
       this.intensity = typeof intensity === 'number' ? intensity : 1.0;
+    } else {
       this.color = this._parseColor(color);
+      this.intensity = typeof intensity === 'number' ? intensity : 1.0;
     }
 
-    // Directional properties
     this.direction = direction instanceof Vec3 ? direction.clone() : new Vec3(direction.x || -1, direction.y || -1, direction.z || -1);
     this.direction.normalize();
     
-    // Position for shadow mapping (sun position)
     this.position = new Vec3(10, 10, 10);
     this.target = new Vec3(0, 0, 0);
 

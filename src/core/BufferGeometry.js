@@ -19,7 +19,7 @@ export class VertexAttribute {
    * @param {number} offset - Offset of this attribute in bytes
    * @param {number} location - Shader attribute location (optional)
    */
-  constructor(name, size, type = WebGLRenderingContext.FLOAT, normalized = false, stride = 0, offset = 0, location = -1) {
+  constructor(name, size, type = GL_FLOAT, normalized = false, stride = 0, offset = 0, location = -1) {
     this.name = name;
     this.size = size;
     this.type = type;
@@ -63,17 +63,17 @@ export class VertexAttribute {
 /**
  * BufferGeometry class for managing vertex data
  */
+const GL_FLOAT = (typeof WebGLRenderingContext !== 'undefined')
+  ? WebGLRenderingContext.FLOAT
+  : 5126;
+
 export class BufferGeometry {
   /**
    * Create a new BufferGeometry
-   * @param {WebGLRenderingContext} gl - WebGL rendering context
+   * @param {WebGLRenderingContext|null} gl - WebGL rendering context (optional until upload)
    */
-  constructor(gl) {
-    if (!gl) {
-      throw new Error('WebGL context is required');
-    }
-
-    this.gl = gl;
+  constructor(gl = null) {
+    this.gl = gl || null;
     this.attributes = new Map();
     this.attributeOrder = [];
     this.indexBuffer = null;
@@ -83,8 +83,131 @@ export class BufferGeometry {
     this.isInterleaved = false;
     this.vertexSize = 0;
     this.buffers = [];
-    
+    this._pendingAttributes = new Map();
+    this._pendingIndex = null;
+    this._gpuReady = false;
     this._isDisposed = false;
+  }
+
+  /**
+   * Create BufferGeometry from typed arrays (CPU-side; upload with ensureGPU)
+   * @param {{positions: Float32Array, normals?: Float32Array, uvs?: Float32Array, indices?: Uint16Array|Uint32Array|null}} arrays
+   * @param {WebGLRenderingContext|null} gl
+   * @returns {BufferGeometry}
+   */
+  static fromArrays(arrays, gl = null) {
+    const geometry = new BufferGeometry(gl);
+    const { positions, normals, uvs, indices } = arrays || {};
+
+    if (positions && positions.length) {
+      geometry.setAttribute('position', positions, 3);
+    }
+    if (normals && normals.length) {
+      geometry.setAttribute('normal', normals, 3);
+    }
+    if (uvs && uvs.length) {
+      geometry.setAttribute('uv', uvs, 2);
+    }
+    if (indices && indices.length) {
+      geometry.setIndex(indices);
+    }
+
+    if (gl) {
+      geometry.ensureGPU(gl);
+    }
+
+    return geometry;
+  }
+
+  /**
+   * Three.js-compatible setAttribute
+   * @param {string} name
+   * @param {ArrayBufferView|TypedArray|object} arrayOrAttribute - typed array or {array, itemSize}
+   * @param {number} itemSize
+   */
+  setAttribute(name, arrayOrAttribute, itemSize = 3) {
+    if (this._isDisposed) {
+      throw new Error('Cannot modify disposed geometry');
+    }
+
+    let data = arrayOrAttribute;
+    let size = itemSize;
+
+    if (arrayOrAttribute && arrayOrAttribute.array) {
+      data = arrayOrAttribute.array;
+      size = arrayOrAttribute.itemSize || itemSize;
+    }
+
+    if (!(data instanceof Float32Array) && Array.isArray(data)) {
+      data = new Float32Array(data);
+    }
+
+    const attribute = new VertexAttribute(name, size, GL_FLOAT, false, 0, 0);
+    this._pendingAttributes.set(name, { attribute, data });
+
+    if (!this.attributeOrder.includes(name)) {
+      this.attributeOrder.push(name);
+    }
+
+    if (data && data.length > 0) {
+      this.vertexCount = Math.max(this.vertexCount, data.length / size);
+    }
+
+    this._gpuReady = false;
+    this._invalidateBounds();
+
+    // Store CPU-side reference for getAttribute consumers
+    attribute._cpuData = data;
+    this.attributes.set(name, attribute);
+
+    if (this.gl) {
+      this._uploadAttribute(name, attribute, data);
+    }
+
+    return this;
+  }
+
+  /**
+   * Ensure GPU buffers exist for the given WebGL context
+   * @param {WebGLRenderingContext} gl
+   */
+  ensureGPU(gl) {
+    if (!gl) return this;
+    this.gl = gl;
+
+    for (const [name, pending] of this._pendingAttributes) {
+      this._uploadAttribute(name, pending.attribute, pending.data);
+    }
+    this._pendingAttributes.clear();
+
+    if (this._pendingIndex) {
+      this._uploadIndex(this._pendingIndex);
+      this._pendingIndex = null;
+    }
+
+    this._gpuReady = true;
+    return this;
+  }
+
+  _uploadAttribute(name, attribute, data) {
+    if (!this.gl || !data) return;
+
+    attribute.buffer = new VertexBuffer(this.gl, data, BufferUsage.STATIC_DRAW);
+    attribute.byteOffset = this.vertexSize;
+
+    if (!this.isInterleaved) {
+      this.vertexSize += attribute.getTotalSize();
+    }
+
+    this.attributes.set(name, attribute);
+    if (!this.buffers.includes(attribute.buffer)) {
+      this.buffers.push(attribute.buffer);
+    }
+  }
+
+  _uploadIndex(indices) {
+    if (!this.gl || !indices) return;
+    this.indexBuffer = new IndexBuffer(this.gl, indices, BufferUsage.STATIC_DRAW);
   }
 
   /**
@@ -102,8 +225,14 @@ export class BufferGeometry {
       throw new Error(`Data length (${data.length}) must be divisible by attribute size (${attribute.size})`);
     }
 
+    if (!this.gl) {
+      this.setAttribute(attribute.name, data, attribute.size);
+      return;
+    }
+
     attribute.buffer = new VertexBuffer(this.gl, data, BufferUsage.STATIC_DRAW);
     attribute.byteOffset = this.vertexSize;
+    attribute._cpuData = data;
     
     this.attributes.set(attribute.name, attribute);
     this.attributeOrder.push(attribute.name);
@@ -120,6 +249,7 @@ export class BufferGeometry {
     
     this._invalidateBounds();
     this.buffers.push(attribute.buffer);
+    this._gpuReady = true;
   }
 
   /**
@@ -164,15 +294,29 @@ export class BufferGeometry {
 
   /**
    * Set index data
-   * @param {Uint16Array|Uint32Array} indices - Index data
+   * @param {Uint16Array|Uint32Array|Array} indices - Index data
    */
   setIndex(indices) {
     if (this._isDisposed) {
       throw new Error('Cannot modify disposed geometry');
     }
 
-    this.indexBuffer = new IndexBuffer(this.gl, indices, BufferUsage.STATIC_DRAW);
+    let data = indices;
+    if (Array.isArray(indices)) {
+      const max = indices.reduce((m, v) => (v > m ? v : m), 0);
+      data = max > 65535 ? new Uint32Array(indices) : new Uint16Array(indices);
+    }
+
+    this._pendingIndex = data;
+    this._gpuReady = false;
     this._invalidateBounds();
+
+    if (this.gl) {
+      this._uploadIndex(data);
+      this._pendingIndex = null;
+    }
+
+    return this;
   }
 
   /**
@@ -181,7 +325,13 @@ export class BufferGeometry {
    * @returns {VertexAttribute|null} Attribute or null
    */
   getAttribute(name) {
-    return this.attributes.get(name) || null;
+    const attr = this.attributes.get(name) || null;
+    if (attr && attr._cpuData && !attr.array) {
+      attr.array = attr._cpuData;
+      attr.itemSize = attr.size;
+      attr.count = attr._cpuData.length / attr.size;
+    }
+    return attr;
   }
 
   /**
@@ -221,7 +371,12 @@ export class BufferGeometry {
    * @param {WebGLProgram} program - Shader program (optional, for automatic location binding)
    */
   enableAttributes(program = null) {
+    if (this.gl && !this._gpuReady) {
+      this.ensureGPU(this.gl);
+    }
+
     for (const attribute of this.getAttributes()) {
+      if (!attribute.buffer) continue;
       attribute.buffer.bind();
       
       const location = program ? 
@@ -260,12 +415,15 @@ export class BufferGeometry {
    */
   computeBoundingBox() {
     const positionAttribute = this.attributes.get('position');
-    if (!positionAttribute || !positionAttribute.buffer.getData()) {
+    const positions = positionAttribute && (
+      (positionAttribute.buffer && positionAttribute.buffer.getData && positionAttribute.buffer.getData()) ||
+      positionAttribute._cpuData
+    );
+    if (!positionAttribute || !positions) {
       this.boundingBox = null;
       return;
     }
 
-    const positions = positionAttribute.buffer.getData();
     const vertexCount = this.vertexCount;
     
     let minX = Infinity, minY = Infinity, minZ = Infinity;

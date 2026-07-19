@@ -41,7 +41,8 @@ export class WebGLRenderer {
         this.renderer = '';
 
         // Render settings
-        this.setPixelRatio = true;
+        this._autoPixelRatio = true;
+        this.pixelRatio = 1;
         this.autoClear = true;
         this.autoClearColor = true;
         this.autoClearDepth = true;
@@ -345,7 +346,7 @@ export class WebGLRenderer {
         this.canvas.addEventListener('webglcontextrestored', this.onContextRestored.bind(this), false);
 
         // Handle device pixel ratio changes
-        if (this.setPixelRatio) {
+        if (this._autoPixelRatio) {
             this.updatePixelRatio();
         }
     }
@@ -388,11 +389,13 @@ export class WebGLRenderer {
      * Update device pixel ratio
      */
     updatePixelRatio() {
-        if (this.setPixelRatio) {
+        if (this._autoPixelRatio && typeof window !== 'undefined') {
             const pixelRatio = Math.min(window.devicePixelRatio || 1, 2); // Limit to 2x for performance
             if (pixelRatio !== this.pixelRatio) {
                 this.pixelRatio = pixelRatio;
-                this.setSize(this.canvas.width, this.canvas.height);
+                if (this._width && this._height) {
+                    this.setSize(this._width, this._height);
+                }
             }
         }
     }
@@ -415,6 +418,43 @@ export class WebGLRenderer {
                 this.gl.viewport(0, 0, displayWidth, displayHeight);
             }
         }
+
+        this._width = width;
+        this._height = height;
+    }
+
+    /**
+     * Three.js-compatible pixel ratio setter
+     * @param {number} value
+     */
+    setPixelRatio(value) {
+        if (typeof value === 'boolean') {
+            // Legacy flag usage in this codebase
+            this._autoPixelRatio = value;
+            this.pixelRatio = value ? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1) : 1;
+        } else {
+            this.pixelRatio = Math.max(0.1, Number(value) || 1);
+        }
+        if (this._width && this._height) {
+            this.setSize(this._width, this._height);
+        }
+        return this;
+    }
+
+    getPixelRatio() {
+        return this.pixelRatio || 1;
+    }
+
+    getSize(target = { width: 0, height: 0 }) {
+        target.width = this._width || (this.canvas ? this.canvas.clientWidth : 0);
+        target.height = this._height || (this.canvas ? this.canvas.clientHeight : 0);
+        return target;
+    }
+
+    getDrawingBufferSize(target = { width: 0, height: 0 }) {
+        target.width = this.canvas ? this.canvas.width : 0;
+        target.height = this.canvas ? this.canvas.height : 0;
+        return target;
     }
 
     /**
@@ -797,16 +837,29 @@ export class WebGLRenderer {
      * Set clear color
      */
     setClearColor(color, alpha = 1.0) {
-        this.clearColor = {
-            r: color.r || color[0] || 0,
-            g: color.g || color[1] || 0,
-            b: color.b || color[2] || 0,
-            a: alpha
-        };
-
+        if (typeof color === 'number') {
+            const r = ((color >> 16) & 255) / 255;
+            const g = ((color >> 8) & 255) / 255;
+            const b = (color & 255) / 255;
+            this.clearColor = { r, g, b, a: alpha };
+        } else if (typeof color === 'string') {
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16) / 255;
+            const g = parseInt(hex.substring(2, 4), 16) / 255;
+            const b = parseInt(hex.substring(4, 6), 16) / 255;
+            this.clearColor = { r, g, b, a: alpha };
+        } else if (color && typeof color === 'object') {
+            this.clearColor = {
+                r: color.r !== undefined ? color.r : 0,
+                g: color.g !== undefined ? color.g : 0,
+                b: color.b !== undefined ? color.b : 0,
+                a: color.a !== undefined ? color.a : alpha
+            };
+        }
         if (this.gl && !this.isContextLost) {
             this.gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearColor.a);
         }
+        return this;
     }
 
     /**
@@ -930,7 +983,7 @@ export class WebGLRenderer {
                 this.enableOcclusionCulling = value;
                 break;
             case 'pixel_ratio':
-                this.setPixelRatio = value;
+                this._autoPixelRatio = value;
                 if (value) this.updatePixelRatio();
                 break;
         }

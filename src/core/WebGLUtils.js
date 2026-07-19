@@ -8,6 +8,19 @@
 // Constants and Defaults
 // ============================================================================
 
+const GL = (typeof WebGLRenderingContext !== 'undefined')
+  ? WebGLRenderingContext
+  : {
+      REPEAT: 10497,
+      CLAMP_TO_EDGE: 33071,
+      LINEAR: 9729,
+      LINEAR_MIPMAP_LINEAR: 9987,
+      RGBA: 6408,
+      UNSIGNED_BYTE: 5121,
+      DEPTH_COMPONENT16: 33189,
+      STENCIL_INDEX8: 36168
+    };
+
 const DEFAULT_WEBGL_ATTRIBUTES = {
     alpha: true,
     antialias: true,
@@ -20,12 +33,12 @@ const DEFAULT_WEBGL_ATTRIBUTES = {
 };
 
 const DEFAULT_TEXTURE_OPTIONS = {
-    wrapS: WebGLRenderingContext.REPEAT,
-    wrapT: WebGLRenderingContext.REPEAT,
-    minFilter: WebGLRenderingContext.LINEAR_MIPMAP_LINEAR,
-    magFilter: WebGLRenderingContext.LINEAR,
-    format: WebGLRenderingContext.RGBA,
-    type: WebGLRenderingContext.UNSIGNED_BYTE,
+    wrapS: GL.REPEAT,
+    wrapT: GL.REPEAT,
+    minFilter: GL.LINEAR_MIPMAP_LINEAR,
+    magFilter: GL.LINEAR,
+    format: GL.RGBA,
+    type: GL.UNSIGNED_BYTE,
     generateMipmaps: true,
     flipY: true
 };
@@ -33,8 +46,8 @@ const DEFAULT_TEXTURE_OPTIONS = {
 const DEFAULT_FRAMEBUFFER_OPTIONS = {
     depth: true,
     stencil: false,
-    depthFormat: WebGLRenderingContext.DEPTH_COMPONENT16,
-    stencilFormat: WebGLRenderingContext.STENCIL_INDEX8
+    depthFormat: GL.DEPTH_COMPONENT16,
+    stencilFormat: GL.STENCIL_INDEX8
 };
 
 // ============================================================================

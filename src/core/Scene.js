@@ -68,10 +68,26 @@ export class Scene {
     }
 
     /**
-     * Add object to scene (Three.js compatible alias)
+     * Three.js-compatible children list (root children)
      */
-    add(object, name = null) {
-        return this.addObject(object, name);
+    get children() {
+        return this.root ? this.root.children : [];
+    }
+
+    /**
+     * Add object(s) to scene (Three.js compatible)
+     */
+    add(...objects) {
+        if (objects.length === 1 && objects[0] && !objects[0].isObject3D && !objects[0].position && typeof objects[0] === 'string') {
+            // legacy add(object, name) — not used
+        }
+        if (objects.length === 2 && typeof objects[1] === 'string') {
+            return this.addObject(objects[0], objects[1]);
+        }
+        for (const object of objects) {
+            this.addObject(object);
+        }
+        return objects.length === 1 ? objects[0] : this;
     }
 
     /**

@@ -36,13 +36,8 @@ export {
   getDefaultLightProperties
 } from './LightTypes.js';
 
-// Legacy compatibility exports
-export {
-  AmbientLight as LegacyAmbientLight,
-  DirectionalLight as LegacyDirectionalLight,
-  PointLight as LegacyPointLight,
-  SpotLight as LegacySpotLight
-} from './directional.ts';
+// Legacy stub lights from directional.ts are NOT re-exported (console.log stubs).
+// Use AmbientLight.js / DirectionalLight.js / PointLight.js / SpotLight.js instead.
 
 // Extended light classes (to be added)
 // export { HemisphereLight } from './HemisphereLight.js';

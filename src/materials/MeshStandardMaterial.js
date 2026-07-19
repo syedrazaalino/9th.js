@@ -4,13 +4,36 @@
  */
 
 import { Material } from '../core/Material.js';
+import { Shader } from '../core/Shader.js';
 
 export class MeshStandardMaterial extends Material {
   constructor(options = {}) {
     super(null);
 
-    // Color properties
-    this.color = options.color || [1, 1, 1];
+    // Color properties — accept hex string/number like MeshBasicMaterial
+    if (options.color !== undefined) {
+      if (typeof options.color === 'number') {
+        const hex = options.color.toString(16).padStart(6, '0');
+        this.color = [
+          parseInt(hex.substr(0, 2), 16) / 255,
+          parseInt(hex.substr(2, 2), 16) / 255,
+          parseInt(hex.substr(4, 2), 16) / 255
+        ];
+      } else if (typeof options.color === 'string') {
+        const hex = options.color.replace('#', '');
+        this.color = [
+          parseInt(hex.substr(0, 2), 16) / 255,
+          parseInt(hex.substr(2, 2), 16) / 255,
+          parseInt(hex.substr(4, 2), 16) / 255
+        ];
+      } else if (Array.isArray(options.color)) {
+        this.color = options.color;
+      } else {
+        this.color = [1, 1, 1];
+      }
+    } else {
+      this.color = [1, 1, 1];
+    }
     this.emissive = options.emissive || [0, 0, 0];
     this.opacity = options.opacity !== undefined ? options.opacity : 1.0;
     this.transparent = options.transparent || false;
@@ -412,17 +435,28 @@ export class MeshStandardMaterial extends Material {
       }
     `;
 
-    // Return shader object (simplified)
-    return {
-      vertexSource: vertexShader,
-      fragmentSource: fragmentShader,
-      isReady: () => true,
-      setUniform: () => {},
-      getUniform: () => null,
-      use: () => {},
-      unuse: () => {},
-      dispose: () => {}
-    };
+    // Store sources for lazy WebGL compilation
+    this.vertexSource = vertexShader;
+    this.fragmentSource = fragmentShader;
+
+    // Placeholder until initShader(gl) is called
+    return null;
+  }
+
+  /**
+   * Compile shader with WebGL context
+   * @param {WebGLRenderingContext} gl
+   */
+  initShader(gl) {
+    if (this.shader && this.shader.isReady && this.shader.isReady()) {
+      return;
+    }
+    if (!this.vertexSource || !this.fragmentSource) {
+      this._createShader();
+    }
+    this.shader = new Shader(gl);
+    this.shader.createProgram(this.vertexSource, this.fragmentSource);
+    this._initializeUniforms();
   }
 
   /**
