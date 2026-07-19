@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9th.js — Lights</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #050608; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+    #info { position: absolute; top: 12px; left: 12px; color: #e8eaed; background: rgba(0,0,0,.5); padding: 10px 14px; border-radius: 6px; z-index: 2; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <strong>Multi-light scene</strong><br />
+    Ambient + directional + colored points<br />
+    Drag to orbit
+  </div>
+  <canvas id="canvas"></canvas>
+  <script type="module">
+    import {
+      WebGLRenderer, Scene, PerspectiveCamera,
+      BoxGeometry, SphereGeometry, PlaneGeometry,
+      MeshStandardMaterial, Mesh,
+      AmbientLight, DirectionalLight, PointLight,
+      OrbitControls
+    } from '../dist/esm/main.js';
+
+    const canvas = document.getElementById('canvas');
+    const renderer = new WebGLRenderer({ canvas, antialias: true });
+    renderer.setClearColor({ r: 0.02, g: 0.025, b: 0.035 }, 1);
+    renderer.enableFrustumCulling = false;
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(55, 1, 0.1, 100);
+    camera.position.set(3.5, 2.8, 5.5);
+
+    scene.add(new AmbientLight(0xffffff, 0.12));
+    const sun = new DirectionalLight(0xffffff, 0.55);
+    sun.position.set(2, 5, 1);
+    scene.add(sun);
+
+    const red = new PointLight(0xff4466, 1.4);
+    red.position.set(-2.2, 1.5, 1.5);
+    scene.add(red);
+    const cyan = new PointLight(0x44ddff, 1.4);
+    cyan.position.set(2.2, 1.2, 1.2);
+    scene.add(cyan);
+    const amber = new PointLight(0xffaa44, 0.9);
+    amber.position.set(0, 2.5, -1.5);
+    scene.add(amber);
+
+    const floor = new Mesh(
+      new PlaneGeometry(10, 10),
+      new MeshStandardMaterial({ color: '#10141a', metalness: 0.2, roughness: 0.85 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.01;
+    scene.add(floor);
+
+    const pedestal = new Mesh(
+      new BoxGeometry(2.2, 0.2, 2.2),
+      new MeshStandardMaterial({ color: '#2a3038', metalness: 0.4, roughness: 0.5 })
+    );
+    pedestal.position.y = 0.1;
+    scene.add(pedestal);
+
+    const orb = new Mesh(
+      new SphereGeometry(0.85, 48, 32),
+      new MeshStandardMaterial({ color: '#eceff1', metalness: 0.75, roughness: 0.18 })
+    );
+    orb.position.y = 1.15;
+    scene.add(orb);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = false;
+    controls.target = { x: 0, y: 0.9, z: 0 };
+    controls.needsUpdate = true;
+    controls.update();
+
+    let t = 0;
+    function resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      t += 0.012;
+      red.position.x = Math.cos(t) * 2.4;
+      red.position.z = Math.sin(t) * 2.4;
+      cyan.position.x = Math.cos(t + Math.PI) * 2.4;
+      cyan.position.z = Math.sin(t + Math.PI) * 2.4;
+      orb.rotation.y += 0.006;
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

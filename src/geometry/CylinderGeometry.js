@@ -53,9 +53,11 @@ export class CylinderGeometry {
     }
 
     // Generate top and bottom caps if not open ended
+    let topStartIndex = -1;
+    let bottomStartIndex = -1;
     if (!openEnded && radiusTop > 0 && radiusBottom > 0) {
       // Top cap
-      const topStartIndex = this.vertices.length / 3;
+      topStartIndex = this.vertices.length / 3;
       this.vertices.push(0, heightHalf, 0);
       this.normals.push(0, 1, 0);
       this.uvs.push(0.5, 0.5);
@@ -76,7 +78,7 @@ export class CylinderGeometry {
       }
 
       // Bottom cap
-      const bottomStartIndex = this.vertices.length / 3;
+      bottomStartIndex = this.vertices.length / 3;
       this.vertices.push(0, -heightHalf, 0);
       this.normals.push(0, -1, 0);
       this.uvs.push(0.5, 0.5);
@@ -111,24 +113,16 @@ export class CylinderGeometry {
       }
     }
 
-    // Generate cap indices if not open ended
+    // Generate cap indices if not open ended (use indices captured while building caps)
     if (!openEnded && radiusTop > 0 && radiusBottom > 0) {
-      const topStart = this.vertices.length / 3;
-      const centerTopIndex = topStart - 1; // Last added vertex is center of top cap
-      const topRingStart = centerTopIndex + 1;
-
       // Top cap triangles (fan)
       for (let x = 0; x < radialSegments; x++) {
-        this.indices.push(centerTopIndex, topRingStart + x, topRingStart + x + 1);
+        this.indices.push(topStartIndex, topStartIndex + 1 + x, topStartIndex + 2 + x);
       }
-
-      const bottomStart = this.vertices.length / 3;
-      const centerBottomIndex = bottomStart - 1; // Last added vertex is center of bottom cap
-      const bottomRingStart = centerBottomIndex + 1;
 
       // Bottom cap triangles (fan, reversed winding)
       for (let x = 0; x < radialSegments; x++) {
-        this.indices.push(centerBottomIndex, bottomRingStart + x + 1, bottomRingStart + x);
+        this.indices.push(bottomStartIndex, bottomStartIndex + 2 + x, bottomStartIndex + 1 + x);
       }
     }
 
@@ -191,6 +185,8 @@ export class CylinderGeometry {
       const i1 = indices[i];
       const i2 = indices[i + 1];
       const i3 = indices[i + 2];
+      if (i1 >= vertexCount || i2 >= vertexCount || i3 >= vertexCount) continue;
+      if (!tan1[i1] || !tan1[i2] || !tan1[i3]) continue;
 
       const v1 = [vertices[i1 * 3], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]];
       const v2 = [vertices[i2 * 3], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]];
@@ -242,7 +238,7 @@ export class CylinderGeometry {
     // Orthonormalize tangents
     for (let i = 0; i < vertexCount; i++) {
       const n = [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]];
-      const t = tan1[i];
+      const t = tan1[i] || [1, 0, 0];
 
       // Gram-Schmidt orthonormalize
       const dot = n[0] * t[0] + n[1] * t[1] + n[2] * t[2];

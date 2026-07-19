@@ -108,20 +108,39 @@ frame();
 ## CDN
 
 ```html
-<script src="https://unpkg.com/9th.js@1.0.4/dist/umd/9th.umd.min.js"></script>
+<script src="https://unpkg.com/9th.js@1.0.5/dist/umd/9th.umd.min.js"></script>
 ```
 
-Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.4/dist/umd/9th.umd.min.js`
+Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.5/dist/umd/9th.umd.min.js`
 
 ## Examples
 
-Working demos in the repo (serve the project root after `npm run build`):
+Live gallery (after `npm run build`, serve the repo root):
 
-| Demo | Path |
-|------|------|
-| Hello cube | [examples/hello-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/hello-cube.html) |
-| Lit cube + orbit | [examples/lit-cube.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/lit-cube.html) |
-| GLTF triangle | [examples/gltf-triangle.html](https://github.com/syedrazaalino/9th.js/blob/master/examples/gltf-triangle.html) |
+**[examples/](https://github.com/syedrazaalino/9th.js/tree/master/examples)** → open `examples/index.html`
+
+### Previews
+
+| Hello cube | Lit + orbit |
+|:---:|:---:|
+| ![Hello cube](https://raw.githubusercontent.com/syedrazaalino/9th.js/master/media/previews/hello-cube.png) | ![Lit cube](https://raw.githubusercontent.com/syedrazaalino/9th.js/master/media/previews/lit-cube.png) |
+| Unlit `MeshBasicMaterial` | PBR + lights + `OrbitControls` |
+
+| Primitives | Materials |
+|:---:|:---:|
+| ![Primitives](https://raw.githubusercontent.com/syedrazaalino/9th.js/master/media/previews/primitives.png) | ![Materials](https://raw.githubusercontent.com/syedrazaalino/9th.js/master/media/previews/materials.png) |
+| Box, sphere, cylinder, cone | Metalness / roughness row |
+
+| Lights | GLTF |
+|:---:|:---:|
+| ![Lights](https://raw.githubusercontent.com/syedrazaalino/9th.js/master/media/previews/lights.png) | ![GLTF](https://raw.githubusercontent.com/syedrazaalino/9th.js/master/media/previews/gltf-triangle.png) |
+| Ambient + directional + points | `GLTFLoader` → scene |
+
+```bash
+npm run build
+npx serve .
+# open http://localhost:3000/examples/
+```
 
 ## Docs & roadmap
 

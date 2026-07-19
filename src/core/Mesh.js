@@ -754,12 +754,13 @@ export class Mesh extends Object3D {
 
     if (indexBuffer) {
       indexBuffer.bind();
-      gl.drawElements(
-        gl.TRIANGLES,
-        indexBuffer.getIndexCount(),
-        indexBuffer.getIndexType(),
-        0
-      );
+      const count = indexBuffer.getIndexCount ? indexBuffer.getIndexCount() : 0;
+      const indexType = indexBuffer.getIndexType
+        ? indexBuffer.getIndexType()
+        : (indexBuffer.isUint32 && indexBuffer.isUint32() ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT);
+      if (count > 0) {
+        gl.drawElements(gl.TRIANGLES, count, indexType, 0);
+      }
     } else {
       gl.drawArrays(gl.TRIANGLES, 0, renderGeometry.getVertexCount());
     }

@@ -165,6 +165,7 @@ export class BufferGeometry {
 
     if (this.gl) {
       this._uploadAttribute(name, attribute, data);
+      this._pendingAttributes.delete(name);
     }
 
     return this;
@@ -196,10 +197,14 @@ export class BufferGeometry {
     if (!this.gl || !data) return;
 
     attribute.buffer = new VertexBuffer(this.gl, data, BufferUsage.STATIC_DRAW);
-    attribute.byteOffset = this.vertexSize;
-
-    if (!this.isInterleaved) {
+    // Non-interleaved attributes each have their own buffer — offset is always 0.
+    // byteOffset is only meaningful for interleaved layouts.
+    if (this.isInterleaved) {
+      attribute.byteOffset = this.vertexSize;
       this.vertexSize += attribute.getTotalSize();
+    } else {
+      attribute.byteOffset = 0;
+      attribute.stride = 0;
     }
 
     this.attributes.set(name, attribute);
@@ -388,14 +393,17 @@ export class BufferGeometry {
       
       if (location !== -1) {
         this.gl.enableVertexAttribArray(location);
+
+        // Separate VBOs: always start at 0. Interleaved: use stored byteOffset.
+        const offset = this.isInterleaved ? (attribute.byteOffset || 0) : 0;
         
         this.gl.vertexAttribPointer(
           location,
           attribute.size,
           attribute.type,
           attribute.normalized,
-          attribute.stride,
-          attribute.byteOffset
+          attribute.stride || 0,
+          offset
         );
       }
     }

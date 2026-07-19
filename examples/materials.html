@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9th.js — Materials</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a0c0f; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+    #info { position: absolute; top: 12px; left: 12px; color: #e8eaed; background: rgba(0,0,0,.5); padding: 10px 14px; border-radius: 6px; z-index: 2; max-width: 260px; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <strong>PBR materials</strong><br />
+    Metalness / roughness row<br />
+    Drag to orbit
+  </div>
+  <canvas id="canvas"></canvas>
+  <script type="module">
+    import {
+      WebGLRenderer, Scene, PerspectiveCamera,
+      SphereGeometry, PlaneGeometry,
+      MeshStandardMaterial, Mesh,
+      AmbientLight, DirectionalLight, PointLight,
+      OrbitControls
+    } from '../dist/esm/main.js';
+
+    const canvas = document.getElementById('canvas');
+    const renderer = new WebGLRenderer({ canvas, antialias: true });
+    renderer.setClearColor({ r: 0.05, g: 0.06, b: 0.08 }, 1);
+    renderer.enableFrustumCulling = false;
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(0, 1.8, 6.5);
+
+    scene.add(new AmbientLight(0xffffff, 0.25));
+    const sun = new DirectionalLight(0xffffff, 1.3);
+    sun.position.set(3, 5, 4);
+    scene.add(sun);
+    const rim = new PointLight(0xffcc88, 0.7);
+    rim.position.set(-4, 2, -2);
+    scene.add(rim);
+
+    const ground = new Mesh(
+      new PlaneGeometry(14, 8),
+      new MeshStandardMaterial({ color: '#14181e', metalness: 0.05, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.85;
+    scene.add(ground);
+
+    const geo = new SphereGeometry(0.55, 40, 28);
+    const specs = [
+      { metalness: 0.0, roughness: 1.0, color: '#cfd8dc' },
+      { metalness: 0.0, roughness: 0.4, color: '#90caf9' },
+      { metalness: 0.5, roughness: 0.35, color: '#80cbc4' },
+      { metalness: 0.85, roughness: 0.2, color: '#ffe082' },
+      { metalness: 1.0, roughness: 0.08, color: '#b0bec5' }
+    ];
+
+    specs.forEach((s, i) => {
+      const mesh = new Mesh(geo, new MeshStandardMaterial(s));
+      mesh.position.set((i - 2) * 1.45, 0, 0);
+      scene.add(mesh);
+    });
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = false;
+    controls.target = { x: 0, y: 0, z: 0 };
+    controls.needsUpdate = true;
+    controls.update();
+
+    function resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

@@ -132,6 +132,14 @@ export class Camera extends Object3D {
     }
 
     /**
+     * Keep view matrix in sync when camera transform changes
+     */
+    markMatrixDirty() {
+        super.markMatrixDirty();
+        this.markViewDirty();
+    }
+
+    /**
      * Update camera matrices
      */
     updateMatrix() {

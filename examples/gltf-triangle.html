@@ -25,6 +25,7 @@
       AmbientLight,
       DirectionalLight,
       GLTFLoader,
+      MeshStandardMaterial,
       VERSION
     } from '../dist/esm/main.js';
 
@@ -99,16 +100,27 @@
     camera.position.set(0, 0.2, 3);
     camera.lookAt(0, 0, 0);
 
-    scene.add(new AmbientLight(0xffffff, 0.4));
-    const sun = new DirectionalLight(0xffffff, 1.1);
+    scene.add(new AmbientLight(0xffffff, 0.7));
+    const sun = new DirectionalLight(0xffffff, 1.4);
     sun.position.set(2, 3, 4);
     scene.add(sun);
 
     const loader = new GLTFLoader();
     loader.parse(gltf, (asset) => {
-      if (asset.scene) scene.add(asset.scene);
-      console.log('9th.js', VERSION, 'gltf meshes', asset.meshes.length,
-        'geo', asset.meshes[0]?.geometry?.getAttribute?.('position') ? 'ok' : 'missing');
+      if (asset.scene) {
+        asset.scene.traverse((obj) => {
+          if (obj.isMesh && obj.material) {
+            // Ensure a visible lit material for the demo
+            obj.material = new MeshStandardMaterial({
+              color: '#4fc3f7',
+              metalness: 0.15,
+              roughness: 0.4
+            });
+          }
+        });
+        scene.add(asset.scene);
+      }
+      console.log('9th.js', VERSION, 'gltf meshes', asset.meshes.length);
     }, (err) => console.error(err));
 
     function resize() {

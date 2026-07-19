@@ -59,8 +59,6 @@ export class Buffer {
    * Bind the buffer to its target
    */
   bind() {
-    if (this.isBound) return;
-    
     this.gl.bindBuffer(this.target, this.buffer);
     this.isBound = true;
   }
@@ -69,8 +67,6 @@ export class Buffer {
    * Unbind the buffer
    */
   unbind() {
-    if (!this.isBound) return;
-    
     this.gl.bindBuffer(this.target, null);
     this.isBound = false;
   }
@@ -244,6 +240,17 @@ export class IndexBuffer extends Buffer {
     if (!this.data) return 0;
     
     return this.data.length;
+  }
+
+  /**
+   * WebGL type constant for drawElements
+   * @returns {number}
+   */
+  getIndexType() {
+    if (!this.gl) {
+      return this.isUint32() ? 5125 : 5123; // UNSIGNED_INT : UNSIGNED_SHORT
+    }
+    return this.isUint32() ? this.gl.UNSIGNED_INT : this.gl.UNSIGNED_SHORT;
   }
 
   /**

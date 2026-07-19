@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9th.js — Primitives</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a0c0f; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+    #info { position: absolute; top: 12px; left: 12px; color: #e8eaed; background: rgba(0,0,0,.5); padding: 10px 14px; border-radius: 6px; z-index: 2; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <strong>Primitives</strong><br />
+    Box · Sphere · Cylinder · Cone · Plane<br />
+    Drag to orbit
+  </div>
+  <canvas id="canvas"></canvas>
+  <script type="module">
+    import {
+      WebGLRenderer, Scene, PerspectiveCamera,
+      BoxGeometry, SphereGeometry, CylinderGeometry, ConeGeometry, PlaneGeometry,
+      MeshStandardMaterial, Mesh,
+      AmbientLight, DirectionalLight, PointLight,
+      OrbitControls
+    } from '../dist/esm/main.js';
+
+    const canvas = document.getElementById('canvas');
+    const renderer = new WebGLRenderer({ canvas, antialias: true });
+    renderer.setClearColor({ r: 0.04, g: 0.05, b: 0.07 }, 1);
+    renderer.enableFrustumCulling = false;
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(55, 1, 0.1, 100);
+    camera.position.set(4, 3, 7);
+
+    scene.add(new AmbientLight(0xffffff, 0.3));
+    const key = new DirectionalLight(0xffffff, 1.1);
+    key.position.set(4, 6, 3);
+    scene.add(key);
+    const fill = new PointLight(0x88aaff, 0.6);
+    fill.position.set(-3, 2, 4);
+    scene.add(fill);
+
+    const ground = new Mesh(
+      new PlaneGeometry(12, 12),
+      new MeshStandardMaterial({ color: '#1a1f26', metalness: 0.1, roughness: 0.9 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.75;
+    scene.add(ground);
+
+    const items = [
+      { geo: new BoxGeometry(1.2, 1.2, 1.2), color: '#4fc3f7', x: -3 },
+      { geo: new SphereGeometry(0.7, 32, 24), color: '#81c784', x: -1 },
+      { geo: new CylinderGeometry(0.45, 0.45, 1.4, 24), color: '#ffb74d', x: 1 },
+      { geo: new ConeGeometry(0.55, 1.4, 24), color: '#e57373', x: 3 }
+    ];
+
+    const meshes = items.map(({ geo, color, x }) => {
+      const mesh = new Mesh(geo, new MeshStandardMaterial({ color, metalness: 0.2, roughness: 0.4 }));
+      mesh.position.set(x, 0, 0);
+      scene.add(mesh);
+      return mesh;
+    });
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = false;
+    controls.target = { x: 0, y: 0.2, z: 0 };
+    controls.needsUpdate = true;
+    controls.update();
+
+    function resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      meshes.forEach((m, i) => {
+        m.rotation.y += 0.008 + i * 0.002;
+      });
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

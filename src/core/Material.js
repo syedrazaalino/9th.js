@@ -22,7 +22,7 @@ export class Material {
     };
     this.depthTest = true;
     this.depthWrite = true;
-    this.cullFace = true;
+    this.cullFace = false;
     this.cullFaceMode = 'back';
     this.transparent = false;
     this.opacity = 1.0;

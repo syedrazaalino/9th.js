@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.5] - 2026-07-19
+
+### Fixed
+- Mesh drawing: buffer `bind()` no longer skips rebinds (attributes were attached to the wrong VBO)
+- Index buffer `getIndexType()` for `drawElements`
+- Non-interleaved attribute offsets always start at 0
+- Prefer WebGL1 for GLSL ES 1.00 materials; WebGL2 gets a default VAO
+- CylinderGeometry cap index generation
+
+### Added
+- Example gallery with live demos + preview screenshots (`examples/`, `media/previews/`)
+- Primitives, materials, and lights demos
+
 ## [1.0.4] - 2026-07-19
 
 ### Changed

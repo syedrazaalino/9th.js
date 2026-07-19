@@ -51,9 +51,9 @@ export class WebGLRenderer {
         this.clearDepth = 1.0;
         this.clearStencil = 0;
 
-        // Optimization flags
-        this.enableDistanceCulling = true;
-        this.enableFrustumCulling = true;
+        // Optimization flags — frustum off by default until matrix/frustum path is hardened
+        this.enableDistanceCulling = false;
+        this.enableFrustumCulling = false;
         this.enableOcclusionCulling = false;
         this.maxDistance = 1000;
         this.lodBias = 0;
@@ -119,43 +119,45 @@ export class WebGLRenderer {
             preserveDrawingBuffer: this.options.preserveDrawingBuffer
         };
 
-        // Try WebGL2 first, then fallback to WebGL1
+        // Prefer WebGL1 — materials use GLSL ES 1.00 (attribute/varying).
+        // WebGL2 is used when WebGL1 is unavailable, with a default VAO bound.
         let gl = null;
         let contextType = '';
 
         try {
-            gl = this.canvas.getContext('webgl2', contextOptions);
-            if (gl) {
-                contextType = 'webgl2';
-            }
+            gl = this.canvas.getContext('webgl', contextOptions);
+            if (gl) contextType = 'webgl';
         } catch (e) {
-            console.warn('WebGL2 not available, trying WebGL1');
-        }
-
-        if (!gl) {
-            try {
-                gl = this.canvas.getContext('webgl', contextOptions);
-                if (gl) {
-                    contextType = 'webgl';
-                }
-            } catch (e) {
-                console.warn('WebGL not available, trying experimental');
-            }
+            console.warn('WebGL1 not available');
         }
 
         if (!gl) {
             try {
                 gl = this.canvas.getContext('experimental-webgl', contextOptions);
+                if (gl) contextType = 'experimental-webgl';
+            } catch (e) {
+                // continue
+            }
+        }
+
+        if (!gl) {
+            try {
+                gl = this.canvas.getContext('webgl2', contextOptions);
                 if (gl) {
-                    contextType = 'experimental-webgl';
+                    contextType = 'webgl2';
+                    this.defaultVAO = gl.createVertexArray();
+                    gl.bindVertexArray(this.defaultVAO);
                 }
             } catch (e) {
-                // Provide helpful error message
-                const errorMessage = 'WebGL is not supported in this browser. ' +
-                    'Please use a modern browser with WebGL support, or enable hardware acceleration.';
-                console.error(errorMessage);
-                throw new Error(errorMessage);
+                console.warn('WebGL2 not available');
             }
+        }
+
+        if (!gl) {
+            const errorMessage = 'WebGL is not supported in this browser. ' +
+                'Please use a modern browser with WebGL support, or enable hardware acceleration.';
+            console.error(errorMessage);
+            throw new Error(errorMessage);
         }
 
         this.context = gl;
@@ -657,6 +659,11 @@ export class WebGLRenderer {
         this.performance.triangles = 0;
         this.performance.vertices = 0;
 
+        // Ensure default VAO stays bound on WebGL2
+        if (this.defaultVAO && this.gl.bindVertexArray) {
+            this.gl.bindVertexArray(this.defaultVAO);
+        }
+
         // Auto clear
         if (this.autoClear) {
             this.clear();
@@ -774,24 +781,22 @@ export class WebGLRenderer {
         }
 
         try {
-            // Mesh.render expects (gl, overrideMaterial)
-            // Other objects might have different render signatures
-            if (object.render.length === 2) {
-                // Store camera, scene, and renderer for matrix + light setup
+            // Prefer Mesh-style render(gl) when available
+            const isMeshRender = object.isMesh ||
+                (typeof object.render === 'function' && object.render.length >= 1 && object.geometry);
+
+            if (isMeshRender) {
                 object._renderer = this;
                 object._camera = camera;
                 object._scene = scene;
-                
-                // Mesh-style render: render(gl, overrideMaterial)
                 object.render(this.gl, null);
-                
-                // Clean up
                 delete object._renderer;
                 delete object._camera;
                 delete object._scene;
-            } else {
-                // Generic render: render(renderer, camera, scene)
+            } else if (typeof object.render === 'function') {
                 object.render(this, camera, scene);
+            } else {
+                return;
             }
             this.performance.drawCalls++;
             
