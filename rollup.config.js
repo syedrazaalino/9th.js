@@ -278,7 +278,7 @@ const getAdvancedChunkSplitConfig = (target) => {
   return cacheGroups;
 };
 
-// Enhanced ES Modules build with advanced chunk splitting
+// Enhanced ES Modules build — single file (npm ships only dist/esm/main.js)
 const esmBuild = {
   input: {
     main: 'src/index.ts'
@@ -286,13 +286,9 @@ const esmBuild = {
   output: {
     dir: 'dist/esm',
     format: 'es',
-    sourcemap: true,
+    sourcemap: false,
     entryFileNames: '[name].js',
-    chunkFileNames: (chunkInfo) => {
-      const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop().replace(/\.[^/.]+$/, '') : 'chunk';
-      return '[name]-[hash].js';
-    },
-    assetFileNames: '[name]-[hash][extname]'
+    inlineDynamicImports: true
   },
   plugins: [
     ...basePlugins,
@@ -303,19 +299,7 @@ const esmBuild = {
       showBrotiliSize: true
     })
   ],
-  treeshake: treeShakeConfig,
-  manualChunks: (id, { getModuleInfo }) => {
-    // Dynamic chunking based on module relationships
-    if (id.includes('src/core/')) return 'core';
-    if (id.includes('src/geometry/')) return 'geometry';
-    if (id.includes('src/materials/')) return 'materials';
-    if (id.includes('src/cameras/')) return 'cameras';
-    if (id.includes('src/lights/')) return 'lights';
-    if (id.includes('src/animation/')) return 'animation';
-    if (id.includes('src/loaders/')) return 'loaders';
-    if (id.includes('src/particles/')) return 'particles';
-    return null;
-  }
+  treeshake: treeShakeConfig
 };
 
 // Enhanced ES Modules Minified build
@@ -347,9 +331,10 @@ const umdBuild = {
     file: 'dist/umd/9th.umd.js',
     format: 'umd',
     name: '9thJS',
-    sourcemap: true,
+    sourcemap: false,
     exports: 'named',  // Only named exports
     globals: {},
+    inlineDynamicImports: true,
     banner: `/*
  * 9th.js v${process.env.npm_package_version || '0.1.0'}
  * A modern 3D JavaScript library with WebGL 1.0/2.0 support

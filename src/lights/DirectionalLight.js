@@ -4,7 +4,7 @@
  * Supports shadow casting and realistic distance attenuation
  */
 
-import { Color, Vec3, MathUtils } from '../extras/helpers.ts';
+import { Color, Vec3, MathUtils } from '../extras/helpers.js';
 
 export class DirectionalLight {
   /**
@@ -403,7 +403,11 @@ export class DirectionalLight {
    * @returns {DirectionalLight} New directional light with same properties
    */
   clone() {
-    const light = new DirectionalLight(this.intensity, this.color.clone(), this.direction.clone());
+    const light = new DirectionalLight(
+      this.color instanceof Color ? this.color.clone() : this.color,
+      this.intensity,
+      this.direction.clone()
+    );
     light.position = this.position.clone();
     light.target = this.target.clone();
     light.castShadow = this.castShadow;

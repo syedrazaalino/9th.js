@@ -26,9 +26,17 @@ export class Material {
     this.cullFaceMode = 'back';
     this.transparent = false;
     this.opacity = 1.0;
-    this.needsUpdate = true;
+    this._needsUpdate = true;
     this.id = Material._generateId();
+    this.isMaterial = true;
   }
+
+  /**
+   * Backward-compatible accessor: setting `material.needsUpdate = true` triggers shader recompile.
+   * Reading it returns the underlying flag.
+   */
+  get needsUpdate() { return this._needsUpdate; }
+  set needsUpdate(v) { this._needsUpdate = !!v; }
 
   /**
    * Set a material property
@@ -37,7 +45,7 @@ export class Material {
    */
   setProperty(name, value) {
     this.properties.set(name, value);
-    this.needsUpdate = true;
+    this._needsUpdate = true;
   }
 
   /**
@@ -188,7 +196,21 @@ export class Material {
       });
     }
 
-    this.needsUpdate = false;
+    this._needsUpdate = false;
+  }
+
+  /**
+   * Lazy shader initialization. Subclasses should override to compile their GLSL.
+   * The base implementation creates a minimal unlit shader if vertexSource/fragmentSource are set.
+   */
+  initShader(gl) {
+    if (this.shader && this.shader.isReady && this.shader.isReady()) return;
+    if (!this.vertexSource || !this.fragmentSource) return;
+
+    const shader = new Shader(gl);
+    shader.createProgram(this.vertexSource, this.fragmentSource);
+    this.shader = shader;
+    this._needsUpdate = true;
   }
 
   /**
@@ -252,15 +274,22 @@ export class Material {
    * Check if this material needs an update
    * @returns {boolean} True if material needs update
    */
-  needsUpdate() {
-    return this.needsUpdate;
+  getNeedsUpdate() {
+    return this._needsUpdate;
   }
 
   /**
    * Mark material as updated
    */
   updateComplete() {
-    this.needsUpdate = false;
+    this._needsUpdate = false;
+  }
+
+  /**
+   * Force material to recompile its shader on next apply()
+   */
+  markNeedsUpdate() {
+    this._needsUpdate = true;
   }
 
   /**

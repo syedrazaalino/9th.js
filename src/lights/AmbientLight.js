@@ -4,7 +4,7 @@
  * Provides base illumination without directional information
  */
 
-import { Color, Vec3 } from '../extras/helpers.ts';
+import { Color, Vec3 } from '../extras/helpers.js';
 
 export class AmbientLight {
   /**
@@ -197,7 +197,10 @@ export class AmbientLight {
    * @returns {AmbientLight} New ambient light with same properties
    */
   clone() {
-    return new AmbientLight(this.intensity, this.color.clone());
+    return new AmbientLight(
+      this.color instanceof Color ? this.color.clone() : this.color,
+      this.intensity
+    );
   }
 
   /**

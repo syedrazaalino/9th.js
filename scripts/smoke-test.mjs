@@ -33,6 +33,10 @@ const {
   GLTFLoader,
   Engine,
   VERSION,
+  Raycaster,
+  InstancedMesh,
+  RenderTarget,
+  SpotLight,
   isPrimitiveGeometry,
   toBufferGeometry,
   calculateBoundingBox,
@@ -50,7 +54,7 @@ function assert(cond, msg) {
   }
 }
 
-assert(VERSION === '1.0.5', `VERSION is ${VERSION}`);
+assert(VERSION === '1.0.6', `VERSION is ${VERSION}`);
 assert(typeof Engine.prototype.enable === 'function', 'Engine.enable');
 assert(typeof Engine.prototype.getPerformance === 'function', 'Engine.getPerformance');
 assert(typeof Engine.prototype.pause === 'function', 'Engine.pause');
@@ -60,6 +64,12 @@ assert(typeof GeometryProfiler === 'function', 'GeometryProfiler');
 assert(typeof OrbitControls === 'function', 'OrbitControls export');
 assert(typeof GLTFLoader === 'function', 'GLTFLoader export');
 assert(typeof MeshStandardMaterial === 'function', 'MeshStandardMaterial export');
+assert(typeof Raycaster === 'function', 'Raycaster export');
+assert(typeof InstancedMesh === 'function', 'InstancedMesh export');
+assert(typeof RenderTarget === 'function', 'RenderTarget export');
+assert(typeof SpotLight === 'function', 'SpotLight export');
+assert(typeof Mesh.prototype.raycast === 'function', 'Mesh.raycast');
+assert(typeof WebGLRenderer.prototype.setRenderTarget === 'function', 'WebGLRenderer.setRenderTarget');
 
 const obj = new Object3D();
 obj.position.set(1, 2, 3);

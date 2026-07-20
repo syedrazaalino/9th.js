@@ -5,7 +5,7 @@
  * with automatic feature detection and fallback handling
  */
 
-import { getWebGLCapabilities } from './webgl/Capabilities.js';
+import { getWebGLCapabilities } from './Capabilities.js';
 
 // WebGL feature detection and compatibility layer
 export class WebGLCompatibility {

@@ -3,20 +3,36 @@
  * Exports all animation system components
  */
 
-export { default as AnimationUtils, InterpolationType, EasingType } from './AnimationUtils.js';
-export { default as KeyframeTrack } from './KeyframeTrack.js';
-export {
+import AnimationUtilsDefault, { InterpolationType, EasingType } from './AnimationUtils.js';
+import KeyframeTrackDefault, {
     NumberKeyframeTrack,
     Vector2KeyframeTrack,
     Vector3KeyframeTrack,
     Vector4KeyframeTrack,
     QuaternionKeyframeTrack
 } from './KeyframeTrack.js';
-export { default as AnimationClip } from './AnimationClip.js';
-export { default as AnimationMixer, BlendMode, AnimationAction } from './AnimationMixer.js';
+import AnimationClipDefault from './AnimationClip.js';
+import AnimationMixerDefault, { BlendMode, AnimationAction } from './AnimationMixer.js';
+import { Vector3 } from '../core/math/Vector3.js';
+import { Quaternion } from '../core/math/Quaternion.js';
+
+// Re-export as named exports
+export const AnimationUtils = AnimationUtilsDefault;
+export { InterpolationType, EasingType };
+export const KeyframeTrack = KeyframeTrackDefault;
+export {
+    NumberKeyframeTrack,
+    Vector2KeyframeTrack,
+    Vector3KeyframeTrack,
+    Vector4KeyframeTrack,
+    QuaternionKeyframeTrack
+};
+export const AnimationClip = AnimationClipDefault;
+export const AnimationMixer = AnimationMixerDefault;
+export { BlendMode, AnimationAction };
 
 // Re-export utilities for convenience
-export { default as Utils } from './AnimationUtils.js';
+export const Utils = AnimationUtilsDefault;
 
 // Animation presets and utilities
 export const AnimationPresets = {

@@ -13,6 +13,7 @@ import {
   applyStandardMaterialLights,
   computeNormalMatrix
 } from '../lights/StandardLightUniforms.js';
+import { meshRaycast } from './Raycaster.js';
 
 /**
  * Mesh configuration options
@@ -783,6 +784,24 @@ export class Mesh extends Object3D {
   }
 
   /**
+   * Raycast against this mesh's geometry.
+   *
+   * Implements the Three.js-compatible `mesh.raycast(raycaster, intersects)`
+   * contract: pushes any intersections (sorted later by the caller) into the
+   * `intersects` array, each as:
+   *   { distance, point, object, face: { a, b, c, normal }, uv, instanceId, faceIndex }
+   *
+   * Brute-force triangle intersection using the Möller–Trumbore algorithm.
+   * BVH/octree acceleration is left as a future enhancement.
+   *
+   * @param {import('./Raycaster.js').Raycaster} raycaster
+   * @param {Array} intersects
+   */
+  raycast(raycaster, intersects) {
+    meshRaycast.call(this, raycaster, intersects);
+  }
+
+  /**
    * Check if mesh should be frustum culled
    * @param {Object} frustum - Frustum planes
    * @returns {boolean} True if mesh should be culled
@@ -846,8 +865,8 @@ export class Mesh extends Object3D {
    * Check if mesh needs update
    * @returns {boolean} True if mesh needs update
    */
-  needsUpdate() {
-    return this.needsUpdate;
+  getNeedsUpdate() {
+    return !!this.needsUpdate;
   }
 
   /**

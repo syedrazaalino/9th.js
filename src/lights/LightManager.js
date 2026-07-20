@@ -7,6 +7,14 @@ import { Light } from './Light.js';
 import { LightGroup } from './LightGroup.js';
 import { LightUniforms } from './LightUniforms.js';
 import { LightType, requiresShadows, getMaxShadowResolution } from './LightTypes.js';
+import { AmbientLight } from './AmbientLight.js';
+import { DirectionalLight } from './DirectionalLight.js';
+import { PointLight } from './PointLight.js';
+import { SpotLight } from './SpotLight.js';
+
+// HemisphereLight, RectAreaLight, VolumeLight are not yet implemented as real classes
+// (they are referenced in LightType enum but no source files exist).
+// LightManager.createLight will warn and fall back to a generic Light for those types.
 
 export class LightManager {
   constructor(options = {}) {
@@ -123,7 +131,7 @@ export class LightManager {
    */
   createLight(type, options = {}) {
     let light;
-    
+
     switch (type) {
       case LightType.AMBIENT:
         light = new AmbientLight(options.intensity, options.color);
@@ -138,19 +146,22 @@ export class LightManager {
         light = new SpotLight(options.intensity, options.color, options.position, options.target, options.angle, options.penumbra);
         break;
       case LightType.HEMISPHERE:
-        light = new HemisphereLight(options.intensity, options.color, options.groundColor);
-        break;
       case LightType.RECT_AREA:
-        light = new RectAreaLight(options.intensity, options.color, options.width, options.height);
-        break;
       case LightType.VOLUME:
-        light = new VolumeLight(options.intensity, options.color, options.volumeSize, options.scattering);
+        // These light types are reserved but not yet implemented as concrete classes.
+        // Fall back to a generic Light with the requested color/intensity so the API doesn't throw.
+        console.warn(`LightManager.createLight: ${type} is reserved but not yet implemented; creating a generic Light as placeholder.`);
+        light = new Light({
+          color: options.color || 0xffffff,
+          intensity: options.intensity !== undefined ? options.intensity : 1.0
+        });
+        light.type = type;
         break;
       default:
         console.warn(`LightManager: Unknown light type ${type}`);
         return null;
     }
-    
+
     return this.addLight(light);
   }
   

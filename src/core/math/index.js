@@ -17,6 +17,9 @@ export { Matrix4 } from './Matrix4.js';
 // Quaternion class
 export { Quaternion } from './Quaternion.js';
 
+// Euler class
+export { Euler, EulerOrder } from './Euler.js';
+
 // Color class
 export { Color } from './Color.js';
 

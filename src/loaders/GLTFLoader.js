@@ -4,7 +4,7 @@
  * Includes scene hierarchy, mesh data, materials, animations, cameras, lights, and skinned meshes
  */
 
-import { Loader, LoadingManager } from './loader.ts';
+import { Loader, LoadingManager } from './loader.js';
 import { Object3D } from '../core/Object3D.js';
 import { Mesh, MeshConfig } from '../core/Mesh.js';
 import { BufferGeometry, VertexAttribute } from '../core/BufferGeometry.js';

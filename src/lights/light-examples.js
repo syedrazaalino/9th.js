@@ -7,7 +7,7 @@ import { AmbientLight } from './AmbientLight.js';
 import { DirectionalLight } from './DirectionalLight.js';
 import { PointLight } from './PointLight.js';
 import { SpotLight } from './SpotLight.js';
-import { Vec3, Color } from '../extras/helpers.ts';
+import { Vec3, Color } from '../extras/helpers.js';
 
 export class LightScene {
   constructor() {

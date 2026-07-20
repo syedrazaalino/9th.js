@@ -87,22 +87,31 @@ export class Engine {
     }
 
     const deltaTime = (currentTime - this.lastTime) / 1000;
+    const frameTimeMs = currentTime - this.lastTime;
     this.lastTime = currentTime;
 
-    this.frameCount++;
-    if (this.frameCount % 60 === 0) {
-      this.fps = Math.round(1000 / (currentTime - (this.lastTime - 1000)));
+    // FPS: smoothed exponential moving average + per-60-frame recalibration
+    if (this._fpsAccumulator === undefined) {
+      this._fpsAccumulator = 0;
+      this._fpsFrames = 0;
+      this._fpsLastTime = currentTime;
+    }
+    this._fpsAccumulator += frameTimeMs;
+    this._fpsFrames++;
+    if (currentTime - this._fpsLastTime >= 500) {
+      const avgFrameMs = this._fpsAccumulator / this._fpsFrames;
+      this.fps = avgFrameMs > 0 ? Math.round(1000 / avgFrameMs) : 0;
+      this._fpsAccumulator = 0;
+      this._fpsFrames = 0;
+      this._fpsLastTime = currentTime;
     }
 
     try {
       this.scene.update(deltaTime);
 
-      if (this.camera && this.scene.activeCamera) {
-        this.renderer.render(this.scene, this.camera);
-      } else if (this.scene.activeCamera) {
-        this.renderer.render(this.scene, this.scene.activeCamera);
-      } else if (this.camera) {
-        this.renderer.render(this.scene, this.camera);
+      const activeCam = this.camera || this.scene.activeCamera;
+      if (activeCam) {
+        this.renderer.render(this.scene, activeCam);
       }
     } catch (error) {
       console.error('Render error:', error);

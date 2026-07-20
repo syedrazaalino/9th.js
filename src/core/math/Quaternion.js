@@ -5,11 +5,17 @@
  * @version 1.0.0
  */
 export class Quaternion {
-    constructor(x = 0, y = 0, z = 0, w = 1) {
+    constructor(x = 0, y = 0, z = 0, w = 1, onChange = null) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.w = w;
+        this._onChangeCallback = onChange;
+        this.isQuaternion = true;
+    }
+
+    _notify() {
+        if (this._onChangeCallback) this._onChangeCallback();
     }
 
     /**
@@ -20,6 +26,7 @@ export class Quaternion {
         this.y = y;
         this.z = z;
         this.w = w;
+        this._notify();
         return this;
     }
 
@@ -31,6 +38,7 @@ export class Quaternion {
         this.y = q.y;
         this.z = q.z;
         this.w = q.w;
+        this._notify();
         return this;
     }
 
@@ -57,36 +65,77 @@ export class Quaternion {
     }
 
     /**
-     * Set from Euler angles (YXZ order to avoid gimbal lock)
+     * Set from Euler angles (XYZ order by default; respects euler.order if present)
      */
-    setFromEuler(euler) {
+    setFromEuler(euler, update = true) {
         const x = euler.x, y = euler.y, z = euler.z;
-        
+        const order = euler.order || 'XYZ';
+
         const c1 = Math.cos(x / 2);
         const c2 = Math.cos(y / 2);
         const c3 = Math.cos(z / 2);
-        
+
         const s1 = Math.sin(x / 2);
         const s2 = Math.sin(y / 2);
         const s3 = Math.sin(z / 2);
-        
-        this.x = s1 * c2 * c3 + c1 * s2 * s3;
-        this.y = c1 * s2 * c3 - s1 * c2 * s3;
-        this.z = c1 * c2 * s3 + s1 * s2 * c3;
-        this.w = c1 * c2 * c3 - s1 * s2 * s3;
-        
+
+        switch (order) {
+            case 'XYZ':
+                this.x = s1 * c2 * c3 + c1 * s2 * s3;
+                this.y = c1 * s2 * c3 - s1 * c2 * s3;
+                this.z = c1 * c2 * s3 + s1 * s2 * c3;
+                this.w = c1 * c2 * c3 - s1 * s2 * s3;
+                break;
+            case 'YXZ':
+                this.x = s1 * c2 * c3 + c1 * s2 * s3;
+                this.y = c1 * s2 * c3 - s1 * c2 * s3;
+                this.z = c1 * c2 * s3 - s1 * s2 * c3;
+                this.w = c1 * c2 * c3 + s1 * s2 * s3;
+                break;
+            case 'ZXY':
+                this.x = s1 * c2 * c3 - c1 * s2 * s3;
+                this.y = c1 * s2 * c3 + s1 * c2 * s3;
+                this.z = c1 * c2 * s3 + s1 * s2 * c3;
+                this.w = c1 * c2 * c3 - s1 * s2 * s3;
+                break;
+            case 'ZYX':
+                this.x = s1 * c2 * c3 - c1 * s2 * s3;
+                this.y = c1 * s2 * c3 - s1 * c2 * s3;
+                this.z = c1 * c2 * s3 + s1 * s2 * c3;
+                this.w = c1 * c2 * c3 + s1 * s2 * s3;
+                break;
+            case 'YZX':
+                this.x = s1 * c2 * c3 + c1 * s2 * s3;
+                this.y = c1 * s2 * c3 + s1 * c2 * s3;
+                this.z = c1 * c2 * s3 - s1 * s2 * c3;
+                this.w = c1 * c2 * c3 - s1 * s2 * s3;
+                break;
+            case 'XZY':
+                this.x = s1 * c2 * c3 - c1 * s2 * s3;
+                this.y = c1 * s2 * c3 - s1 * c2 * s3;
+                this.z = c1 * c2 * s3 - s1 * s2 * c3;
+                this.w = c1 * c2 * c3 + s1 * s2 * s3;
+                break;
+            default:
+                this.x = s1 * c2 * c3 + c1 * s2 * s3;
+                this.y = c1 * s2 * c3 - s1 * c2 * s3;
+                this.z = c1 * c2 * s3 + s1 * s2 * c3;
+                this.w = c1 * c2 * c3 - s1 * s2 * s3;
+        }
+
+        if (update) this._notify();
         return this;
     }
 
     /**
-     * Set from matrix
+     * Set from rotation matrix. Accepts Matrix4 (with .elements) or raw Float32Array(16).
      */
     setFromRotationMatrix(m) {
-        const e = m.elements;
+        const e = m.elements || m;
         const m00 = e[0], m01 = e[4], m02 = e[8];
         const m10 = e[1], m11 = e[5], m12 = e[9];
         const m20 = e[2], m21 = e[6], m22 = e[10];
-        
+
         const trace = m00 + m11 + m22;
         
         if (trace > 0) {
@@ -312,43 +361,45 @@ export class Quaternion {
      * Slerp (spherical linear interpolation)
      */
     slerp(qb, t) {
-        const qa = this;
-        let cosHalfTheta = qa.w * qb.w + qa.x * qb.x + qa.y * qb.y + qa.z * qb.z;
-        
+        if (t === 0) return this;
+        if (t === 1) return this.copy(qb);
+
+        const ax = this.x, ay = this.y, az = this.z, aw = this.w;
+        let cosHalfTheta = aw * qb.w + ax * qb.x + ay * qb.y + az * qb.z;
+
         // If qa=qb or qa=-qb then theta = 0 and we can return qa
         if (cosHalfTheta >= 1.0 || cosHalfTheta <= -1.0) {
             return this;
         }
-        
-        // If θ > 180°, swap quaternions to ensure shortest path
+
+        // If cosHalfTheta < 0, use the longer path -> invert qb locally (don't mutate qb)
+        let bx = qb.x, by = qb.y, bz = qb.z, bw = qb.w;
         if (cosHalfTheta < 0.0) {
-            this.copy(qa);
-            qa.x = -qb.x; qa.y = -qb.y; qa.z = -qb.z; qa.w = -qb.w;
-            cosHalfTheta = -this.dot(qa);
+            bx = -bx; by = -by; bz = -bz; bw = -bw;
+            cosHalfTheta = -cosHalfTheta;
         }
-        
-        // Calculate θ
+
         const halfTheta = Math.acos(cosHalfTheta);
         const sinHalfTheta = Math.sqrt(1.0 - cosHalfTheta * cosHalfTheta);
-        
-        // If θ = 180° then result is undefined
-        if (Math.abs(sinHalfTheta) < 0.001) {
-            this.x = qa.x * t + qb.x * (1 - t);
-            this.y = qa.y * t + qb.y * (1 - t);
-            this.z = qa.z * t + qb.z * (1 - t);
-            this.w = qa.w * t + qb.w * (1 - t);
-            this.normalize();
+
+        if (Math.abs(sinHalfTheta) < 1e-6) {
+            // linear interpolation fallback
+            this.x = ax * (1 - t) + bx * t;
+            this.y = ay * (1 - t) + by * t;
+            this.z = az * (1 - t) + bz * t;
+            this.w = aw * (1 - t) + bw * t;
+            this._notify();
             return this;
         }
-        
+
         const ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta;
         const ratioB = Math.sin(t * halfTheta) / sinHalfTheta;
-        
-        this.x = qa.x * ratioA + qb.x * ratioB;
-        this.y = qa.y * ratioA + qb.y * ratioB;
-        this.z = qa.z * ratioA + qb.z * ratioB;
-        this.w = qa.w * ratioA + qb.w * ratioB;
-        
+
+        this.x = ax * ratioA + bx * ratioB;
+        this.y = ay * ratioA + by * ratioB;
+        this.z = az * ratioA + bz * ratioB;
+        this.w = aw * ratioA + bw * ratioB;
+        this._notify();
         return this;
     }
 
@@ -360,72 +411,110 @@ export class Quaternion {
     }
 
     /**
-     * Squad (spherical quadrangle interpolation)
+     * Squad (spherical quadrangle interpolation). Standard formula:
+     *   squad(q0,q1,q2,q3,t) = slerp(slerp(q0,q3,t), slerp(q1,q2,t), 2t(1-t))
+     * @param {Quaternion} q1 - second control quaternion
+     * @param {Quaternion} q2 - third control quaternion
+     * @param {Quaternion} q3 - fourth control quaternion
+     * @param {number} t - interpolation parameter in [0,1]
      */
     squad(q1, q2, q3, t) {
-        const omega1 = Math.acos(this.dot(q1));
-        const omega2 = Math.acos(q1.dot(q2));
-        const omega3 = Math.acos(q2.dot(q3));
-        const sinOmega1 = Math.sin(omega1);
-        const sinOmega2 = Math.sin(omega2);
-        const sinOmega3 = Math.sin(omega3);
-        
-        const t1 = Math.sin((1 - t) * omega1) / sinOmega1;
-        const t2 = Math.sin(t * omega2) / sinOmega2;
-        const t3 = Math.sin((1 - t) * omega3) / sinOmega3;
-        
-        const intermediate = q1.clone().multiplyScalar(t1)
-            .add(q2.clone().multiplyScalar(t2))
-            .add(q3.clone().multiplyScalar(t3));
-        
-        return this.copy(intermediate);
+        const a = Quaternion.slerp(this, q3, t);
+        const b = Quaternion.slerp(q1, q2, t);
+        return a.slerp(b, 2 * t * (1 - t));
     }
 
     /**
-     * Convert to Euler angles (YXZ order)
+     * Convert to Euler angles (XYZ order)
      */
-    toEuler() {
+    toEuler(order = 'XYZ') {
         const x = this.x, y = this.y, z = this.z, w = this.w;
-        
+
         const x2 = x + x;
         const y2 = y + y;
         const z2 = z + z;
-        
+
         const xx = x * x2;
         const xy = x * y2;
         const xz = x * z2;
-        
+
         const yy = y * y2;
         const yz = y * z2;
         const zz = z * z2;
-        
+
         const wx = w * x2;
         const wy = w * y2;
         const wz = w * z2;
-        
+
+        // For XYZ order:
+        // pitch (x) = asin(2*(w*x + y*z))
+        // yaw   (y) = atan2(2*(w*y - z*x), 1 - 2*(x*x + y*y))
+        // roll  (z) = atan2(2*(w*z - x*y), 1 - 2*(y*y + z*z))
+        if (order === 'XYZ') {
+            return new Vector3(
+                Math.asin(Math.max(-1, Math.min(1, 2 * (wx + yz)))),
+                Math.atan2(2 * (wy - xz), 1 - (xx + yy)),
+                Math.atan2(2 * (wz - xy), 1 - (yy + zz))
+            );
+        }
+        // YXZ order (Three.js default for cameras)
+        if (order === 'YXZ') {
+            return new Vector3(
+                Math.atan2(2 * (wx + yz), 1 - (xx + yy)),
+                Math.asin(Math.max(-1, Math.min(1, 2 * (wy - xz)))),
+                Math.atan2(2 * (wz + xy), 1 - (yy + zz))
+            );
+        }
+        // ZYX order
+        if (order === 'ZYX') {
+            return new Vector3(
+                Math.atan2(2 * (wx - yz), 1 - (xx + zz)),
+                Math.atan2(2 * (wy - xz), 1 - (yy + zz)),
+                Math.asin(Math.max(-1, Math.min(1, 2 * (wz + xy))))
+            );
+        }
+        // Default XYZ
         return new Vector3(
-            Math.asin(Math.max(-1, Math.min(1, wy - zx))),
-            Math.atan2(xz + wx, 1 - (xx + yy)),
-            Math.atan2(yz + wx, 1 - (xx + zz))
+            Math.asin(Math.max(-1, Math.min(1, 2 * (wx + yz)))),
+            Math.atan2(2 * (wy - xz), 1 - (xx + yy)),
+            Math.atan2(2 * (wz - xy), 1 - (yy + zz))
         );
     }
 
     /**
-     * Convert to axis-angle representation
+     * Convert to axis-angle representation.
+     *
+     * For a (possibly non-unit) quaternion q = (x, y, z, w):
+     *   |q| = sqrt(x^2 + y^2 + z^2 + w^2)
+     *   angle = 2 * acos(w / |q|)     — clamped to [-1, 1]
+     *   axis  = (x, y, z) / sqrt(x^2 + y^2 + z^2)   — independent of w
+     *
+     * (Previous implementation used w^2 / |q| which produced wrong angles
+     *  for any non-zero w; e.g., for the midpoint of identity and a
+     *  180° rotation it returned 120° instead of the correct 90°.)
      */
     toAxisAngle() {
-        const w = this.w;
-        const w2 = w * w;
+        const x = this.x, y = this.y, z = this.z, w = this.w;
         const l2 = this.lengthSq();
-        
+
         if (l2 === 0) {
             return { axis: new Vector3(1, 0, 0), angle: 0 };
         }
-        
-        const invL = 1 / Math.sqrt(l2);
-        const axis = new Vector3(this.x * invL, this.y * invL, this.z * invL);
-        const angle = 2 * Math.acos(Math.max(-1, Math.min(1, w2 * invL)));
-        
+
+        const len = Math.sqrt(l2);
+        // Normalized w in [-1, 1]
+        const wNorm = Math.max(-1, Math.min(1, w / len));
+        const angle = 2 * Math.acos(wNorm);
+
+        // Axis = (x, y, z) normalized independently of w
+        const vLen = Math.sqrt(x * x + y * y + z * z);
+        let axis;
+        if (vLen < 1e-12) {
+            axis = new Vector3(1, 0, 0);
+        } else {
+            axis = new Vector3(x / vLen, y / vLen, z / vLen);
+        }
+
         return { axis, angle };
     }
 

@@ -4,7 +4,8 @@
  * Emits light in a focused cone shape with smooth falloff
  */
 
-import { Color, Vec3, MathUtils, Ray } from '../extras/helpers.ts';
+import { Color, Vec3, MathUtils } from '../extras/helpers.js';
+import { Ray } from '../core/Raycaster.js';
 import { PointLight } from './PointLight.js';
 
 export class SpotLight extends PointLight {

@@ -3,7 +3,11 @@
  * Base class for all light types in the lighting system
  */
 
-import { Vec3 } from '../extras/helpers.ts';
+import { Vector3 } from '../core/math/Vector3.js';
+
+// Backward-compatible alias: older code may import { Vec3 } from '../extras/helpers.js'
+// We export a Vec3 alias here so consumers don't break, but internal code uses Vector3.
+export const Vec3 = Vector3;
 
 export class Light {
   constructor({
@@ -93,15 +97,63 @@ export class Light {
   }
   
   /**
-   * Convert hex color to RGB array
+   * Convert hex color (string/number/Color/array) to RGB array in 0-255 range.
+   * Handles:
+   *   '#ff0000', 'ff0000', '#f00', 'f00', 0xff0000, [1,0,0] (0-1 floats),
+   *   [255,0,0] (0-255 ints), Color object with .r/.g/.b in 0-1
    */
-  _hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? [
-      parseInt(result[1], 16),
-      parseInt(result[2], 16),
-      parseInt(result[3], 16)
-    ] : [255, 255, 255];
+  _hexToRgb(color) {
+    if (color === null || color === undefined) return [255, 255, 255];
+
+    // Color object (r/g/b in 0-1)
+    if (typeof color === 'object' && !Array.isArray(color) && 'r' in color && 'g' in color && 'b' in color) {
+      return [
+        Math.round(color.r * 255),
+        Math.round(color.g * 255),
+        Math.round(color.b * 255)
+      ];
+    }
+
+    // Array — assume 0-1 floats if max ≤ 1, else 0-255 ints
+    if (Array.isArray(color)) {
+      const max = Math.max(...color);
+      if (max <= 1) {
+        return [
+          Math.round(color[0] * 255),
+          Math.round(color[1] * 255),
+          Math.round(color[2] * 255)
+        ];
+      }
+      return [color[0] | 0, color[1] | 0, color[2] | 0];
+    }
+
+    // Number (hex)
+    if (typeof color === 'number') {
+      return [
+        (color >> 16) & 0xff,
+        (color >> 8) & 0xff,
+        color & 0xff
+      ];
+    }
+
+    // String
+    if (typeof color === 'string') {
+      let hex = color.replace('#', '').trim();
+      // Expand shorthand: 'f00' -> 'ff0000'
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (result) {
+        return [
+          parseInt(result[1], 16),
+          parseInt(result[2], 16),
+          parseInt(result[3], 16)
+        ];
+      }
+    }
+
+    return [255, 255, 255];
   }
   
   /**

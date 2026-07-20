@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.6] - 2026-07-20
+
+### Added
+- `Raycaster` + `Mesh.raycast` for pointer picking
+- `InstancedMesh` for batched instance draws
+- `RenderTarget` + `WebGLRenderer.setRenderTarget` / `readRenderTargetPixels`
+- Post-processing (`EffectComposer` and passes), tween system, game loop helpers
+- WebGPU renderer preview module (clear/init path; WebGL remains the production path)
+- Object3D quaternion + Euler sync; engine FPS smoothing
+
+### Changed
+- Expanded public exports for materials, SpotLight, utils, and new subsystems
+- VERSION stays on 1.x (additive release; not a breaking 2.0)
+
 ## [1.0.5] - 2026-07-19
 
 ### Fixed

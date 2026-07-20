@@ -79,6 +79,46 @@ export class Vector3 {
     }
 
     /**
+     * Subtract scalar from vector
+     */
+    subScalar(s) {
+        this.x -= s;
+        this.y -= s;
+        this.z -= s;
+        return this;
+    }
+
+    /**
+     * Component-wise minimum
+     */
+    min(v) {
+        this.x = Math.min(this.x, v.x);
+        this.y = Math.min(this.y, v.y);
+        this.z = Math.min(this.z, v.z);
+        return this;
+    }
+
+    /**
+     * Component-wise maximum
+     */
+    max(v) {
+        this.x = Math.max(this.x, v.x);
+        this.y = Math.max(this.y, v.y);
+        this.z = Math.max(this.z, v.z);
+        return this;
+    }
+
+    /**
+     * Negate vector
+     */
+    negate() {
+        this.x = -this.x;
+        this.y = -this.y;
+        this.z = -this.z;
+        return this;
+    }
+
+    /**
      * Subtract vectors and return new vector
      */
     subVectors(a, b) {

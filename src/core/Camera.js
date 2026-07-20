@@ -528,13 +528,13 @@ export class Camera extends Object3D {
     /**
      * Get camera world position (override parent)
      */
-    getWorldPosition() {
-        this.updateMatrix();
-        return {
-            x: this.worldMatrix[12],
-            y: this.worldMatrix[13],
-            z: this.worldMatrix[14]
-        };
+    getWorldPosition(target = null) {
+        // Use parent class implementation so callers get a real Vector3 (with .length/.distanceTo)
+        // instead of a plain {x,y,z}. Target arg is optional for back-compat.
+        if (target) {
+            return super.getWorldPosition(target);
+        }
+        return super.getWorldPosition();
     }
 
     /**

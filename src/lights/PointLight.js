@@ -4,7 +4,8 @@
  * Emits light equally in all directions from a single point
  */
 
-import { Color, Vec3, MathUtils, Ray } from '../extras/helpers.ts';
+import { Color, Vec3, MathUtils } from '../extras/helpers.js';
+import { Ray } from '../core/Raycaster.js';
 
 export class PointLight {
   /**

@@ -51,3 +51,10 @@ export {
     ToneMapping,
     PBRDebugger
 } from './PBR.js';
+
+/**
+ * IBL / BRDF LUT / Environment map processing
+ */
+export { IBL } from './IBL.js';
+export { BRDFLUT } from './BRDFLUT.js';
+export { EnvironmentMapProcessor } from './EnvironmentMapProcessor.js';

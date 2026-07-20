@@ -1,8 +1,10 @@
 /**
  * Object3D - Base class for all 3D objects with transformation capabilities
- * Three.js-compatible position/rotation/scale Vector3 API
+ * Three.js-compatible position/rotation/scale Vector3 + Quaternion API
  */
 import { Vector3 } from './math/Vector3.js';
+import { Quaternion } from './math/Quaternion.js';
+import { Euler, EulerOrder } from './math/Euler.js';
 
 /**
  * Vector3 that notifies owner when mutated
@@ -47,6 +49,72 @@ class ObservableVector3 extends Vector3 {
     return this;
   }
 
+  addScalar(s) {
+    super.addScalar(s);
+    this._notify();
+    return this;
+  }
+
+  subScalar(s) {
+    super.subScalar(s);
+    this._notify();
+    return this;
+  }
+
+  divideScalar(s) {
+    super.divideScalar(s);
+    this._notify();
+    return this;
+  }
+
+  multiply(v) {
+    super.multiply(v);
+    this._notify();
+    return this;
+  }
+
+  divide(v) {
+    super.divide(v);
+    this._notify();
+    return this;
+  }
+
+  min(v) {
+    super.min(v);
+    this._notify();
+    return this;
+  }
+
+  max(v) {
+    super.max(v);
+    this._notify();
+    return this;
+  }
+
+  clamp(min, max) {
+    super.clamp(min, max);
+    this._notify();
+    return this;
+  }
+
+  negate() {
+    super.negate();
+    this._notify();
+    return this;
+  }
+
+  normalize() {
+    super.normalize();
+    this._notify();
+    return this;
+  }
+
+  lerp(v, alpha) {
+    super.lerp(v, alpha);
+    this._notify();
+    return this;
+  }
+
   fromArray(array, offset = 0) {
     this.x = array[offset];
     this.y = array[offset + 1];
@@ -66,8 +134,21 @@ export class Object3D {
     const onChange = () => this.markMatrixDirty();
 
     this.position = new ObservableVector3(0, 0, 0, onChange);
-    this.rotation = new ObservableVector3(0, 0, 0, onChange);
+    this.rotation = new Euler(0, 0, 0, EulerOrder.XYZ, onChange);
+    this.quaternion = new Quaternion(0, 0, 0, 1, onChange);
     this.scale = new ObservableVector3(1, 1, 1, onChange);
+
+    // Keep rotation (Euler) and quaternion in sync
+    this._onRotationChange = () => {
+      this.quaternion.setFromEuler(this.rotation, false);
+      this.markMatrixDirty();
+    };
+    this._onQuaternionChange = () => {
+      this.rotation.setFromQuaternion(this.quaternion, false);
+      this.markMatrixDirty();
+    };
+    this.rotation._onChangeCallback = this._onRotationChange;
+    this.quaternion._onChangeCallback = this._onQuaternionChange;
 
     this.matrix = this.createIdentityMatrix();
     this.matrixWorld = this.createIdentityMatrix();
@@ -77,6 +158,7 @@ export class Object3D {
     this.matrixWorldNeedsUpdate = true;
     this.localMatrixDirty = true;
     this.worldMatrixDirty = true;
+    this.useQuaternion = false; // when true, composeTRS uses quaternion instead of Euler
 
     this.parent = null;
     this.children = [];
@@ -171,11 +253,13 @@ export class Object3D {
 
   updateMatrixWorld(force = false) {
     if (this.matrixAutoUpdate) {
-      this.updateLocalMatrix();
-      this.localMatrixDirty = false;
+      if (this.localMatrixDirty) {
+        this.updateLocalMatrix();
+        this.localMatrixDirty = false;
+      }
     }
 
-    if (this.worldMatrixNeedsUpdate || force) {
+    if (this.matrixWorldNeedsUpdate || this.worldMatrixDirty || force) {
       this.updateWorldMatrix();
       this.worldMatrixDirty = false;
       this.matrixWorldNeedsUpdate = false;
@@ -210,24 +294,69 @@ export class Object3D {
     matrix[13] = position.y;
     matrix[14] = position.z;
 
-    const cosX = Math.cos(rotation.x);
-    const sinX = Math.sin(rotation.x);
-    const cosY = Math.cos(rotation.y);
-    const sinY = Math.sin(rotation.y);
-    const cosZ = Math.cos(rotation.z);
-    const sinZ = Math.sin(rotation.z);
+    let r00, r01, r02, r10, r11, r12, r20, r21, r22;
 
-    matrix[0] = cosZ * cosY * scale.x;
-    matrix[1] = cosZ * sinY * sinX * scale.x - sinZ * cosX * scale.x;
-    matrix[2] = cosZ * sinY * cosX * scale.x + sinZ * sinX * scale.x;
+    if (this.useQuaternion || (rotation instanceof Quaternion)) {
+      const q = (rotation instanceof Quaternion) ? rotation : this.quaternion;
+      const x = q.x, y = q.y, z = q.z, w = q.w;
+      const x2 = x + x, y2 = y + y, z2 = z + z;
+      const xx = x * x2, xy = x * y2, xz = x * z2;
+      const yy = y * y2, yz = y * z2, zz = z * z2;
+      const wx = w * x2, wy = w * y2, wz = w * z2;
+      r00 = 1 - (yy + zz);
+      r01 = xy - wz;
+      r02 = xz + wy;
+      r10 = xy + wz;
+      r11 = 1 - (xx + zz);
+      r12 = yz - wx;
+      r20 = xz - wy;
+      r21 = yz + wx;
+      r22 = 1 - (xx + yy);
+    } else if (rotation && rotation.isEuler) {
+      const cosX = Math.cos(rotation.x);
+      const sinX = Math.sin(rotation.x);
+      const cosY = Math.cos(rotation.y);
+      const sinY = Math.sin(rotation.y);
+      const cosZ = Math.cos(rotation.z);
+      const sinZ = Math.sin(rotation.z);
+      // Default XYZ order
+      r00 = cosZ * cosY;
+      r01 = cosZ * sinY * sinX - sinZ * cosX;
+      r02 = cosZ * sinY * cosX + sinZ * sinX;
+      r10 = sinZ * cosY;
+      r11 = sinZ * sinY * sinX + cosZ * cosX;
+      r12 = sinZ * sinY * cosX - cosZ * sinX;
+      r20 = -sinY;
+      r21 = cosY * sinX;
+      r22 = cosY * cosX;
+    } else {
+      // Plain Euler XYZ (legacy fallback)
+      const cosX = Math.cos(rotation.x);
+      const sinX = Math.sin(rotation.x);
+      const cosY = Math.cos(rotation.y);
+      const sinY = Math.sin(rotation.y);
+      const cosZ = Math.cos(rotation.z);
+      const sinZ = Math.sin(rotation.z);
+      r00 = cosZ * cosY;
+      r01 = cosZ * sinY * sinX - sinZ * cosX;
+      r02 = cosZ * sinY * cosX + sinZ * sinX;
+      r10 = sinZ * cosY;
+      r11 = sinZ * sinY * sinX + cosZ * cosX;
+      r12 = sinZ * sinY * cosX - cosZ * sinX;
+      r20 = -sinY;
+      r21 = cosY * sinX;
+      r22 = cosY * cosX;
+    }
 
-    matrix[4] = sinZ * cosY * scale.y;
-    matrix[5] = sinZ * sinY * sinX * scale.y + cosZ * cosX * scale.y;
-    matrix[6] = sinZ * sinY * cosX * scale.y - cosZ * sinX * scale.y;
-
-    matrix[8] = -sinY * scale.z;
-    matrix[9] = cosY * sinX * scale.z;
-    matrix[10] = cosY * cosX * scale.z;
+    matrix[0]  = r00 * scale.x;
+    matrix[1]  = r01 * scale.x;
+    matrix[2]  = r02 * scale.x;
+    matrix[4]  = r10 * scale.y;
+    matrix[5]  = r11 * scale.y;
+    matrix[6]  = r12 * scale.y;
+    matrix[8]  = r20 * scale.z;
+    matrix[9]  = r21 * scale.z;
+    matrix[10] = r22 * scale.z;
 
     return matrix;
   }
@@ -343,13 +472,13 @@ export class Object3D {
   }
 
   getWorldPosition(target = new Vector3()) {
-    this.updateMatrix();
+    this.updateMatrixWorld();
     target.set(this.worldMatrix[12], this.worldMatrix[13], this.worldMatrix[14]);
     return target;
   }
 
   getWorldScale(target = new Vector3()) {
-    this.updateMatrix();
+    this.updateMatrixWorld();
 
     const sx = Math.sqrt(
       this.worldMatrix[0] * this.worldMatrix[0] +
@@ -373,18 +502,23 @@ export class Object3D {
   }
 
   getWorldForward(target = new Vector3()) {
-    this.updateMatrix();
+    this.updateMatrixWorld();
     return target.set(-this.worldMatrix[2], -this.worldMatrix[6], -this.worldMatrix[10]);
   }
 
   getWorldUp(target = new Vector3()) {
-    this.updateMatrix();
+    this.updateMatrixWorld();
     return target.set(this.worldMatrix[1], this.worldMatrix[5], this.worldMatrix[9]);
   }
 
   getWorldRight(target = new Vector3()) {
-    this.updateMatrix();
+    this.updateMatrixWorld();
     return target.set(this.worldMatrix[0], this.worldMatrix[4], this.worldMatrix[8]);
+  }
+
+  getWorldQuaternion(target = new Quaternion()) {
+    this.updateMatrixWorld();
+    return target.setFromRotationMatrix(this.worldMatrix);
   }
 
   update(deltaTime) {
@@ -433,10 +567,39 @@ export class Object3D {
       direction.z /= length;
     }
 
-    this.rotation.y = Math.atan2(direction.x, -direction.z);
-    this.rotation.x = Math.asin(-direction.y);
-    // silence unused up for API compatibility
-    void up;
+    // Full look-at with up vector (no roll loss)
+    const forward = direction;
+    const upVec = { x: up.x, y: up.y, z: up.z };
+    // right = up cross forward
+    let rightX = upVec.y * forward.z - upVec.z * forward.y;
+    let rightY = upVec.z * forward.x - upVec.x * forward.z;
+    let rightZ = upVec.x * forward.y - upVec.y * forward.x;
+    const rightLen = Math.sqrt(rightX * rightX + rightY * rightY + rightZ * rightZ);
+    if (rightLen > 1e-6) {
+      rightX /= rightLen; rightY /= rightLen; rightZ /= rightLen;
+    } else {
+      // forward is parallel to up; pick alternate up
+      rightX = 1; rightY = 0; rightZ = 0;
+    }
+    // recomputed up = forward cross right
+    const upX = forward.y * rightZ - forward.z * rightY;
+    const upY = forward.z * rightX - forward.x * rightZ;
+    const upZ = forward.x * rightY - forward.y * rightX;
+
+    // Build rotation matrix (column-major, Three.js convention: -Z forward)
+    // columns: right, up, -forward
+    const m = new Float32Array(16);
+    m[0] = rightX; m[1] = rightY; m[2] = rightZ; m[3] = 0;
+    m[4] = upX;   m[5] = upY;   m[6] = upZ;   m[7] = 0;
+    m[8] = -forward.x; m[9] = -forward.y; m[10] = -forward.z; m[11] = 0;
+    m[12] = 0; m[13] = 0; m[14] = 0; m[15] = 1;
+
+    if (this.useQuaternion) {
+      this.quaternion.setFromRotationMatrix(m);
+    } else {
+      this.quaternion.setFromRotationMatrix(m);
+      this.rotation.setFromQuaternion(this.quaternion);
+    }
 
     this.markMatrixDirty();
     return this;

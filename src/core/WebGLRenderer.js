@@ -59,6 +59,10 @@ export class WebGLRenderer {
         this.lodBias = 0;
         this.shadowMapEnabled = false;
 
+        // Current render target (null = render to canvas).
+        // Set via setRenderTarget(target) and queried via getRenderTarget().
+        this._currentRenderTarget = null;
+
         // Performance monitoring
         this.performance = {
             frameTime: 0,
@@ -644,6 +648,98 @@ export class WebGLRenderer {
     }
 
     /**
+     * Set the current render target.
+     *
+     * Pass `null` (or call `setRenderTarget(null)`) to render to the default
+     * canvas framebuffer. Pass a `RenderTarget` instance to redirect
+     * subsequent draws into its framebuffer.
+     *
+     * The target's framebuffer is lazily created on first use.
+     *
+     * @param {RenderTarget|null} target
+     * @returns {this}
+     */
+    setRenderTarget(target) {
+        const gl = this.gl;
+        if (!gl || this.isContextLost) return this;
+
+        // If a previous target is active, we simply swap. The renderer's
+        // render() method will save/restore the framebuffer binding around
+        // the actual draw call.
+        this._currentRenderTarget = target;
+
+        if (target) {
+            // Ensure the target has GL resources for this context.
+            if (typeof target._ensureGL === 'function') {
+                target._ensureGL(gl);
+            }
+            if (target.framebuffer) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
+                // Use the target's dimensions for the viewport so renders go
+                // into the correct pixel area.
+                gl.viewport(0, 0, target.width, target.height);
+            }
+        } else {
+            // Restore default framebuffer (the canvas).
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        }
+
+        return this;
+    }
+
+    /**
+     * Get the currently-bound render target (or null if rendering to canvas).
+     * @returns {RenderTarget|null}
+     */
+    getRenderTarget() {
+        return this._currentRenderTarget;
+    }
+
+    /**
+     * Read the color pixels out of the currently-bound render target (or the
+     * canvas if no target is active). Three.js-compatible `readRenderTargetPixels`.
+     *
+     * @param {RenderTarget} target - Render target to read from (must be active)
+     * @param {number} x
+     * @param {number} y
+     * @param {number} width
+     * @param {number} height
+     * @param {Uint8Array|Float32Array} buffer - destination typed array
+     * @param {number} [activeCubeFaceIndex]
+     */
+    readRenderTargetPixels(target, x, y, width, height, buffer, activeCubeFaceIndex = 0) {
+        const gl = this.gl;
+        if (!gl || !target || !target.framebuffer) return;
+
+        const prevTarget = this._currentRenderTarget;
+        // Bind the target's framebuffer for reading.
+        if (target.isCubeTarget && typeof target.setCubeFace === 'function') {
+            target.setCubeFace(gl, activeCubeFaceIndex);
+        } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
+        }
+
+        const format = target.texture && target.texture.format === 'RGBA' ? gl.RGBA : gl.RGBA;
+        const type = (target.texture && target.texture.type === 'FLOAT')
+            ? (gl.FLOAT || 0x1406)
+            : gl.UNSIGNED_BYTE;
+
+        try {
+            gl.readPixels(x, y, width, height, format, type, buffer);
+        } catch (e) {
+            console.error('readRenderTargetPixels failed:', e);
+        }
+
+        // Restore previous binding.
+        if (prevTarget && prevTarget.framebuffer) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, prevTarget.framebuffer);
+        } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+    }
+
+    /**
      * Render scene
      */
     render(scene, camera) {
@@ -664,13 +760,26 @@ export class WebGLRenderer {
             this.gl.bindVertexArray(this.defaultVAO);
         }
 
+        // Save current framebuffer binding so we can restore it after rendering.
+        // This makes setRenderTarget() before render() safe even when callers
+        // don't explicitly rebind the canvas afterwards.
+        const target = this._currentRenderTarget;
+        if (target) {
+            // Target was already bound in setRenderTarget(); just ensure its viewport.
+            gl.viewport(0, 0, target.width, target.height);
+        }
+
         // Auto clear
         if (this.autoClear) {
             this.clear();
         }
 
         // Set viewport and clear color
-        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        if (target) {
+            gl.viewport(0, 0, target.width, target.height);
+        } else {
+            gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        }
         gl.clearColor(this.clearColor.r, this.clearColor.g, this.clearColor.b, this.clearColor.a);
 
         // Update matrices
@@ -693,13 +802,27 @@ export class WebGLRenderer {
             this.renderObject(obj, camera, scene);
         }
 
+        // Restore framebuffer binding if we rendered into a target so the
+        // canvas (and any GL state external to the renderer) is unaffected.
+        if (target) {
+            // Generate mipmaps for the color attachment if requested.
+            if (target.texture && target.texture.generateMipmaps && target.texture._glTexture) {
+                const texTarget = target.isCubeTarget ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
+                gl.bindTexture(texTarget, target.texture._glTexture);
+                gl.generateMipmap(texTarget);
+            }
+            // Note: we intentionally leave the framebuffer bound here. Callers
+            // restore the canvas via `renderer.setRenderTarget(null)`, matching
+            // the Three.js convention shown in the RenderTarget example.
+        }
+
         // Update performance metrics
         const endTime = performance.now();
         this.performance.renderTime = endTime - startTime;
         this.performance.fps = 1000 / this.performance.renderTime;
 
         // Emit render event
-        this.emit('rendered', { 
+        this.emit('rendered', {
             performance: this.performance,
             scene,
             camera

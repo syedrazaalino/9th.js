@@ -284,15 +284,46 @@ export class LightUniforms {
   }
   
   /**
-   * Convert hex color to RGB array
+   * Convert hex color (string/number/Color/array) to RGB array in 0-255 range.
+   * Handles all the same input shapes as Light._hexToRgb.
    */
-  _hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? [
-      parseInt(result[1], 16),
-      parseInt(result[2], 16),
-      parseInt(result[3], 16)
-    ] : [255, 255, 255];
+  _hexToRgb(color) {
+    if (color === null || color === undefined) return [255, 255, 255];
+
+    // Color object with r/g/b in 0-1
+    if (typeof color === 'object' && !Array.isArray(color) && 'r' in color && 'g' in color && 'b' in color) {
+      return [
+        Math.round(color.r * 255),
+        Math.round(color.g * 255),
+        Math.round(color.b * 255)
+      ];
+    }
+    // Array (0-1 floats or 0-255 ints)
+    if (Array.isArray(color)) {
+      const max = Math.max(...color);
+      if (max <= 1) {
+        return [
+          Math.round(color[0] * 255),
+          Math.round(color[1] * 255),
+          Math.round(color[2] * 255)
+        ];
+      }
+      return [color[0] | 0, color[1] | 0, color[2] | 0];
+    }
+    // Number
+    if (typeof color === 'number') {
+      return [(color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff];
+    }
+    // String
+    if (typeof color === 'string') {
+      let hex = color.replace('#', '').trim();
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (result) {
+        return [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)];
+      }
+    }
+    return [255, 255, 255];
   }
   
   /**

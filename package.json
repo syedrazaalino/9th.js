@@ -1,7 +1,7 @@
 {
   "name": "9th.js",
-  "version": "1.0.5",
-  "description": "WebGL 3D library for interactive scenes — scene graph, materials, lights, loaders, and controls",
+  "version": "1.0.6",
+  "description": "WebGL 3D library for interactive scenes — scene graph, materials, lights, loaders, post-processing, and more",
   "type": "module",
   "main": "dist/esm/main.js",
   "module": "dist/esm/main.js",

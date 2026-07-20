@@ -11,11 +11,15 @@ Maintained by [digitalcloud](https://digitalcloud.no).
 
 ## Features
 
-- **Scene graph** — `Scene`, `Object3D`, `Mesh`, hierarchy, transforms
+- **Scene graph** — `Scene`, `Object3D`, `Mesh`, hierarchy, transforms (Euler + quaternion)
 - **Cameras** — perspective and orthographic
 - **Geometry** — box, sphere, plane, and more → `BufferGeometry`
-- **Materials** — unlit and PBR (`MeshBasicMaterial`, `MeshStandardMaterial`)
+- **Materials** — unlit and PBR (`MeshBasicMaterial`, `MeshStandardMaterial`, and related)
 - **Lights** — ambient, directional, point, spot
+- **Picking** — `Raycaster` + `Mesh.raycast`
+- **Instancing** — `InstancedMesh` for batched draws
+- **Render targets** — offscreen `RenderTarget` + composer-friendly renderer APIs
+- **Extras** — post-processing passes, tween helpers, game-loop utilities (experimental WebGPU preview)
 - **Controls** — `OrbitControls` for explore / inspect UIs
 - **Loaders** — GLTF, OBJ, and related asset pipelines
 - **Engine helper** — optional loop, pause/resume, and performance hooks
@@ -108,10 +112,10 @@ frame();
 ## CDN
 
 ```html
-<script src="https://unpkg.com/9th.js@1.0.5/dist/umd/9th.umd.min.js"></script>
+<script src="https://unpkg.com/9th.js@1.0.6/dist/umd/9th.umd.min.js"></script>
 ```
 
-Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.5/dist/umd/9th.umd.min.js`
+Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.6/dist/umd/9th.umd.min.js`
 
 ## Examples
 

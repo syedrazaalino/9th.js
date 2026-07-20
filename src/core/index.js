@@ -9,6 +9,9 @@ export * from './WebGLRenderer.js';
 export * from './WebGLUtils.js';
 export * from './BufferGeometry.js';
 export * from './Buffer.js';
+export * from './Raycaster.js';
+export * from './InstancedMesh.js';
+export * from './RenderTarget.js';
 export { Engine } from './engine.js';
 
 // Re-export with convenience names
@@ -56,6 +59,9 @@ import {
     DrawCallBatcher,
     MeshBuilder
 } from './Mesh.js';
+import { Raycaster, Ray } from './Raycaster.js';
+import { InstancedMesh, BufferAttribute } from './InstancedMesh.js';
+import { RenderTarget, RenderTargetTexture } from './RenderTarget.js';
 
 export const Core = {
     Object3D,
@@ -80,6 +86,12 @@ export const Core = {
     MeshOptimizer,
     DrawCallBatcher,
     MeshBuilder,
+    InstancedMesh,
+    BufferAttribute,
+    RenderTarget,
+    RenderTargetTexture,
+    Raycaster,
+    Ray,
     WebGLRenderer,
     Renderer: WebGLRenderer,
     createWebGLContext,
@@ -101,6 +113,9 @@ export const Core = {
 
 export { Mesh, MeshConfig, LODLevel, GeometryCache, MeshOptimizer, DrawCallBatcher, MeshBuilder };
 export { WebGLRenderer, Scene, Camera };
+export { Raycaster, Ray };
+export { InstancedMesh, BufferAttribute };
+export { RenderTarget, RenderTargetTexture };
 export { WebGLRenderer as Renderer };
 export { BufferGeometry, VertexAttribute, AttributeUtils };
 export { Material, BasicMaterial, PhongMaterial, LambertMaterial, Shader };
