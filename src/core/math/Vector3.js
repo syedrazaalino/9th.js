@@ -79,6 +79,13 @@ export class Vector3 {
     }
 
     /**
+     * Alias for sub() — used by PBR / geometry helpers
+     */
+    subtract(v) {
+        return this.sub(v);
+    }
+
+    /**
      * Subtract scalar from vector
      */
     subScalar(s) {

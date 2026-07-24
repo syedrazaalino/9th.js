@@ -52,7 +52,7 @@ export { MeshStandardMaterial as StandardMaterial };
 export { MeshBasicMaterial as BasicMaterial };
 
 // Version & metadata
-export const VERSION = '1.0.6';
+export const VERSION = '1.0.7';
 
 export const LIBRARY_INFO = {
   name: '9th.js',

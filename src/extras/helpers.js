@@ -32,11 +32,19 @@ export class Vec3 {
     return this;
   }
 
-  subtract(v) {
+  /**
+   * Subtract vector (Three.js-compatible alias)
+   */
+  sub(v) {
     this.x -= v.x;
     this.y -= v.y;
     this.z -= v.z;
     return this;
+  }
+
+  /** @deprecated Prefer sub() for Three.js compatibility */
+  subtract(v) {
+    return this.sub(v);
   }
 
   multiplyScalar(scalar) {
@@ -55,6 +63,26 @@ export class Vec3 {
     const dy = this.y - v.y;
     const dz = this.z - v.z;
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
+  /**
+   * Dot product (needed by DirectionalLight / SpotLight view matrices)
+   */
+  dot(v) {
+    return this.x * v.x + this.y * v.y + this.z * v.z;
+  }
+
+  /**
+   * Cross product (needed by DirectionalLight / SpotLight view matrices)
+   */
+  cross(v) {
+    const x = this.x;
+    const y = this.y;
+    const z = this.z;
+    this.x = y * v.z - z * v.y;
+    this.y = z * v.x - x * v.z;
+    this.z = x * v.y - y * v.x;
+    return this;
   }
 
   normalize() {

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.7] - 2026-07-24
+
+### Fixed
+- `Vec3.sub` / `dot` / `cross` for DirectionalLight / SpotLight / PointLight shadow view-matrix math (`target.clone().sub` crash)
+- Core `Vector3.subtract` alias used by PBR and geometry helpers
+
 ## [1.0.6] - 2026-07-20
 
 ### Added

@@ -112,10 +112,10 @@ frame();
 ## CDN
 
 ```html
-<script src="https://unpkg.com/9th.js@1.0.6/dist/umd/9th.umd.min.js"></script>
+<script src="https://unpkg.com/9th.js@1.0.7/dist/umd/9th.umd.min.js"></script>
 ```
 
-Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.6/dist/umd/9th.umd.min.js`
+Also on jsDelivr: `https://cdn.jsdelivr.net/npm/9th.js@1.0.7/dist/umd/9th.umd.min.js`
 
 ## Examples
 
